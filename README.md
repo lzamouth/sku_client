@@ -7,7 +7,8 @@ Réécriture en C du client SkunkCrafts Updater pour X-Plane. Analyse et décisi
 ```
 src/core/     bibliothèque C11 sans GUI : plateforme (POSIX/Win32), chemins et sécurité, cfg v1/v4,
               CRC32, log, strmap, http (curl), protocole (niveaux 1 et 2), cache CRC, pool de threads,
-              instance X-Plane, scan, addon (check / update), packs, changelog/readme, rapport ; bundle CA embarqué
+              instance X-Plane, scan, addon (check / update, listes distantes en GET conditionnel), packs,
+              changelog/readme, rapport ; bundle CA embarqué
 src/cli/      sku : client en ligne de commande, même cœur que la future GUI
 src/app/      client graphique SDL3 + Nuklear : main (boucle, polices, instance), prefs, jobs (file de travaux),
               theme, ui_list / ui_detail / ui_pack / ui_options (options, about, choix d'instance)

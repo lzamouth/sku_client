@@ -155,9 +155,11 @@ static void test_level(const char *level, bool second_run_uses_cache)
 	}
 	CHECK_EQ_STR(sku_cfg_get_or(&a->local, "channel", "?"), "stable");
 
-	/* --- second check: everything up to date, hashes come from the cache */
+	/* --- second check: everything up to date, hashes come from the cache,
+	 * and the unchanged remote lists were answered with 304 */
 	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
 	CHECK_EQ_INT(sku_addon_status(a, NULL, 0, NULL, 0), SKU_ST_UP_TO_DATE);
+	CHECK(a->lists_from_cache >= 2);   /* manifest or whitelist+sizes, and the blacklist */
 	CHECK_EQ_INT(a->plan.n_new + a->plan.n_changed + a->plan.n_delete, 0);
 	if (second_run_uses_cache) CHECK(a->plan.n_cached >= 5);
 	CHECK_EQ_INT(sku_report_save(a, "Check"), SKU_OK);

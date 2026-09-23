@@ -92,6 +92,7 @@ typedef struct {
 	sku_remote_files files;
 	sku_strlist blacklist;
 	sku_plan   plan;
+	int        lists_from_cache;         /* remote lists answered 304 at the last check */
 	char       changelog[SKU_PATH_MAX];  /* relative path declared by the depot, or "" */
 	char       readme[SKU_PATH_MAX];
 

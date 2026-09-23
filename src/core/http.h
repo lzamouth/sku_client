@@ -15,6 +15,7 @@ typedef struct {
 	bool    not_modified;         /* 304: the caller's cached copy is still valid */
 	char    content_type[96];
 	char    etag[128];
+	char    last_modified[64];
 	char    error[256];           /* human readable, filled on failure */
 	char    effective_url[SKU_URL_MAX];
 } sku_http_result;
@@ -33,9 +34,10 @@ sku_http *sku_http_new(void);
 void      sku_http_free(sku_http *h);
 
 /* GET into memory. Returns SKU_OK for 2xx (*out malloc'd, NUL-terminated),
- * SKU_OK with r->not_modified for 304 when etag_in matched (*out NULL),
- * SKU_ERR_NET otherwise (details in r). */
-int sku_http_get_mem(sku_http *h, const char *url, const char *etag_in, char **out, size_t *len, sku_http_result *r);
+ * SKU_OK with r->not_modified for 304 when the validators matched (*out NULL),
+ * SKU_ERR_NET otherwise (details in r). etag_in (If-None-Match) and since_in
+ * (If-Modified-Since, an HTTP date as previously received) may be NULL. */
+int sku_http_get_mem(sku_http *h, const char *url, const char *etag_in, const char *since_in, char **out, size_t *len, sku_http_result *r);
 
 /* GET to a file: the body goes to "<dest>.skupart" then is renamed over dest,
  * so dest is never left truncated. Fails unless the status is 200 and, when

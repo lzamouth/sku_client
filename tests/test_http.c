@@ -32,23 +32,37 @@ int main(void)
 
 	/* text file into memory */
 	sku_snprintf(url, sizeof url, "%s/skunkcrafts_updater.cfg", base);
-	CHECK_EQ_INT(sku_http_get_mem(h, url, NULL, &body, &len, &r), SKU_OK);
+	CHECK_EQ_INT(sku_http_get_mem(h, url, NULL, NULL, &body, &len, &r), SKU_OK);
 	CHECK_EQ_INT(r.status, 200);
 	CHECK(body && strstr(body, "name|Test") != NULL);
 	CHECK_EQ_INT(len, r.bytes);
 	CHECK(!sku_http_looks_like_html(body, len, r.content_type));
+	CHECK(r.last_modified[0] != 0);
 	free(body);
+	/* conditional GET: python's server honours If-Modified-Since */
+	{
+		char since[64];
+		sku_strlcpy(since, r.last_modified, sizeof since);
+		CHECK_EQ_INT(sku_http_get_mem(h, url, NULL, since, &body, &len, &r), SKU_OK);
+		CHECK(r.not_modified);
+		CHECK_EQ_INT(r.status, 304);
+		CHECK(body == NULL);
+		CHECK_EQ_INT(sku_http_get_mem(h, url, NULL, "Thu, 01 Jan 1970 00:00:00 GMT", &body, &len, &r), SKU_OK);
+		CHECK(!r.not_modified);
+		CHECK_EQ_INT(r.status, 200);
+		free(body);
+	}
 
 	/* 404 */
 	sku_snprintf(url, sizeof url, "%s/missing.txt", base);
-	CHECK_EQ_INT(sku_http_get_mem(h, url, NULL, &body, &len, &r), SKU_ERR_NET);
+	CHECK_EQ_INT(sku_http_get_mem(h, url, NULL, NULL, &body, &len, &r), SKU_ERR_NET);
 	CHECK_EQ_INT(r.status, 404);
 	CHECK(body == NULL);
 	CHECK(strstr(r.error, "404") != NULL);
 
 	/* an HTML page where a protocol file is expected */
 	sku_snprintf(url, sizeof url, "%s/page.html", base);
-	CHECK_EQ_INT(sku_http_get_mem(h, url, NULL, &body, &len, &r), SKU_OK);
+	CHECK_EQ_INT(sku_http_get_mem(h, url, NULL, NULL, &body, &len, &r), SKU_OK);
 	CHECK(sku_http_looks_like_html(body, len, r.content_type));
 	free(body);
 	CHECK(sku_http_looks_like_html("  <!doctype html><p>", 20, "application/octet-stream"));

@@ -108,6 +108,11 @@ static size_t on_header(char *data, size_t sz, size_t n, void *user)
 		size_t k = len - 5 < sizeof tmp - 1 ? len - 5 : sizeof tmp - 1;
 		memcpy(tmp, data + 5, k); tmp[k] = 0;
 		sku_strlcpy(x->r->etag, sku_str_trim(tmp), sizeof x->r->etag);
+	} else if (len > 14 && strncasecmp(data, "Last-Modified:", 14) == 0) {
+		char tmp[64];
+		size_t k = len - 14 < sizeof tmp - 1 ? len - 14 : sizeof tmp - 1;
+		memcpy(tmp, data + 14, k); tmp[k] = 0;
+		sku_strlcpy(x->r->last_modified, sku_str_trim(tmp), sizeof x->r->last_modified);
 	}
 	return len;
 }
@@ -197,7 +202,7 @@ static int perform(sku_http *h, struct xfer *x, long accepted)
 	return SKU_OK;
 }
 
-int sku_http_get_mem(sku_http *h, const char *url, const char *etag_in, char **out, size_t *len, sku_http_result *r)
+int sku_http_get_mem(sku_http *h, const char *url, const char *etag_in, const char *since_in, char **out, size_t *len, sku_http_result *r)
 {
 	struct xfer x = {0};
 	struct curl_slist *hdrs = NULL;
@@ -208,9 +213,14 @@ int sku_http_get_mem(sku_http *h, const char *url, const char *etag_in, char **o
 	if (etag_in && *etag_in) {
 		char line[192];
 		sku_snprintf(line, sizeof line, "If-None-Match: %s", etag_in);
-		hdrs = curl_slist_append(NULL, line);
-		curl_easy_setopt(h->curl, CURLOPT_HTTPHEADER, hdrs);
+		hdrs = curl_slist_append(hdrs, line);
 	}
+	if (since_in && *since_in) {
+		char line[128];
+		sku_snprintf(line, sizeof line, "If-Modified-Since: %s", since_in);
+		hdrs = curl_slist_append(hdrs, line);
+	}
+	if (hdrs) curl_easy_setopt(h->curl, CURLOPT_HTTPHEADER, hdrs);
 	rc = perform(h, &x, 200);
 	curl_slist_free_all(hdrs);
 	*out = NULL;

@@ -19,7 +19,7 @@ static int fetch_text(sku_addon *a, sku_http *h, const char *file, bool required
 	size_t len = 0;
 	int rc;
 	sku_addon_encode_url(url, sizeof url, a->base_url, file);
-	rc = sku_http_get_mem(h, url, NULL, out, &len, r);
+	rc = sku_http_get_mem(h, url, NULL, NULL, out, &len, r);
 	if (rc != SKU_OK) {
 		if (required || rc == SKU_ERR_CANCELLED) sku_warn("%s: GET %s failed: %s", a->name, url, r->error);
 		else sku_debug("%s: optional %s not available (%s)", a->name, file, r->error);
@@ -30,6 +30,67 @@ static int fetch_text(sku_addon *a, sku_http *h, const char *file, bool required
 		sku_snprintf(r->error, sizeof r->error, "server returned a web page instead of %s", file);
 		sku_warn("%s: GET %s: %s", a->name, url, r->error);
 		return SKU_ERR_FORMAT;
+	}
+	return SKU_OK;
+}
+
+/* Cache of the remote list files (manifest, whitelist, ...) with their HTTP
+ * validators, so an unchanged list costs a 304 instead of a download.
+ *   <cache>/<key>.<file>        the body
+ *   <cache>/<key>.<file>.meta   url|etag|last_modified (key|value) */
+static void list_cache_paths(const sku_addon *a, const char *file, char *body, char *meta, size_t n)
+{
+	char base[SKU_PATH_MAX];
+	sku_instance_cache_path(a->inst, a->dir, base, sizeof base);   /* .../cache/<key>.crc */
+	base[strlen(base) - 4] = 0;
+	sku_snprintf(body, n, "%s.%s", base, file);
+	sku_snprintf(meta, n, "%s.%s.meta", base, file);
+}
+
+/* Like fetch_text, for the list files: conditional GET against the cached
+ * copy, cache refreshed on 200 (unless dry_run). */
+static int fetch_list(sku_addon *a, sku_http *h, const char *file, bool required, bool dry_run, char **out, sku_http_result *r)
+{
+	char url[SKU_URL_MAX], body_path[SKU_PATH_MAX], meta_path[SKU_PATH_MAX];
+	const char *etag = NULL, *since = NULL;
+	sku_cfg meta;
+	size_t len = 0;
+	int rc;
+
+	sku_addon_encode_url(url, sizeof url, a->base_url, file);
+	list_cache_paths(a, file, body_path, meta_path, sizeof body_path);
+	sku_cfg_init(&meta);
+	if (sku_cfg_load(&meta, meta_path) == SKU_OK && strcmp(sku_cfg_get_or(&meta, "url", ""), url) == 0 && sku_is_file(body_path)) {
+		etag = sku_cfg_get(&meta, "etag");
+		since = sku_cfg_get(&meta, "last_modified");
+	}
+	rc = sku_http_get_mem(h, url, etag, since, out, &len, r);
+	if (rc == SKU_OK && r->not_modified) {
+		rc = sku_read_file(body_path, out, &len);
+		if (rc == SKU_OK) { a->lists_from_cache++; sku_debug("%s: %s unchanged (304), using the cached copy", a->name, file); }
+		else rc = sku_http_get_mem(h, url, NULL, NULL, out, &len, r);   /* cache vanished: plain GET */
+	}
+	sku_cfg_free(&meta);
+	if (rc != SKU_OK) {
+		if (required || rc == SKU_ERR_CANCELLED) sku_warn("%s: GET %s failed: %s", a->name, url, r->error);
+		else sku_debug("%s: optional %s not available (%s)", a->name, file, r->error);
+		return rc;
+	}
+	if (sku_http_looks_like_html(*out, len, r->content_type)) {
+		free(*out); *out = NULL;
+		sku_snprintf(r->error, sizeof r->error, "server returned a web page instead of %s", file);
+		sku_warn("%s: GET %s: %s", a->name, url, r->error);
+		return SKU_ERR_FORMAT;
+	}
+	if (!r->not_modified && !dry_run && (r->etag[0] || r->last_modified[0])) {
+		if (sku_write_file_atomic(body_path, *out, len) == SKU_OK) {
+			sku_cfg_init(&meta);
+			sku_cfg_set(&meta, "url", url);
+			sku_cfg_set(&meta, "etag", r->etag);
+			sku_cfg_set(&meta, "last_modified", r->last_modified);
+			sku_cfg_save(&meta, meta_path);
+			sku_cfg_free(&meta);
+		}
 	}
 	return SKU_OK;
 }
@@ -174,6 +235,7 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	if (!opts) opts = &def;
 	atomic_store(&a->cancel, 0);
 	a->checked = false;
+	a->lists_from_cache = 0;
 	if (!a->dirty && (rc = sku_addon_reload(a)) != SKU_OK) return rc;   /* unsaved settings win over the disk */
 	if (a->disabled) { sku_addon_set_status(a, SKU_ST_DISABLED, "Updates disabled by user", ""); return SKU_OK; }
 
@@ -243,22 +305,22 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	sku_strlist_free(&a->blacklist);
 	if (a->level >= 2) {
 		const char *mf = sku_cfg_get_or(&a->remote, "manifest", SKU_F_MANIFEST);
-		rc = fetch_text(a, h, mf, true, &text, &r);
+		rc = fetch_list(a, h, mf, true, opts->dry_run, &text, &r);
 		if (rc != SKU_OK) { sku_addon_set_status(a, rc == SKU_ERR_CANCELLED ? SKU_ST_CANCELLED : SKU_ST_ERROR_NET, "Cannot retrieve the file manifest", r.error); goto out; }
 		sku_protocol_parse_manifest(text, &a->files, &rejected); free(text); text = NULL;
 	} else {
-		rc = fetch_text(a, h, SKU_F_WHITELIST, true, &text, &r);
+		rc = fetch_list(a, h, SKU_F_WHITELIST, true, opts->dry_run, &text, &r);
 		if (rc != SKU_OK) { sku_addon_set_status(a, rc == SKU_ERR_CANCELLED ? SKU_ST_CANCELLED : SKU_ST_ERROR_NET, "Cannot retrieve the remote file list", r.error); goto out; }
 		sku_protocol_parse_whitelist(text, &a->files, &rejected); free(text); text = NULL;
-		if (fetch_text(a, h, SKU_F_SIZES, false, &text, &r) == SKU_OK) { sku_protocol_apply_sizes(text, &a->files); free(text); text = NULL; }
+		if (fetch_list(a, h, SKU_F_SIZES, false, opts->dry_run, &text, &r) == SKU_OK) { sku_protocol_apply_sizes(text, &a->files); free(text); text = NULL; }
 	}
-	if (fetch_text(a, h, SKU_F_BLACKLIST, false, &text, &r) == SKU_OK) {
+	if (fetch_list(a, h, SKU_F_BLACKLIST, false, opts->dry_run, &text, &r) == SKU_OK) {
 		int rej = 0;
 		sku_protocol_parse_pathlist(text, &a->blacklist, &rej); free(text); text = NULL;
 		rejected += rej;
 	}
 	if (rejected) sku_warn("%s: %d unsafe or malformed line(s) rejected from the remote lists", a->name, rejected);
-	sku_info("%s: remote version %s, protocol %d, %d file(s), %d blacklisted", a->name, a->remote_version, a->level, a->files.n, a->blacklist.n);
+	sku_info("%s: remote version %s, protocol %d, %d file(s), %d blacklisted, %d list(s) unchanged since last check", a->name, a->remote_version, a->level, a->files.n, a->blacklist.n, a->lists_from_cache);
 
 	rc = build_plan(a, opts);
 	a->plan.duration_ms = sku_time_ms() - t0;
