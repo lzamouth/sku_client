@@ -5,6 +5,9 @@ deps/dl/
 deps/src/
 deps/build/
 deps/install/
+deps/tools/
+# release outputs
+dist/
 # editors
 *.geany
 *~

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=SkunkCrafts Updater
+Comment=Keep your X-Plane add-ons up to date
+Exec=SkunkcraftsUpdater_lin
+Icon=skunkcrafts-updater
+Categories=Game;Utility;
+Terminal=false
+StartupWMClass=SkunkcraftsUpdater_lin

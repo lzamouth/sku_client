@@ -46,6 +46,18 @@ Sans `--xp`, l'instance est celle du dossier courant ou de l'exécutable. `nom` 
 
 Aides de test : `--screenshot DIR` (une capture BMP par seconde) et `SKU_AUTOPILOT=fichier` (lignes `<n> click <x> <y>` en pixels de capture, injectées dans Nuklear). Voir `tests/` pour l'usage avec le faux X-Plane de `make_fixture.py`.
 
+## Release
+
+```bash
+./release.sh 4.0.0            # ou 4.0.0-beta1 : version estampillée dans les trois binaires
+```
+
+Produit dans `dist/<version>/` : `SkunkcraftsUpdater-<v>.zip` (les trois clients graphiques, mode « posé dans X-Plane »), `SkunkcraftsUpdater-<v>-windows-setup.exe` (NSIS, `makensis` requis), `SkunkcraftsUpdater-<v>-macos.zip` (`.app` universel, arm64 signé ad hoc — jamais de `strip` après l'édition de liens, les symboles sont retirés par le linker), `SkunkcraftsUpdater-<v>-x86_64.AppImage` (runtime statique officiel + squashfs zstd fabriqué dans le conteneur, pas d'`appimagetool`), `sku-cli-<v>.zip`.
+
+Icônes : `packaging/icons/icon.png` → `.ico` (ImageMagick) et `.icns` (`tools/make_icns.py`). Ressource Windows (icône, infos de version) : `packaging/windows/app.rc.in`.
+
+Piège de test : cette machine a **AppImageLauncher**, qui intercepte toute exécution d'AppImage via `binfmt_misc` (y compris dans les conteneurs Docker, où l'exécution échoue alors avec « No such file or directory »). Pour tester une AppImage sans lui, mettre à zéro les 3 octets magiques à l'offset 8 d'une copie (`printf '\x00\x00\x00' | dd of=copie bs=1 seek=8 conv=notrunc`), puis l'exécuter normalement ou avec `APPIMAGE_EXTRACT_AND_RUN=1`.
+
 ## Tests
 
 ```bash

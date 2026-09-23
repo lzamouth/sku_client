@@ -20,6 +20,10 @@ get "https://github.com/madler/zlib/releases/download/v$ZLIB_VER/zlib-$ZLIB_VER.
 get "https://raw.githubusercontent.com/Immediate-Mode-UI/Nuklear/$NUKLEAR_TAG/nuklear.h" "nuklear.h"
 get "https://raw.githubusercontent.com/Immediate-Mode-UI/Nuklear/$NUKLEAR_TAG/demo/sdl3_renderer/nuklear_sdl3_renderer.h" "nuklear_sdl3_renderer.h"
 get "https://curl.se/ca/cacert.pem" "cacert.pem"
+# static AppImage runtime (type 2): the AppImage is this file + a squashfs of the AppDir
+mkdir -p tools
+[ -f tools/runtime-x86_64 ] || curl -fL --retry 3 -o tools/runtime-x86_64 "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64"
+chmod +x tools/runtime-x86_64
 get "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2" "dejavu-fonts-ttf-2.37.tar.bz2"
 
 mkdir -p src

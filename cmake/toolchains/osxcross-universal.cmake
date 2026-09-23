@@ -22,6 +22,10 @@ set(CMAKE_OSX_SYSROOT ${OSXCROSS}/SDK/MacOSX11.3.sdk)
 set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "archs")
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "min macOS")
 
+# Strip local symbols at link time: ld64 ad-hoc signs arm64 output after
+# linking, and a later "strip" would invalidate that signature.
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,-x -Wl,-dead_strip")
+
 set(CMAKE_FIND_ROOT_PATH ${CMAKE_OSX_SYSROOT} ${SKU_DEPS_PREFIX})
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)

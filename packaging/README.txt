@@ -1,0 +1,56 @@
+SkunkCrafts Updater @VERSION@
+==============================
+
+Keeps your X-Plane 11/12 add-ons (aircraft, sceneries, plugins) up to date
+against their developers' update servers.
+
+Two ways to use it
+------------------
+
+1. Inside X-Plane (the classic way): copy the program for your operating
+   system into your main X-Plane folder and run it from there. One copy per
+   X-Plane installation.
+
+     Windows   SkunkcraftsUpdater.exe
+     macOS     SkunkcraftsUpdater.app
+     Linux     SkunkcraftsUpdater_lin
+
+2. Installed once: use the installer for your operating system instead
+   (Windows setup, macOS zip to drop in Applications, Linux AppImage). The
+   program finds the X-Plane installations declared by X-Plane itself and
+   lets you pick one, or browse to any X-Plane folder.
+
+macOS: the application is not notarized. If macOS refuses to open it,
+right-click the application and choose "Open", or allow it under
+System Settings > Privacy & Security.
+
+Linux: an AppImage needs no installation; make it executable and run it.
+The program only depends on the system C library (glibc 2.35 or newer, i.e.
+Ubuntu 22.04 or any distribution from 2022 onwards).
+
+What it writes
+--------------
+
+Inside each add-on folder: a "skunkcrafts" sub-folder with its configuration
+(the old skunkcrafts_updater.cfg is converted the first time). Inside each
+X-Plane folder: Output/skunkcrafts/updater (log, cache, reports). Your own
+preferences: in your user profile (AppData on Windows, Library/Application
+Support on macOS, ~/.config on Linux).
+
+Command line
+------------
+
+"sku" (sku.exe on Windows) is the same updater without a window:
+
+     sku instances                    X-Plane installations found
+     sku --xp DIR list                add-ons of an installation
+     sku --xp DIR check               check for updates
+     sku --xp DIR update [name]       update / repair
+     sku --xp DIR report [name]       last report
+     sku --xp DIR changelog [name]    what changed
+
+Support: the log file is Output/skunkcrafts/updater/updater_log.txt in your
+X-Plane folder. Third-party components and their licenses are listed in
+THIRD_PARTY_NOTICES.txt.
+
+(c) 2025-2026 Lionel Zamouth - https://www.skunkcrafts.com/

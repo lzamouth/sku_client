@@ -9,6 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxfixes-dev \
     libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libdecor-0-dev \
     libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev libdrm-dev libgbm-dev \
-    libdbus-1-dev libibus-1.0-dev \
+    libdbus-1-dev libibus-1.0-dev squashfs-tools zip \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /work

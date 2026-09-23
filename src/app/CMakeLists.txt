@@ -21,6 +21,13 @@ set(SKU_APP_SOURCES main.c prefs.c jobs.c theme.c widgets.c ui_list.c ui_detail.
 if(APPLE)
 	list(APPEND SKU_APP_SOURCES apple_compat.c)   # osxcross has no compiler-rt (@available helpers)
 endif()
+if(WIN32)
+	# icon + version information resource
+	enable_language(RC)
+	set(SKU_ICON_ICO ${CMAKE_SOURCE_DIR}/packaging/icons/icon.ico)
+	configure_file(${CMAKE_SOURCE_DIR}/packaging/windows/app.rc.in ${CMAKE_CURRENT_BINARY_DIR}/app.rc @ONLY)
+	list(APPEND SKU_APP_SOURCES ${CMAKE_CURRENT_BINARY_DIR}/app.rc)
+endif()
 
 if(WIN32)
 	set(SKU_APP_NAME SkunkcraftsUpdater)
