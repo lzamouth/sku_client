@@ -103,7 +103,7 @@ int main(int argc, char **argv)
 	}
 	if (sku_instance_open(&in, root, o.dry_run) != SKU_OK) { fprintf(stderr, "%s is not an X-Plane installation (or Output/ is not writable)\n", root); return 1; }
 	sku_log_set_level(o.verbose ? SKU_LOG_DEBUG : SKU_LOG_INFO);
-	sku_log_set_stderr(o.verbose || o.dry_run);
+	sku_log_set_stderr(o.verbose);
 	sku_http_global_init_default(NULL);
 	if (o.dry_run) sku_info("dry run: nothing will be written");
 

@@ -58,6 +58,7 @@ int sku_http_global_init_default(const char *user_agent)
 		"/etc/ssl/ca-bundle.pem",               /* openSUSE */
 		"/etc/ssl/cert.pem",                    /* macOS, Alpine, FreeBSD */
 	};
+	if (strcmp(sku_os_name(), "windows") == 0) return sku_http_global_init(NULL, 0, user_agent);   /* Schannel: system store */
 	for (size_t i = 0; i < sizeof system_bundles / sizeof *system_bundles; i++) {
 		char *pem; size_t len;
 		if (sku_read_file(system_bundles[i], &pem, &len) == SKU_OK && len > 1000) {
