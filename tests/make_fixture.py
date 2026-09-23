@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Builds an end-to-end fixture: a fake X-Plane root with one 3.x addon, and a
+depot (level 1 and level 2 variants) to serve over HTTP.
+
+usage: make_fixture.py <work-dir> <port>
+creates <work-dir>/xp (X-Plane root) and <work-dir>/depot (to serve)."""
+import os, sys, zlib
+
+work = sys.argv[1]
+port = sys.argv[2]
+xp = os.path.join(work, "xp")
+depot = os.path.join(work, "depot")
+
+def write(path, data):
+	os.makedirs(os.path.dirname(path), exist_ok=True)
+	mode = "wb" if isinstance(data, bytes) else "w"
+	with open(path, mode) as f:
+		f.write(data)
+
+def crc(data):
+	return zlib.crc32(data) & 0xFFFFFFFF
+
+# --- X-Plane root
+for d in ["Aircraft", "Custom Scenery", "Resources/plugins", "Output/preferences"]:
+	os.makedirs(os.path.join(xp, d), exist_ok=True)
+
+addon = os.path.join(xp, "Aircraft", "Test", "Plane")
+write(os.path.join(addon, "skunkcrafts_updater.cfg"),
+	"name|Test plane\nmodule|http://127.0.0.1:" + port + "/level1\nversion|1.0\nlocked|false\ndisabled|false\nliveries|true\nzone|custom\n")
+write(os.path.join(addon, "skunkcrafts_updater_beta.cfg"),
+	"installed|true\nenabled|false\nmodule|http://127.0.0.1:" + port + "/beta\nzone|custom\n")
+write(os.path.join(addon, "skunkcrafts_updater_ignore.txt"), "data/user.prf\n")
+write(os.path.join(addon, "plane.acf"), b"ACF v1")                     # unchanged
+write(os.path.join(addon, "objects/wing.obj"), b"old wing")           # changed
+write(os.path.join(addon, "objects/obsolete.png"), b"to be deleted")  # blacklisted
+write(os.path.join(addon, "data/user.prf"), b"user data")             # ignored
+write(os.path.join(addon, "liveries/Red/tex.png"), b"old livery")     # changed, in liveries
+
+# a second folder that must not be scanned as an addon (a .acf stops the walk)
+write(os.path.join(xp, "Aircraft", "Other", "other.acf"), b"x")
+write(os.path.join(xp, "Aircraft", "Other", "deep", "skunkcrafts_updater.cfg"), "name|hidden\nmodule|x\nversion|1\n")
+
+# --- depot: the same files at version 2.0
+files = {
+	"plane.acf": b"ACF v1",
+	"objects/wing.obj": b"new wing v2",
+	"objects/new.obj": b"brand new object",
+	"data/user.prf": b"depot user data",
+	"data/OptionSave.prf": b"whatever",          # crc -1: never checked
+	"liveries/Red/tex.png": b"new livery",
+	"liveries/Blue/tex.png": b"blue livery",
+	"sub dir/with space.txt": b"spaces in names",
+}
+for level in ("level1", "level2"):
+	base = os.path.join(depot, level)
+	for rel, data in files.items():
+		write(os.path.join(base, rel), data)
+	cfg = "name|Test plane\nmodule|http://127.0.0.1:" + port + "/" + level + "\nversion|2.0\nlocked|false\nzone|custom\n"
+	if level == "level2":
+		cfg += "protocol|2\nchangelog|changelog.txt\n"
+		write(os.path.join(base, "changelog.txt"), "## 2.0\n- new wing\n\n## 1.0\n- first\n")
+		lines = []
+		for rel, data in files.items():
+			c = -1 if rel == "data/OptionSave.prf" else crc(data)
+			lines.append("%s|%d|%d" % (rel, c, len(data)))
+		lines.append("../../evil|1|1")
+		write(os.path.join(base, "skunkcrafts_updater_manifest.txt"), "\n".join(lines) + "\n")
+	else:
+		wl, sz = [], []
+		for rel, data in files.items():
+			c = -1 if rel == "data/OptionSave.prf" else crc(data)
+			wl.append("%s|%d" % (rel, c))
+			sz.append("%s|%d" % (rel, len(data)))
+		wl.append("../../evil|1")
+		write(os.path.join(base, "skunkcrafts_updater_whitelist.txt"), "\n".join(wl) + "\n")
+		write(os.path.join(base, "skunkcrafts_updater_sizeslist.txt"), "\n".join(sz) + "\n")
+	write(os.path.join(base, "skunkcrafts_updater.cfg"), cfg)
+	write(os.path.join(base, "skunkcrafts_updater_blacklist.txt"), "objects/obsolete.png\r\n../../etc/passwd\r\n")
+
+# a locked depot and one answering HTML instead of the cfg
+write(os.path.join(depot, "locked", "skunkcrafts_updater.cfg"), "name|Test plane\nmodule|x\nversion|3.0\nlocked|true\n")
+write(os.path.join(depot, "html", "skunkcrafts_updater.cfg"), "<!DOCTYPE html><html><body>403</body></html>")
+print("fixture written to", work)

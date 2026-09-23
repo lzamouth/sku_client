@@ -24,6 +24,8 @@ typedef int (*sku_progress_cb)(void *user, int64_t received, int64_t total);
 
 /* cacert may be NULL (Schannel on Windows uses the system store). */
 int  sku_http_global_init(const char *cacert_pem, size_t cacert_len, const char *user_agent);
+/* Same, with the system CA bundle when one is found, else the embedded Mozilla bundle. */
+int  sku_http_global_init_default(const char *user_agent);
 void sku_http_global_cleanup(void);
 const char *sku_http_version(void);
 

@@ -47,6 +47,30 @@ int sku_http_global_init(const char *cacert_pem, size_t cacert_len, const char *
 	return SKU_OK;
 }
 
+extern const unsigned char sku_cacert_pem[];
+extern const size_t sku_cacert_pem_len;
+
+int sku_http_global_init_default(const char *user_agent)
+{
+	static const char *system_bundles[] = {
+		"/etc/ssl/certs/ca-certificates.crt",   /* Debian, Ubuntu, Arch */
+		"/etc/pki/tls/certs/ca-bundle.crt",     /* Fedora, RHEL */
+		"/etc/ssl/ca-bundle.pem",               /* openSUSE */
+		"/etc/ssl/cert.pem",                    /* macOS, Alpine, FreeBSD */
+	};
+	for (size_t i = 0; i < sizeof system_bundles / sizeof *system_bundles; i++) {
+		char *pem; size_t len;
+		if (sku_read_file(system_bundles[i], &pem, &len) == SKU_OK && len > 1000) {
+			int rc = sku_http_global_init(pem, len, user_agent);
+			sku_info("TLS: using system CA bundle %s", system_bundles[i]);
+			free(pem);
+			return rc;
+		}
+	}
+	sku_info("TLS: using the embedded CA bundle (%lu bytes)", (unsigned long)sku_cacert_pem_len);
+	return sku_http_global_init((const char *)sku_cacert_pem, sku_cacert_pem_len, user_agent);
+}
+
 void sku_http_global_cleanup(void)
 {
 	free(g_cacert);
