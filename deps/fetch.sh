@@ -20,6 +20,7 @@ get "https://github.com/madler/zlib/releases/download/v$ZLIB_VER/zlib-$ZLIB_VER.
 get "https://raw.githubusercontent.com/Immediate-Mode-UI/Nuklear/$NUKLEAR_TAG/nuklear.h" "nuklear.h"
 get "https://raw.githubusercontent.com/Immediate-Mode-UI/Nuklear/$NUKLEAR_TAG/demo/sdl3_renderer/nuklear_sdl3_renderer.h" "nuklear_sdl3_renderer.h"
 get "https://curl.se/ca/cacert.pem" "cacert.pem"
+get "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2" "dejavu-fonts-ttf-2.37.tar.bz2"
 
 mkdir -p src
 [ -d "src/SDL3-$SDL_VER" ]       || tar xzf "dl/SDL3-$SDL_VER.tar.gz"       -C src
@@ -31,4 +32,6 @@ ln -sfn "curl-$CURL_VER"      src/curl
 ln -sfn "mbedtls-$MBEDTLS_VER" src/mbedtls
 ln -sfn "zlib-$ZLIB_VER"      src/zlib
 mkdir -p src/nuklear && cp dl/nuklear.h dl/nuklear_sdl3_renderer.h src/nuklear/
+mkdir -p src/fonts && tar xjf dl/dejavu-fonts-ttf-2.37.tar.bz2 -C src/fonts --strip-components=1 \
+    dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf dejavu-fonts-ttf-2.37/ttf/DejaVuSansMono.ttf dejavu-fonts-ttf-2.37/LICENSE
 ls -la dl src

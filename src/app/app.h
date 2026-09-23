@@ -1,0 +1,138 @@
+/* Graphical client: shared state and the functions each ui_*.c provides.
+ *
+ * Threading: the core runs check/update jobs on worker threads (jobs.c).
+ * The UI thread never touches an addon that has a job queued or running
+ * (item.busy); it displays the snapshot taken when the addon was idle plus
+ * the live status/progress, which the core publishes thread-safely. */
+#ifndef SKU_APP_H
+#define SKU_APP_H
+
+#include <SDL3/SDL.h>
+#include <stdatomic.h>
+#include "sku.h"
+#include "instance.h"
+#include "scan.h"
+#include "addon.h"
+
+/* Nuklear is included by main.c only; the views receive an opaque context. */
+struct nk_context;
+struct nk_font;
+
+#define APP_NAME    "SkunkCrafts Updater"
+#define APP_MAX_CHANNELS 8
+
+typedef struct {
+	sku_addon *a;
+	atomic_int busy;                /* set by the submitter, cleared by the worker */
+	/* snapshot of the addon, refreshed while idle */
+	char name[SKU_NAME_MAX], version[64], remote_version[64], dir[SKU_PATH_MAX], source[SKU_URL_MAX];
+	char channel[64], channels[APP_MAX_CHANNELS][64];
+	int  nchannels;
+	sku_genre genre;
+	bool disabled, liveries, checked, v4;
+	int  n_new, n_changed, n_delete, n_ignored, n_error, n_unchanged;
+	int64_t bytes;
+	/* live status (read every frame) */
+	sku_status st;
+	char st_text[256], st_detail[512];
+	int  prog_done, prog_total;
+	int64_t bytes_done, bytes_total;
+} app_item;
+
+typedef enum { VIEW_LIST, VIEW_DETAIL, VIEW_OPTIONS, VIEW_ABOUT, VIEW_INSTANCE } app_view;
+typedef enum { THEME_SYSTEM, THEME_DARK, THEME_LIGHT } app_theme;
+
+typedef struct {
+	app_theme theme;
+	int  text_size;        /* 10..32 */
+	int  downloads;        /* 1..32 */
+	int  crc_threads;      /* 1..64 */
+	int  startup;          /* 0 nothing, 1 check all, 2 update all */
+	bool verbose;
+	char instance[SKU_PATH_MAX];      /* last used X-Plane root */
+	sku_strlist instances;            /* roots added by hand (browse) */
+	int  window_w, window_h;
+} app_prefs;
+
+typedef struct app {
+	SDL_Window   *win;
+	SDL_Renderer *ren;
+	struct nk_context *ctx;
+	struct nk_font *font, *mono;
+	float scale;
+	bool  running;
+	bool  dark;                       /* effective theme */
+
+	app_prefs prefs;
+	char prefs_path[SKU_PATH_MAX];
+
+	sku_instance inst;
+	bool inst_open;
+	sku_strlist known_instances;      /* for the chooser */
+	char browse_result[SKU_PATH_MAX]; /* filled by the folder dialog callback */
+	atomic_int browse_pending;        /* 1 = instance, 2 = custom addon folder */
+
+	app_item *items;
+	int nitems;
+	int selected;                     /* index or -1 */
+	app_view view;
+	bool filter_aircraft, filter_scenery, filter_plugins, filter_other;
+	int  detail_tab;                  /* 0 files, 1 report */
+	char *report_text;                /* last report loaded for the detail view */
+	int  report_for;                  /* item index the report belongs to, -1 */
+
+	struct jobs *jobs;
+	int  last_jobs_done;              /* to detect completed jobs and refresh snapshots */
+	char message[256];                /* transient message in the status bar */
+	int64_t message_until;
+	char shot_dir[SKU_PATH_MAX];      /* --screenshot DIR: one BMP per second, for testing */
+	int64_t last_shot;
+	int shot_index;
+} app;
+
+/* prefs.c */
+void prefs_defaults(app_prefs *p);
+int  prefs_load(app *ap);
+int  prefs_save(app *ap);
+void prefs_migrate_legacy(app *ap);       /* Output/preferences/skunkcrafts_updater_go.json + old log */
+
+/* jobs.c */
+typedef enum { JOB_CHECK, JOB_CHECK_FULL, JOB_UPDATE, JOB_RELOAD } job_kind;
+struct jobs *jobs_create(app *ap, int nthreads);
+void jobs_destroy(struct jobs *j);
+void jobs_submit(struct jobs *j, app_item *it, job_kind kind);
+int  jobs_running(struct jobs *j);
+int  jobs_queued(struct jobs *j);
+int  jobs_done(struct jobs *j);           /* completed since start (monotonic) */
+void jobs_cancel_all(app *ap);
+
+/* main.c helpers used by the views */
+void app_open_instance(app *ap, const char *root);
+void app_close_instance(app *ap);
+void app_rescan(app *ap);
+void app_refresh_item(app_item *it);      /* snapshot, only when idle */
+void app_refresh_live(app_item *it);      /* status + progress */
+void app_message(app *ap, const char *fmt, ...);
+void app_set_text_size(app *ap, int size);
+void app_apply_theme(app *ap);
+bool app_any_busy(app *ap);
+void app_browse_folder(app *ap, int what);
+
+/* theme.c */
+struct nk_color;
+const struct nk_color *app_default_colors(void);   /* main.c: Nuklear's default table */
+struct nk_color status_color(sku_status s, bool dark);
+void theme_apply(struct nk_context *ctx, bool dark);
+
+/* ui_*.c: each draws inside the already opened main window */
+void ui_list(app *ap);
+void ui_detail(app *ap);
+void ui_options(app *ap);
+void ui_about(app *ap);
+void ui_instance(app *ap);
+void ui_statusbar(app *ap);
+
+/* widgets.c */
+void ui_left_truncate(app *ap, const char *path, float width, char *out, size_t n);
+
+#endif

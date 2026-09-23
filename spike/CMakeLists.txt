@@ -20,5 +20,5 @@ add_custom_command(TARGET sku_spike POST_BUILD
 
 # osxcross has no compiler-rt: supply the @available runtime helpers ourselves
 if(APPLE)
-	target_sources(sku_spike PRIVATE apple_compat.c)
+	target_sources(sku_spike PRIVATE ../src/app/apple_compat.c)
 endif()
