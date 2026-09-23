@@ -36,6 +36,26 @@ write(os.path.join(addon, "objects/obsolete.png"), b"to be deleted")  # blacklis
 write(os.path.join(addon, "data/user.prf"), b"user data")             # ignored
 write(os.path.join(addon, "liveries/Red/tex.png"), b"old livery")     # changed, in liveries
 
+# a pack: two scenery members present, a third one declared by A but missing
+pack_files = {"a": {"Earth nav data/apt.dat": b"pack A data", "library.txt": b"A"},
+              "b": {"objects/tree.obj": b"pack B tree"},
+              "c": {"objects/house.obj": b"pack C house", "library.txt": b"C"}}
+members_decl = ";".join("%s=Custom Scenery/Pack %s=http://127.0.0.1:%s/pack%s" % (m, m.upper(), port, m) for m in ("a", "b", "c"))
+for m in ("a", "b"):
+	folder = os.path.join(xp, "Custom Scenery", "Pack " + m.upper())
+	cfg = "name|Pack member %s\nmodule|http://127.0.0.1:%s/pack%s\nversion|1.0\nzone|custom\npack|simpack\nmember|%s\npack_name|Sim Pack\n" % (m, port, m, m)
+	if m == "a":
+		cfg += "pack_members|" + members_decl + "\n"
+	write(os.path.join(folder, "skunkcrafts_updater.cfg"), cfg)
+	for rel, data in pack_files[m].items():
+		write(os.path.join(folder, rel), b"old " + data)
+for m in ("a", "b", "c"):
+	base = os.path.join(depot, "pack" + m)
+	for rel, data in pack_files[m].items():
+		write(os.path.join(base, rel), data)
+	write(os.path.join(base, "skunkcrafts_updater.cfg"), "name|Pack member %s\nmodule|http://127.0.0.1:%s/pack%s\nversion|2.0\nlocked|false\n" % (m, port, m))
+	write(os.path.join(base, "skunkcrafts_updater_whitelist.txt"), "".join("%s|%d\n" % (rel, crc(data)) for rel, data in pack_files[m].items()))
+
 # a second folder that must not be scanned as an addon (a .acf stops the walk)
 write(os.path.join(xp, "Aircraft", "Other", "other.acf"), b"x")
 write(os.path.join(xp, "Aircraft", "Other", "deep", "skunkcrafts_updater.cfg"), "name|hidden\nmodule|x\nversion|1\n")

@@ -13,6 +13,7 @@
 #include "instance.h"
 #include "scan.h"
 #include "addon.h"
+#include "pack.h"
 
 /* Nuklear is included by main.c only; the views receive an opaque context. */
 struct nk_context;
@@ -32,6 +33,7 @@ typedef struct {
 	bool disabled, liveries, checked, v4;
 	int  n_new, n_changed, n_delete, n_ignored, n_error, n_unchanged;
 	int64_t bytes;
+	int  pack;                      /* index into app.packs, or -1 */
 	/* live status (read every frame) */
 	sku_status st;
 	char st_text[256], st_detail[512];
@@ -39,7 +41,7 @@ typedef struct {
 	int64_t bytes_done, bytes_total;
 } app_item;
 
-typedef enum { VIEW_LIST, VIEW_DETAIL, VIEW_OPTIONS, VIEW_ABOUT, VIEW_INSTANCE } app_view;
+typedef enum { VIEW_LIST, VIEW_DETAIL, VIEW_PACK, VIEW_OPTIONS, VIEW_ABOUT, VIEW_INSTANCE } app_view;
 typedef enum { THEME_SYSTEM, THEME_DARK, THEME_LIGHT } app_theme;
 
 typedef struct {
@@ -75,6 +77,11 @@ typedef struct app {
 	app_item *items;
 	int nitems;
 	int selected;                     /* index or -1 */
+	sku_pack_list packs;
+	int selected_pack;                /* index into packs, or -1 */
+	bool detail_from_pack;            /* "Back" from a member returns to its pack */
+	sku_pack_member_decl *missing;    /* declared but absent members of selected_pack */
+	int nmissing, missing_for;
 	app_view view;
 	bool filter_aircraft, filter_scenery, filter_plugins, filter_other;
 	int  detail_tab;                  /* 0 files, 1 report */
@@ -126,6 +133,9 @@ void theme_apply(struct nk_context *ctx, bool dark);
 
 /* ui_*.c: each draws inside the already opened main window */
 void ui_list(app *ap);
+void ui_pack(app *ap);
+void app_packs_rebuild(app *ap);
+void app_pack_summary(app *ap, int pack, char *version, size_t vn, sku_status *st, char *text, size_t tn);
 void ui_detail(app *ap);
 void ui_options(app *ap);
 void ui_about(app *ap);

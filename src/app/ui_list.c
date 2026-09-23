@@ -62,19 +62,49 @@ void ui_list(app *ap)
 	if (busy) { if (nk_button_label(ctx, "Cancel all")) jobs_cancel_all(ap); }
 	else if (nk_button_label(ctx, "Update / repair all")) submit_all(ap, JOB_UPDATE);
 
-	/* the list */
-	idx = alloca((size_t)(ap->nitems + 1) * sizeof *idx);
+	/* the list: standalone addons, then one row per pack (index >= nitems) */
+	idx = alloca((size_t)(ap->nitems + ap->packs.n + 1) * sizeof *idx);
 	nvisible = 0;
-	for (int i = 0; i < ap->nitems; i++) if (visible(ap, &ap->items[i])) idx[nvisible++] = i;
+	for (int i = 0; i < ap->nitems; i++) if (ap->items[i].pack < 0 && visible(ap, &ap->items[i])) idx[nvisible++] = i;
+	for (int p = 0; p < ap->packs.n; p++) {
+		bool any = false;
+		for (int m = 0; m < ap->packs.v[p].nmembers && !any; m++) any = visible(ap, &ap->items[ap->packs.v[p].members[m]]);
+		if (any) idx[nvisible++] = ap->nitems + p;
+	}
 
 	nk_layout_row_dynamic(ctx, nk_window_get_height(ctx) - 3 * row - 40, 1);
 	{
 		struct nk_list_view view;
 		if (nk_list_view_begin(ctx, &view, "addons", NK_WINDOW_BORDER, (int)row, nvisible)) {
 			for (int k = view.begin; k < view.end && k < nvisible; k++) {
-				app_item *it = &ap->items[idx[k]];
+				app_item *it;
 				bool clicked = false;
-				nk_bool sel = ap->selected == idx[k];
+				nk_bool sel;
+				if (idx[k] >= ap->nitems) {
+					/* a pack row */
+					int pi = idx[k] - ap->nitems;
+					char version[64], text[256];
+					sku_status st;
+					app_pack_summary(ap, pi, version, sizeof version, &st, text, sizeof text);
+					sel = ap->selected_pack == pi;
+					nk_layout_row_template_begin(ctx, row - 4);
+					nk_layout_row_template_push_static(ctx, 56);
+					nk_layout_row_template_push_static(ctx, 250);
+					nk_layout_row_template_push_static(ctx, 100);
+					nk_layout_row_template_push_dynamic(ctx);
+					nk_layout_row_template_end(ctx);
+					clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
+					nk_label_colored(ctx, "pack", NK_TEXT_CENTERED, nk_rgb(255, 200, 80));
+					clicked |= nk_selectable_label(ctx, ap->packs.v[pi].name, NK_TEXT_LEFT, &sel) != 0;
+					clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
+					nk_label(ctx, version, NK_TEXT_LEFT);
+					clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
+					nk_label_colored(ctx, text, NK_TEXT_LEFT, status_color(st, ap->dark));
+					if (clicked) { ap->selected_pack = pi; ap->view = VIEW_PACK; }
+					continue;
+				}
+				it = &ap->items[idx[k]];
+				sel = ap->selected == idx[k];
 				nk_layout_row_template_begin(ctx, row - 4);
 				nk_layout_row_template_push_static(ctx, 56);
 				nk_layout_row_template_push_static(ctx, 250);

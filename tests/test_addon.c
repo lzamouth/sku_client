@@ -12,6 +12,7 @@
 #include "addon.h"
 #include "report.h"
 #include "crc32.h"
+#include "pack.h"
 
 static const char *xp, *url;
 
@@ -50,11 +51,14 @@ static void test_level(const char *level, bool second_run_uses_cache)
 
 	CHECK_EQ_INT(sku_instance_open(&in, xp, false), SKU_OK);
 	CHECK_EQ_INT(sku_scan_instance(&in, &found), SKU_OK);
-	CHECK_EQ_INT(found.n, 1);                       /* Other/deep is hidden behind a .acf */
-	CHECK_EQ_STR(found.v[0].dir, addon_dir);
-	CHECK_EQ_INT(found.v[0].genre, SKU_GENRE_AIRCRAFT);
-
-	a = sku_addon_open(&in, found.v[0].dir, found.v[0].genre);
+	CHECK_EQ_INT(found.n, 3);                       /* the plane + 2 pack members; Other/deep is hidden behind a .acf */
+	{
+		int plane = -1;
+		for (int i = 0; i < found.n; i++) if (found.v[i].genre == SKU_GENRE_AIRCRAFT) plane = i;
+		CHECK(plane >= 0);
+		CHECK_EQ_STR(found.v[plane].dir, addon_dir);
+		a = sku_addon_open(&in, found.v[plane].dir, found.v[plane].genre);
+	}
 	CHECK_EQ_STR(a->name, "Test plane");
 	CHECK_EQ_STR(a->version, "1.0");
 	CHECK_EQ_STR(a->channel, "stable");             /* beta file present but enabled|false */
@@ -206,6 +210,69 @@ static void test_errors(void)
 	sku_instance_close(&in);
 }
 
+static void test_pack(void)
+{
+	sku_instance in;
+	sku_found_list found = {0};
+	sku_addon *addons[8];
+	int n = 0;
+	sku_pack_list packs;
+	sku_pack_member_decl *missing;
+	char created[SKU_PATH_MAX];
+	sku_check_opts co = { false, false, 1 };
+	sku_update_opts uo = { false, 2, 1 };
+
+	CHECK_EQ_INT(sku_instance_open(&in, xp, false), SKU_OK);
+	sku_scan_instance(&in, &found);
+	for (int i = 0; i < found.n && n < 8; i++) addons[n++] = sku_addon_open(&in, found.v[i].dir, found.v[i].genre);
+	CHECK_EQ_INT(sku_packs_build(addons, n, &packs), 1);
+	CHECK_EQ_STR(packs.v[0].id, "simpack");
+	CHECK_EQ_STR(packs.v[0].name, "Sim Pack");
+	CHECK_EQ_INT(packs.v[0].nmembers, 2);
+
+	/* member c is declared by a's local cfg but absent */
+	CHECK_EQ_INT(sku_pack_missing(&packs.v[0], addons, &missing), 1);
+	CHECK_EQ_STR(missing[0].member_id, "c");
+	CHECK_EQ_STR(missing[0].path, "Custom Scenery/Pack C");
+	CHECK_EQ_INT(sku_pack_create_member(&in, &packs.v[0], &missing[0], created, sizeof created), SKU_OK);
+	CHECK(sku_str_ends(created, "Custom Scenery/Pack C"));
+	{
+		sku_addon *c = sku_addon_open(&in, created, SKU_GENRE_SCENERY);
+		CHECK_EQ_STR(c->pack_id, "simpack");
+		CHECK_EQ_STR(c->member_id, "c");
+		CHECK_EQ_STR(c->version, "none");
+		CHECK_EQ_INT(sku_addon_check(c, &co), SKU_OK);
+		CHECK_EQ_INT(c->plan.n_new, 2);
+		CHECK_EQ_INT(sku_addon_update(c, &uo), SKU_OK);
+		CHECK_EQ_STR(c->version, "2.0");
+		sku_addon_close(c);
+	}
+	free(missing);
+	/* after a rescan the pack has three members and nothing is missing */
+	sku_pack_list_free(&packs);
+	for (int i = 0; i < n; i++) sku_addon_close(addons[i]);
+	n = 0;
+	sku_found_list_free(&found);
+	sku_scan_instance(&in, &found);
+	for (int i = 0; i < found.n && n < 8; i++) addons[n++] = sku_addon_open(&in, found.v[i].dir, found.v[i].genre);
+	CHECK_EQ_INT(sku_packs_build(addons, n, &packs), 1);
+	CHECK_EQ_INT(packs.v[0].nmembers, 3);
+	CHECK_EQ_INT(sku_pack_missing(&packs.v[0], addons, &missing), 0);
+	free(missing);
+
+	/* unsafe declarations are rejected */
+	{
+		sku_pack_member_decl *d;
+		CHECK_EQ_INT(sku_pack_parse_members("x=../evil=http://x;y=Resources/default scenery/z=http://x;z=Custom Scenery/ok=http://x;w=rootfile=http://x", &d), 1);
+		CHECK_EQ_STR(d[0].member_id, "z");
+		free(d);
+	}
+	sku_pack_list_free(&packs);
+	for (int i = 0; i < n; i++) sku_addon_close(addons[i]);
+	sku_found_list_free(&found);
+	sku_instance_close(&in);
+}
+
 int main(void)
 {
 	xp = getenv("SKU_TEST_XP"); url = getenv("SKU_TEST_URL");
@@ -214,6 +281,7 @@ int main(void)
 	sku_http_global_init(NULL, 0, "sku-test");
 	test_level(getenv("SKU_TEST_LEVEL") ? getenv("SKU_TEST_LEVEL") : "level1", true);
 	test_errors();
+	test_pack();
 	sku_http_global_cleanup();
 	TEST_MAIN_END();
 }

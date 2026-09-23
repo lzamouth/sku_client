@@ -73,7 +73,9 @@ static void close_items(app *ap)
 {
 	for (int i = 0; i < ap->nitems; i++) sku_addon_close(ap->items[i].a);
 	free(ap->items);
-	ap->items = NULL; ap->nitems = 0; ap->selected = -1;
+	ap->items = NULL; ap->nitems = 0; ap->selected = -1; ap->selected_pack = -1;
+	sku_pack_list_free(&ap->packs);
+	free(ap->missing); ap->missing = NULL; ap->nmissing = 0; ap->missing_for = -1;
 	free(ap->report_text); ap->report_text = NULL; ap->report_for = -1;
 }
 
@@ -92,7 +94,8 @@ void app_rescan(app *ap)
 	}
 	sku_found_list_free(&found);
 	qsort(ap->items, (size_t)ap->nitems, sizeof *ap->items, item_cmp);
-	app_message(ap, "%d addon(s) found", ap->nitems);
+	app_packs_rebuild(ap);
+	app_message(ap, "%d addon(s) found, %d pack(s)", ap->nitems, ap->packs.n);
 }
 
 bool app_any_busy(app *ap)
@@ -266,7 +269,7 @@ static void draw(app *ap)
 		float row = (float)ap->prefs.text_size + 12;
 		if (ap->inst_open) {
 			/* tab bar, like the 3.x client: Addons / Options / About */
-			bool in_addons = ap->view == VIEW_LIST || ap->view == VIEW_DETAIL;
+			bool in_addons = ap->view == VIEW_LIST || ap->view == VIEW_DETAIL || ap->view == VIEW_PACK;
 			nk_layout_row_begin(ctx, NK_STATIC, row, 4);
 			nk_layout_row_push(ctx, 110);
 			if (nk_selectable_label(ctx, "Addons", NK_TEXT_CENTERED, &(nk_bool){ in_addons }) && !in_addons) ap->view = VIEW_LIST;
@@ -282,6 +285,7 @@ static void draw(app *ap)
 			switch (ap->view) {
 			case VIEW_LIST:     ui_list(ap); break;
 			case VIEW_DETAIL:   ui_detail(ap); break;
+			case VIEW_PACK:     ui_pack(ap); break;
 			case VIEW_OPTIONS:  ui_options(ap); break;
 			case VIEW_ABOUT:    ui_about(ap); break;
 			case VIEW_INSTANCE: ui_instance(ap); break;
@@ -333,7 +337,7 @@ int main(int argc, char **argv)
 		else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) sku_strlcpy(ap.shot_dir, argv[++i], sizeof ap.shot_dir);
 		else if (strcmp(argv[i], "--version") == 0) { printf("%s %s\n", APP_NAME, SKU_VERSION); return 0; }
 	}
-	ap.selected = -1; ap.report_for = -1;
+	ap.selected = -1; ap.report_for = -1; ap.selected_pack = -1; ap.missing_for = -1;
 	ap.filter_aircraft = ap.filter_scenery = ap.filter_plugins = ap.filter_other = true;
 	prefs_load(&ap);
 	sku_log_set_level(ap.prefs.verbose ? SKU_LOG_DEBUG : SKU_LOG_INFO);

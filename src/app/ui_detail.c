@@ -108,7 +108,7 @@ void ui_detail(app *ap)
 
 	/* actions */
 	nk_layout_row_dynamic(ctx, row, 5);
-	if (nk_button_label(ctx, "Back to list")) { ap->view = VIEW_LIST; return; }
+	if (nk_button_label(ctx, ap->detail_from_pack ? "Back to pack" : "Back to list")) { ap->view = ap->detail_from_pack ? VIEW_PACK : VIEW_LIST; ap->detail_from_pack = false; return; }
 	if (busy) {
 		nk_label(ctx, "", NK_TEXT_LEFT); nk_label(ctx, "", NK_TEXT_LEFT); nk_label(ctx, "", NK_TEXT_LEFT);
 		if (nk_button_label(ctx, "Cancel")) sku_addon_cancel(it->a);

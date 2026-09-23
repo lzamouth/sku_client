@@ -7,10 +7,10 @@ Réécriture en C du client SkunkCrafts Updater pour X-Plane. Analyse et décisi
 ```
 src/core/     bibliothèque C11 sans GUI : plateforme (POSIX/Win32), chemins et sécurité, cfg v1/v4,
               CRC32, log, strmap, http (curl), protocole (niveaux 1 et 2), cache CRC, pool de threads,
-              instance X-Plane, scan, addon (check / update), rapport ; bundle CA embarqué
+              instance X-Plane, scan, addon (check / update), packs, rapport ; bundle CA embarqué
 src/cli/      sku : client en ligne de commande, même cœur que la future GUI
 src/app/      client graphique SDL3 + Nuklear : main (boucle, polices, instance), prefs, jobs (file de travaux),
-              theme, ui_list / ui_detail / ui_options (options, about, choix d'instance)
+              theme, ui_list / ui_detail / ui_pack / ui_options (options, about, choix d'instance)
 tests/        tests unitaires + bout-en-bout (faux X-Plane, dépôt servi par python), exécutés dans le conteneur
 spike/        preuve de la chaîne de build (conservée, option SKU_BUILD_SPIKE)
 deps/         sources tierces figées et leurs builds (ignorés par git, voir deps/fetch.sh)
@@ -27,9 +27,10 @@ sku --xp DIR check --report [nom]    # vérification, cache CRC et rapport écri
 sku --xp DIR update [nom]            # vérification puis mise à jour / réparation
 sku --xp DIR report [nom]            # dernier rapport
 # options : --full (ignore le cache CRC) --verbose --threads N --downloads N
+#           --create-members (update : crée les membres de pack déclarés mais absents)
 ```
 
-Sans `--xp`, l'instance est celle du dossier courant ou de l'exécutable. `nom` est une sous-chaîne du nom ou du dossier de l'addon.
+Sans `--xp`, l'instance est celle du dossier courant ou de l'exécutable. `nom` est une sous-chaîne du nom ou du dossier de l'addon, ou du nom/identifiant d'un pack (tous ses membres sont alors traités). `list` regroupe les membres sous leur pack et signale les membres déclarés absents.
 
 ## Client graphique
 

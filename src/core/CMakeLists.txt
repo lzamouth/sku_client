@@ -19,6 +19,7 @@ set(SKU_CORE_SOURCES
 	addon_check.c
 	addon_update.c
 	report.c
+	pack.c
 )
 if(WIN32)
 	list(APPEND SKU_CORE_SOURCES platform_win32.c)
