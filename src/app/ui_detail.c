@@ -133,7 +133,8 @@ static void doc_tab(app *ap, int index, int kind, float height)
 				float avail = nk_window_get_content_region(ctx).w - 30;
 				int lines = avail > 0 ? (int)(w / avail) + 1 : 1;
 				nk_layout_row_dynamic(ctx, (float)lines * ((float)ap->prefs.text_size + 4), 1);
-				if (newer) nk_label_colored_wrap(ctx, line, ap->dark ? nk_rgb(240, 240, 240) : nk_rgb(30, 30, 30));
+				/* changelog: older sections dimmed; readme: plain text */
+				if (newer || kind != 2) nk_label_colored_wrap(ctx, line, ap->dark ? nk_rgb(240, 240, 240) : nk_rgb(30, 30, 30));
 				else nk_label_colored_wrap(ctx, line, ap->dark ? nk_rgb(160, 160, 160) : nk_rgb(110, 110, 110));
 			}
 			lineno++;
