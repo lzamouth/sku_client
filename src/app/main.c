@@ -193,8 +193,10 @@ static void load_fonts(app *ap)
 	struct nk_font_atlas *atlas = nk_sdl_font_stash_begin(ap->ctx);
 	struct nk_font_config cfg = nk_font_config(0);
 	float px = (float)ap->prefs.text_size * ap->scale;
+	/* Latin-1 plus the few symbols the UI uses: ellipsis, black right-pointing triangle, small square */
+	static const nk_rune ranges[] = { 0x0020, 0x00FF, 0x2026, 0x2026, 0x25AB, 0x25AB, 0x25B6, 0x25B6, 0 };
 	cfg.oversample_h = 2; cfg.oversample_v = 2;
-	cfg.range = nk_font_default_glyph_ranges();
+	cfg.range = ranges;
 	ap->font = nk_font_atlas_add_from_memory(atlas, (void *)sku_font_sans, sku_font_sans_len, px, &cfg);
 	ap->mono = nk_font_atlas_add_from_memory(atlas, (void *)sku_font_mono, sku_font_mono_len, px, &cfg);
 	nk_sdl_font_stash_end(ap->ctx);
