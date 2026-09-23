@@ -1,0 +1,14 @@
+# Linux build environment: Ubuntu 22.04 = glibc 2.35, the floor for X-Plane 12.
+# Everything we link statically is built inside this image; the only dynamic
+# dependency of the final binary is glibc (SDL dlopens X11/Wayland at runtime).
+
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake ninja-build pkg-config python3 file ca-certificates \
+    libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxfixes-dev \
+    libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libdecor-0-dev \
+    libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev libdrm-dev libgbm-dev \
+    libdbus-1-dev libibus-1.0-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /work

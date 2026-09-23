@@ -1,0 +1,11 @@
+# build outputs
+build/
+# third-party sources and their builds: re-created by deps/fetch.sh + deps/build.sh
+deps/dl/
+deps/src/
+deps/build/
+deps/install/
+# editors
+*.geany
+*~
+.vscode/
