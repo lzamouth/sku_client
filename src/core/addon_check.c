@@ -155,7 +155,7 @@ static int build_plan(sku_addon *a, const sku_check_opts *opts)
 		if (sku_is_file(full)) sku_plan_add(&a->plan, a->blacklist.v[i], SKU_PLAN_DELETE, -1, 0, false);
 	}
 
-	if (!opts->dry_run) sku_crc_cache_save(ctx.cache);
+	if (!opts->dry_run) sku_crc_cache_save(ctx.cache, true);
 	sku_crc_cache_close(ctx.cache);
 	free(ctx.jobs);
 	return rc;

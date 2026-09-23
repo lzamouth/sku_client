@@ -93,13 +93,18 @@ static void test_crc_cache(void)
 	CHECK(!sku_crc_cache_lookup(c, "a/b.obj", 101, 1700000000, &crc));   /* size changed */
 	CHECK(!sku_crc_cache_lookup(c, "a/b.obj", 100, 1700000001, &crc));   /* mtime changed */
 	CHECK(!sku_crc_cache_lookup(c, "nope", 100, 1700000000, &crc));
-	CHECK_EQ_INT(sku_crc_cache_save(c), SKU_OK);
+	CHECK_EQ_INT(sku_crc_cache_save(c, true), SKU_OK);
 	sku_crc_cache_close(c);
 
 	c = sku_crc_cache_open(path);
 	CHECK_EQ_INT(sku_crc_cache_count(c), 2);
 	CHECK(sku_crc_cache_lookup(c, "a/b.obj", 100, 1700000000, &crc)); CHECK_EQ_INT(crc, 0xDEADBEEF);
-	CHECK_EQ_INT(sku_crc_cache_save(c), SKU_OK);    /* "stale.obj" was not touched: dropped */
+	CHECK_EQ_INT(sku_crc_cache_save(c, false), SKU_OK);   /* no prune: everything kept */
+	sku_crc_cache_close(c);
+	c = sku_crc_cache_open(path);
+	CHECK_EQ_INT(sku_crc_cache_count(c), 2);
+	CHECK(sku_crc_cache_lookup(c, "a/b.obj", 100, 1700000000, &crc));
+	CHECK_EQ_INT(sku_crc_cache_save(c, true), SKU_OK);    /* prune: "stale.obj" was not touched, dropped */
 	sku_crc_cache_close(c);
 	c = sku_crc_cache_open(path);
 	CHECK_EQ_INT(sku_crc_cache_count(c), 1);

@@ -95,7 +95,7 @@ void sku_crc_cache_forget(sku_crc_cache *c, const char *rel)
 	pthread_mutex_unlock(&c->lock);
 }
 
-int sku_crc_cache_save(sku_crc_cache *c)
+int sku_crc_cache_save(sku_crc_cache *c, bool prune)
 {
 	size_t cap = 65536, len = 0;
 	char *buf = sku_xmalloc(cap);
@@ -105,7 +105,7 @@ int sku_crc_cache_save(sku_crc_cache *c)
 	for (sku_strmap_node *n = sku_strmap_first(&c->map, &it); n; n = sku_strmap_next(&c->map, &it)) {
 		struct entry *e = n->ptr;
 		size_t need = strlen(n->key) + 64;
-		if (!e->touched) continue;
+		if (prune && !e->touched) continue;
 		if (len + need > cap) { while (len + need > cap) cap *= 2; buf = sku_xrealloc(buf, cap); }
 		len += (size_t)sprintf(buf + len, "%s|%lld|%lld|%lu\n", n->key, (long long)e->size, (long long)e->mtime, (unsigned long)e->crc);
 	}

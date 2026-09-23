@@ -15,8 +15,10 @@ bool sku_crc_cache_lookup(sku_crc_cache *c, const char *rel, int64_t size, int64
 void sku_crc_cache_store(sku_crc_cache *c, const char *rel, int64_t size, int64_t mtime, uint32_t crc);
 void sku_crc_cache_forget(sku_crc_cache *c, const char *rel);
 
-/* Writes back only the entries used or stored since open: stale ones are dropped. */
-int  sku_crc_cache_save(sku_crc_cache *c);
+/* Writes the cache back. With prune, only the entries looked up or stored
+ * since open are kept (a check visits every file, so the rest is stale);
+ * without it everything is kept (an update only touches what it downloads). */
+int  sku_crc_cache_save(sku_crc_cache *c, bool prune);
 int  sku_crc_cache_count(const sku_crc_cache *c);
 
 #endif

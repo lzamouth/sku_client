@@ -142,7 +142,7 @@ int sku_addon_update(sku_addon *a, const sku_update_opts *opts)
 		for (int i = 0; i < nthreads; i++) sku_http_free(c.handles[i]);
 		free(c.handles);
 	}
-	sku_crc_cache_save(c.cache);
+	sku_crc_cache_save(c.cache, false);
 	sku_crc_cache_close(c.cache);
 	a->plan.duration_ms = sku_time_ms() - t0;
 
