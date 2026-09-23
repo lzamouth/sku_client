@@ -1,0 +1,34 @@
+cmake_minimum_required(VERSION 3.16)
+project(sku_client C)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)   # we need POSIX APIs (pthreads, dirent) on Linux/macOS
+
+option(SKU_BUILD_CLI   "Build the command-line client" ON)
+option(SKU_BUILD_APP   "Build the graphical client (SDL3 + Nuklear)" OFF)
+option(SKU_BUILD_TESTS "Build the core unit tests (Linux only)" ON)
+option(SKU_BUILD_SPIKE "Build the toolchain spike" OFF)
+
+set(SKU_VERSION "4.0.0-dev")
+
+if(SKU_DEPS_PREFIX)
+	link_directories(${SKU_DEPS_PREFIX}/lib)
+endif()
+
+set(SKU_WARNINGS -Wall -Wextra -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes -Wno-unused-parameter)
+
+add_subdirectory(src/core)
+if(SKU_BUILD_CLI)
+	add_subdirectory(src/cli)
+endif()
+if(SKU_BUILD_APP)
+	add_subdirectory(src/app)
+endif()
+if(SKU_BUILD_SPIKE)
+	add_subdirectory(spike)
+endif()
+if(SKU_BUILD_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	enable_testing()
+	add_subdirectory(tests)
+endif()
