@@ -2,6 +2,40 @@
 
 Réécriture en C du client SkunkCrafts Updater pour X-Plane. Analyse et décisions : [ANALYSE.md](ANALYSE.md).
 
+## Arborescence
+
+```
+src/core/     bibliothèque C11 sans GUI : plateforme (POSIX/Win32), chemins et sécurité, cfg v1/v4,
+              CRC32, log, strmap, http (curl), protocole (niveaux 1 et 2), cache CRC, pool de threads,
+              instance X-Plane, scan, addon (check / update), rapport ; bundle CA embarqué
+src/cli/      sku : client en ligne de commande, même cœur que la future GUI
+src/app/      client graphique SDL3 + Nuklear (à venir)
+tests/        tests unitaires + bout-en-bout (faux X-Plane, dépôt servi par python), exécutés dans le conteneur
+spike/        preuve de la chaîne de build (conservée, option SKU_BUILD_SPIKE)
+deps/         sources tierces figées et leurs builds (ignorés par git, voir deps/fetch.sh)
+cmake/, docker/, macos/, tools/   toolchains, image de build Linux, bundle .app, scripts utilitaires
+```
+
+## CLI
+
+```bash
+sku instances                        # installations connues de X-Plane (x-plane_install_12.txt / _11.txt)
+sku --xp DIR list                    # addons gérés
+sku --xp DIR --dry-run check [nom]   # vérification sans rien écrire (ni cache, ni log, ni conversion)
+sku --xp DIR check --report [nom]    # vérification, cache CRC et rapport écrits dans Output/skunkcrafts/updater
+sku --xp DIR update [nom]            # vérification puis mise à jour / réparation
+sku --xp DIR report [nom]            # dernier rapport
+# options : --full (ignore le cache CRC) --verbose --threads N --downloads N
+```
+
+Sans `--xp`, l'instance est celle du dossier courant ou de l'exécutable. `nom` est une sous-chaîne du nom ou du dossier de l'addon.
+
+## Tests
+
+```bash
+./docker/run.sh bash -c './build.sh linux && cd build/linux && ctest --output-on-failure'
+```
+
 ## Chaîne de build
 
 Tout se compile depuis la machine Linux de Lionel, pour les trois cibles :
