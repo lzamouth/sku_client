@@ -8,7 +8,12 @@ set(SKU_CORE_SOURCES
 	cfg.c
 	crc32.c
 	log.c
-	# TODO(next batch): http.c protocol.c crc_cache.c worker.c instance.c scan.c addon.c addon_check.c addon_update.c report.c
+	strmap.c
+	http.c
+	protocol.c
+	crc_cache.c
+	worker.c
+	# TODO(next batch): instance.c scan.c addon.c addon_check.c addon_update.c report.c
 )
 if(WIN32)
 	list(APPEND SKU_CORE_SOURCES platform_win32.c)
