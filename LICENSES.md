@@ -12,6 +12,7 @@ liaison statique. **Aucun composant GPL ou LGPL n'est lié** dans nos binaires.
 | libcurl | 8.22.0 | curl (type MIT/X) | copie du copyright et de la notice de permission |
 | mbedTLS (+ everest, p256-m) | 3.6.7 | Apache-2.0 **ou** GPL-2.0+ → **Apache-2.0** | copie de la licence Apache 2.0 et du copyright |
 | zlib | 1.3.1 | zlib | aucune ; mention de courtoisie |
+| Polices DejaVu Sans / Sans Mono (embarquées dans la GUI) | 2.37 | Bitstream Vera (permissive) + domaine public | copie de la notice |
 | Bundle CA Mozilla (`cacert.pem`) | 13/08/2026 | MPL-2.0 | distribué tel quel avec sa notice ; MPL ne s'étend pas à notre code |
 | Runtime mingw-w64 (Windows, statique) | gcc 13 | libgcc : GPL + *GCC Runtime Library Exception* ; winpthreads : MIT/BSD ; CRT : domaine public/ZPL | aucune (exception explicite pour la liaison statique) |
 | Frameworks macOS, Schannel/Win32 | système | Apple / Microsoft | aucune (bibliothèques du système) |

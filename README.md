@@ -9,7 +9,8 @@ src/core/     bibliothèque C11 sans GUI : plateforme (POSIX/Win32), chemins et 
               CRC32, log, strmap, http (curl), protocole (niveaux 1 et 2), cache CRC, pool de threads,
               instance X-Plane, scan, addon (check / update), rapport ; bundle CA embarqué
 src/cli/      sku : client en ligne de commande, même cœur que la future GUI
-src/app/      client graphique SDL3 + Nuklear (à venir)
+src/app/      client graphique SDL3 + Nuklear : main (boucle, polices, instance), prefs, jobs (file de travaux),
+              theme, ui_list / ui_detail / ui_options (options, about, choix d'instance)
 tests/        tests unitaires + bout-en-bout (faux X-Plane, dépôt servi par python), exécutés dans le conteneur
 spike/        preuve de la chaîne de build (conservée, option SKU_BUILD_SPIKE)
 deps/         sources tierces figées et leurs builds (ignorés par git, voir deps/fetch.sh)
@@ -29,6 +30,18 @@ sku --xp DIR report [nom]            # dernier rapport
 ```
 
 Sans `--xp`, l'instance est celle du dossier courant ou de l'exécutable. `nom` est une sous-chaîne du nom ou du dossier de l'addon.
+
+## Client graphique
+
+```bash
+./docker/run.sh ./build.sh linux -DSKU_BUILD_APP=ON     # build/linux/src/app/SkunkcraftsUpdater_lin
+./build.sh windows -DSKU_BUILD_APP=ON                   # build/windows/src/app/SkunkcraftsUpdater.exe
+./build.sh macos   -DSKU_BUILD_APP=ON                   # build/macos/src/app/SkunkcraftsUpdater (universel)
+```
+
+`SkunkcraftsUpdater_lin [--xp DIR]` : sans `--xp`, l'instance vient du dossier courant/exécutable, puis de la dernière utilisée, puis de `x-plane_install_12.txt` ; sinon le sélecteur s'affiche. Préférences dans le dossier de config utilisateur (`prefs.cfg`), migration automatique de `skunkcrafts_updater_go.json`.
+
+Aides de test : `--screenshot DIR` (une capture BMP par seconde) et `SKU_AUTOPILOT=fichier` (lignes `<n> click <x> <y>` en pixels de capture, injectées dans Nuklear). Voir `tests/` pour l'usage avec le faux X-Plane de `make_fixture.py`.
 
 ## Tests
 

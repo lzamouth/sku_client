@@ -35,6 +35,9 @@ cat deps/src/mbedtls/LICENSE >> "$OUT"
 sec "zlib - zlib license"
 sed -n '/Copyright notice:/,$p' deps/src/zlib/LICENSE >> "$OUT"
 
+sec "DejaVu fonts (DejaVu Sans, DejaVu Sans Mono) - Bitstream Vera license / public domain"
+cat deps/src/fonts/LICENSE >> "$OUT"
+
 sec "Mozilla CA certificate bundle (cacert.pem) - MPL 2.0"
 cat <<'EOF' >> "$OUT"
 The CA certificate bundle is extracted from Mozilla's root store by the curl
