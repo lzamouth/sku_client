@@ -69,18 +69,16 @@ typedef int (*line_fn)(char **fields, int nfields, void *user);
 /* Runs fn on every non-empty, non-comment line. Rejections are counted by the callers. */
 static int for_each_line(const char *text, int max_fields, line_fn fn, void *user)
 {
-	char *copy = sku_xstrdup(text), *p = copy;
+	char *copy = sku_xstrdup(text), *cursor = sku_skip_bom(copy), *p;
 	int rc = SKU_OK;
-	while (p && *p) {
-		char *nl = strchr(p, '\n'), *fields[8];
+	while ((p = sku_next_line(&cursor)) != NULL) {
+		char *fields[8];
 		int nf;
-		if (nl) *nl = 0;
-		sku_str_chomp(p);
+		p = sku_str_trim(p);
 		if (*p && *p != '#') {
 			nf = split_fields(p, fields, max_fields);
 			if (fn(fields, nf, user) != SKU_OK) rc = SKU_ERR_FORMAT;
 		}
-		p = nl ? nl + 1 : NULL;
 	}
 	free(copy);
 	return rc;

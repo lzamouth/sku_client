@@ -51,7 +51,11 @@ void  sku_strlist_push(sku_strlist *l, const char *s);
 void  sku_strlist_free(sku_strlist *l);
 bool  sku_strlist_has(const sku_strlist *l, const char *s);
 
-/* Split text into lines (in place): '\n' terminated, '\r' stripped. */
-int   sku_split_lines(char *text, sku_strlist *out);
+/* Line iteration over text that may use LF, CR+LF or lone CR endings, with
+ * an optional UTF-8 BOM at the start. sku_next_line() returns the next line
+ * (NUL-terminated in place) and advances *cursor; NULL at the end. */
+char *sku_next_line(char **cursor);
+char *sku_skip_bom(char *text);
+int   sku_split_lines(char *text, sku_strlist *out);   /* all lines, in place */
 
 #endif

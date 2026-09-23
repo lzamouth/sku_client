@@ -34,12 +34,10 @@ static sku_cfg_line *find(const sku_cfg *c, const char *key)
 
 int sku_cfg_parse(sku_cfg *c, const char *text)
 {
-	char *copy = sku_xstrdup(text), *p = copy;
-	while (p && *p) {
-		char *nl = strchr(p, '\n'), *sep, *key, *val;
+	char *copy = sku_xstrdup(text), *cursor = sku_skip_bom(copy), *p;
+	while ((p = sku_next_line(&cursor)) != NULL) {
+		char *sep, *key, *val;
 		sku_cfg_line *l;
-		if (nl) *nl = 0;
-		sku_str_chomp(p);
 		key = sku_str_trim(p);
 		sep = strchr(key, '|');
 		l = push(c);
@@ -51,7 +49,6 @@ int sku_cfg_parse(sku_cfg *c, const char *text)
 			l->key = sku_xstrdup(sku_str_trim(key));
 			l->value = sku_xstrdup(val);
 		}
-		p = nl ? nl + 1 : NULL;
 	}
 	free(copy);
 	return SKU_OK;

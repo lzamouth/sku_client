@@ -23,10 +23,10 @@ static void test_util(void)
 	sku_nice_size(buf, sizeof buf, 1536); CHECK_EQ_STR(buf, "1.50 kiB");
 	sku_nice_size(buf, sizeof buf, 0);    CHECK_EQ_STR(buf, "0");
 	{
-		char text[] = "a\r\nb\n\nc";
+		char text[] = "\xEF\xBB\xBF" "a\r\nb\n\nc\rd";
 		sku_strlist l = {0};
-		CHECK_EQ_INT(sku_split_lines(text, &l), 4);
-		CHECK_EQ_STR(l.v[0], "a"); CHECK_EQ_STR(l.v[1], "b"); CHECK_EQ_STR(l.v[2], ""); CHECK_EQ_STR(l.v[3], "c");
+		CHECK_EQ_INT(sku_split_lines(text, &l), 5);
+		CHECK_EQ_STR(l.v[0], "a"); CHECK_EQ_STR(l.v[1], "b"); CHECK_EQ_STR(l.v[2], ""); CHECK_EQ_STR(l.v[3], "c"); CHECK_EQ_STR(l.v[4], "d");
 		CHECK(sku_strlist_has(&l, "c"));
 		sku_strlist_free(&l);
 	}
@@ -63,7 +63,7 @@ static void test_cfg(void)
 	sku_cfg c;
 	char *text;
 	sku_cfg_init(&c);
-	CHECK_EQ_INT(sku_cfg_parse(&c, "# comment\r\nname|FJS Q4XP\nmodule|https://x/y|z\n\ndisabled|false"), SKU_OK);
+	CHECK_EQ_INT(sku_cfg_parse(&c, "\xEF\xBB\xBF# comment\r\nname|FJS Q4XP\r\nmodule|https://x/y|z\n\ndisabled|false"), SKU_OK);
 	CHECK_EQ_INT(c.n, 5);
 	CHECK_EQ_STR(sku_cfg_get(&c, "name"), "FJS Q4XP");
 	CHECK_EQ_STR(sku_cfg_get(&c, "module"), "https://x/y|z");     /* split at the first '|' only */

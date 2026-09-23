@@ -26,12 +26,10 @@ sku_crc_cache *sku_crc_cache_open(const char *path)
 	sku_strmap_init(&c->map, 1024);
 	pthread_mutex_init(&c->lock, NULL);
 	if (sku_read_file(path, &text, NULL) == SKU_OK) {
-		char *p = text;
-		while (p && *p) {
-			char *nl = strchr(p, '\n'), *f[4];
+		char *cursor = text, *p;
+		while ((p = sku_next_line(&cursor)) != NULL) {
+			char *f[4];
 			int nf = 0;
-			if (nl) *nl = 0;
-			sku_str_chomp(p);
 			/* path|size|mtime|crc */
 			for (char *q = p; nf < 4; ) {
 				char *sep = strchr(q, '|');
@@ -46,7 +44,6 @@ sku_crc_cache *sku_crc_cache_open(const char *path)
 				e->crc   = (uint32_t)strtoull(f[3], NULL, 10);
 				sku_strmap_put(&c->map, f[0])->ptr = e;
 			}
-			p = nl ? nl + 1 : NULL;
 		}
 		free(text);
 	}

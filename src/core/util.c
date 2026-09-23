@@ -167,15 +167,26 @@ bool sku_strlist_has(const sku_strlist *l, const char *s)
 	return false;
 }
 
+char *sku_skip_bom(char *text)
+{
+	if ((unsigned char)text[0] == 0xEF && (unsigned char)text[1] == 0xBB && (unsigned char)text[2] == 0xBF) return text + 3;
+	return text;
+}
+
+char *sku_next_line(char **cursor)
+{
+	char *line = *cursor, *p;
+	if (!line || !*line) return NULL;
+	for (p = line; *p && *p != '\n' && *p != '\r'; p++) ;
+	if (*p == '\r' && p[1] == '\n') { *p = 0; *cursor = p + 2; }
+	else if (*p) { *p = 0; *cursor = p + 1; }
+	else *cursor = p;
+	return line;
+}
+
 int sku_split_lines(char *text, sku_strlist *out)
 {
-	char *p = text;
-	while (p && *p) {
-		char *nl = strchr(p, '\n');
-		if (nl) *nl = 0;
-		sku_str_chomp(p);
-		sku_strlist_push(out, p);
-		p = nl ? nl + 1 : NULL;
-	}
+	char *cursor = sku_skip_bom(text), *line;
+	while ((line = sku_next_line(&cursor)) != NULL) sku_strlist_push(out, line);
 	return out->n;
 }

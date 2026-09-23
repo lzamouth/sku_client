@@ -33,7 +33,7 @@ static void test_parsers(void)
 	int rejected = -1;
 	char url[SKU_URL_MAX];
 
-	sku_protocol_parse_whitelist("airfoils/a.afl|3465057978\r\ndata/x.prf|-1\n\n# c\n../evil|1\nbad|notanumber\nbig|4294967296\n", &f, &rejected);
+	sku_protocol_parse_whitelist("airfoils/a.afl|3465057978 \r\ndata/x.prf|-1\n\n# c\n../evil|1\nbad|notanumber\nbig|4294967296\n", &f, &rejected);
 	CHECK_EQ_INT(f.n, 2);
 	CHECK_EQ_INT(rejected, 3);
 	CHECK_EQ_STR(f.v[0].path, "airfoils/a.afl");
@@ -49,9 +49,10 @@ static void test_parsers(void)
 	CHECK(!f.v[1].check_crc); CHECK_EQ_INT(f.v[1].size, -1);
 	sku_remote_files_free(&f);
 
-	sku_protocol_parse_pathlist("objects/cabin/CabinAft.png\r\n\r\n/etc/passwd\nplugins/../x\n", &l, &rejected);
-	CHECK_EQ_INT(l.n, 1); CHECK_EQ_INT(rejected, 2);
+	sku_protocol_parse_pathlist("\xEF\xBB\xBFobjects/cabin/CabinAft.png\r\n\r\n/etc/passwd\nplugins/../x\rold/mac.txt \r\n", &l, &rejected);
+	CHECK_EQ_INT(l.n, 2); CHECK_EQ_INT(rejected, 2);
 	CHECK_EQ_STR(l.v[0], "objects/cabin/CabinAft.png");
+	CHECK_EQ_STR(l.v[1], "old/mac.txt");
 	sku_strlist_free(&l);
 
 	sku_protocol_base_url(url, sizeof url, "custom", "https://flyjsim.b-cdn.net/updater/Q4XP12");
