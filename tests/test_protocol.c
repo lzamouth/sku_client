@@ -7,6 +7,7 @@
 #include "worker.h"
 #include "platform.h"
 #include "paths.h"
+#include "changelog.h"
 
 static void test_strmap(void)
 {
@@ -136,8 +137,22 @@ static void test_pool(void)
 	CHECK(atomic_load(&sum) < 4950 * 10);   /* most jobs skipped */
 }
 
+static void test_changelog_headers(void)
+{
+	char v[64];
+	CHECK(sku_changelog_is_header("## 1.39.3", v, sizeof v)); CHECK_EQ_STR(v, "1.39.3");
+	CHECK(sku_changelog_is_header("v1.2.11.0", v, sizeof v)); CHECK_EQ_STR(v, "1.2.11.0");
+	CHECK(sku_changelog_is_header("12.2r1  ", v, sizeof v)); CHECK_EQ_STR(v, "12.2r1");
+	CHECK(sku_changelog_is_header("### 1.0.0_a75", v, sizeof v)); CHECK_EQ_STR(v, "1.0.0_a75");
+	CHECK(!sku_changelog_is_header("- fixed 3 bugs", v, sizeof v));
+	CHECK(!sku_changelog_is_header("2.0 released today", v, sizeof v));
+	CHECK(!sku_changelog_is_header("version", v, sizeof v));
+	CHECK(!sku_changelog_is_header("", v, sizeof v));
+}
+
 int main(void)
 {
+	test_changelog_headers();
 	test_strmap();
 	test_parsers();
 	test_crc_cache();

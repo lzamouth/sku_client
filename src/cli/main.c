@@ -5,6 +5,8 @@
  *   sku [options] check  [name...]     check for updates (all addons, or those matching)
  *   sku [options] update [name...]     check then update/repair
  *   sku [options] report [name...]     print the last saved report(s)
+ *   sku [options] changelog [name...]  print the changelog (new sections marked with ">")
+ *   sku [options] readme [name...]     print the readme
  *
  * name matches an addon name/folder or a pack name/id (then all its members).
  * Options: --xp DIR  --full  --dry-run  --verbose  --threads N  --downloads N
@@ -20,6 +22,7 @@
 #include "addon.h"
 #include "pack.h"
 #include "report.h"
+#include "changelog.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,7 +36,7 @@ struct opts {
 static void usage(void)
 {
 	fputs("usage: sku [--xp DIR] [--full] [--dry-run] [--verbose] [--threads N] [--downloads N] [--report] [--create-members]\n"
-	      "           instances | list | check [name...] | update [name...] | report [name...]\n", stderr);
+	      "           instances | list | check [name...] | update [name...] | report [name...] | changelog [name...] | readme [name...]\n", stderr);
 }
 
 static int cmd_instances(void)
@@ -94,6 +97,26 @@ static int run_command(const char *cmd, sku_addon *a, const struct opts *o, cons
 		} else rc = 1;
 		print_addon(a, indent);
 		if (!o->dry_run) { print_plan(a); sku_report_save(a, "Update"); }
+	} else if (strcmp(cmd, "changelog") == 0 || strcmp(cmd, "readme") == 0) {
+		char path[SKU_PATH_MAX], *text;
+		if (sku_addon_doc_path(a, cmd, path, sizeof path) != SKU_OK || sku_read_file(path, &text, NULL) != SKU_OK) {
+			printf("%s: no %s available (run a check first, or the depot does not publish one)\n", a->name, cmd);
+			return 0;
+		}
+		printf("==== %s (%s)\n", a->name, path);
+		if (strcmp(cmd, "changelog") == 0) {
+			sku_changelog_section *sec;
+			int ns = sku_changelog_sections(text, a->version, &sec), lineno = 0;
+			char *copy = sku_xstrdup(text), *cursor = copy, *line;
+			while ((line = sku_next_line(&cursor)) != NULL) {
+				bool newer = false;
+				for (int s = 0; s < ns; s++) if (lineno >= sec[s].first_line && lineno <= sec[s].last_line) newer = sec[s].newer;
+				printf("%s %s\n", newer ? ">" : " ", line);
+				lineno++;
+			}
+			free(copy); free(sec);
+		} else printf("%s\n", text);
+		free(text);
 	} else if (strcmp(cmd, "report") == 0) {
 		char path[SKU_PATH_MAX], *text;
 		sku_instance_report_path(in, a->dir, path, sizeof path);
@@ -133,7 +156,7 @@ int main(int argc, char **argv)
 	}
 	if (!cmd) { usage(); return 2; }
 	if (strcmp(cmd, "instances") == 0) return cmd_instances();
-	if (strcmp(cmd, "list") && strcmp(cmd, "check") && strcmp(cmd, "update") && strcmp(cmd, "report")) { usage(); return 2; }
+	if (strcmp(cmd, "list") && strcmp(cmd, "check") && strcmp(cmd, "update") && strcmp(cmd, "report") && strcmp(cmd, "changelog") && strcmp(cmd, "readme")) { usage(); return 2; }
 
 	if (o.xp) sku_strlcpy(root, o.xp, sizeof root);
 	else if (sku_instance_detect(root, sizeof root) != SKU_OK) {

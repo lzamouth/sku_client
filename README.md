@@ -7,7 +7,7 @@ Réécriture en C du client SkunkCrafts Updater pour X-Plane. Analyse et décisi
 ```
 src/core/     bibliothèque C11 sans GUI : plateforme (POSIX/Win32), chemins et sécurité, cfg v1/v4,
               CRC32, log, strmap, http (curl), protocole (niveaux 1 et 2), cache CRC, pool de threads,
-              instance X-Plane, scan, addon (check / update), packs, rapport ; bundle CA embarqué
+              instance X-Plane, scan, addon (check / update), packs, changelog/readme, rapport ; bundle CA embarqué
 src/cli/      sku : client en ligne de commande, même cœur que la future GUI
 src/app/      client graphique SDL3 + Nuklear : main (boucle, polices, instance), prefs, jobs (file de travaux),
               theme, ui_list / ui_detail / ui_pack / ui_options (options, about, choix d'instance)
@@ -26,6 +26,8 @@ sku --xp DIR --dry-run check [nom]   # vérification sans rien écrire (ni cache
 sku --xp DIR check --report [nom]    # vérification, cache CRC et rapport écrits dans Output/skunkcrafts/updater
 sku --xp DIR update [nom]            # vérification puis mise à jour / réparation
 sku --xp DIR report [nom]            # dernier rapport
+sku --xp DIR changelog [nom]         # changelog (sections plus récentes que la version installée marquées ">")
+sku --xp DIR readme [nom]            # readme
 # options : --full (ignore le cache CRC) --verbose --threads N --downloads N
 #           --create-members (update : crée les membres de pack déclarés mais absents)
 ```

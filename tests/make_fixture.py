@@ -70,6 +70,7 @@ files = {
 	"liveries/Red/tex.png": b"new livery",
 	"liveries/Blue/tex.png": b"blue livery",
 	"sub dir/with space.txt": b"spaces in names",
+	"changelog.txt": b"2.0\n- new wing (level 1 style, bare version headers)\n\n1.0\n- first\n",
 }
 for level in ("level1", "level2"):
 	base = os.path.join(depot, level)
@@ -77,8 +78,9 @@ for level in ("level1", "level2"):
 		write(os.path.join(base, rel), data)
 	cfg = "name|Test plane\nmodule|http://127.0.0.1:" + port + "/" + level + "\nversion|2.0\nlocked|false\nzone|custom\n"
 	if level == "level2":
-		cfg += "protocol|2\nchangelog|changelog.txt\n"
-		write(os.path.join(base, "changelog.txt"), "## 2.0\n- new wing\n\n## 1.0\n- first\n")
+		cfg += "protocol|2\nchangelog|docs/CHANGELOG.md\nreadme|readme.txt\n"
+		write(os.path.join(base, "docs/CHANGELOG.md"), "# Test plane\n\n## 2.0\n- new wing\n- blue livery\n\n## 1.5\n- interim\n\n## 1.0\n- first\n")
+		write(os.path.join(base, "readme.txt"), "Test plane readme\nRead me first.\n")
 		lines = []
 		for rel, data in files.items():
 			c = -1 if rel == "data/OptionSave.prf" else crc(data)

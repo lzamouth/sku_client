@@ -84,9 +84,11 @@ typedef struct app {
 	int nmissing, missing_for;
 	app_view view;
 	bool filter_aircraft, filter_scenery, filter_plugins, filter_other;
-	int  detail_tab;                  /* 0 files, 1 report */
+	int  detail_tab;                  /* 0 files, 1 report, 2 changelog, 3 readme */
 	char *report_text;                /* last report loaded for the detail view */
 	int  report_for;                  /* item index the report belongs to, -1 */
+	char *doc_text;                   /* changelog or readme loaded for the detail view */
+	int  doc_for, doc_kind;           /* item index and tab the document belongs to */
 
 	struct jobs *jobs;
 	int  last_jobs_done;              /* to detect completed jobs and refresh snapshots */

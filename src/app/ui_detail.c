@@ -3,6 +3,7 @@
 #include "nuklear_config.h"
 #include "platform.h"
 #include "report.h"
+#include "changelog.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -93,6 +94,56 @@ static void report_tab(app *ap, int index, float height)
 	}
 }
 
+/* Changelog (with newer sections highlighted) or readme, wrapped. */
+static void doc_tab(app *ap, int index, int kind, float height)
+{
+	struct nk_context *ctx = ap->ctx;
+	app_item *it = &ap->items[index];
+	const char *name = kind == 2 ? "changelog" : "readme";
+	char path[SKU_PATH_MAX];
+	sku_changelog_section *sec = NULL;
+	int ns = 0, lineno = 0;
+	char *copy, *cursor, *line;
+
+	if (ap->doc_for != index || ap->doc_kind != kind || !ap->doc_text) {
+		free(ap->doc_text); ap->doc_text = NULL;
+		ap->doc_for = index; ap->doc_kind = kind;
+		if (sku_addon_doc_path(it->a, name, path, sizeof path) != SKU_OK || sku_read_file(path, &ap->doc_text, NULL) != SKU_OK)
+			ap->doc_text = sku_xstrdup(kind == 2 ? "No changelog available: run a check first, or this addon does not publish one."
+			                                     : "No readme available: run a check first, or this addon does not publish one.");
+	}
+	if (kind == 2) ns = sku_changelog_sections(ap->doc_text, it->version, &sec);
+	nk_layout_row_dynamic(ctx, height, 1);
+	if (nk_group_begin(ctx, name, NK_WINDOW_BORDER)) {
+		copy = sku_xstrdup(ap->doc_text); cursor = sku_skip_bom(copy);
+		while ((line = sku_next_line(&cursor)) != NULL) {
+			bool newer = false, header = false;
+			char version[64];
+			for (int s = 0; s < ns; s++) if (lineno >= sec[s].first_line && lineno <= sec[s].last_line) { newer = sec[s].newer; header = lineno == sec[s].first_line && sec[s].version[0]; }
+			if (!*line) { nk_layout_row_dynamic(ctx, (float)ap->prefs.text_size / 2, 1); nk_label(ctx, "", NK_TEXT_LEFT); lineno++; continue; }
+			if (header && sku_changelog_is_header(line, version, sizeof version)) {
+				char title[128];
+				bool installed = strcmp(version, it->version) == 0 || (it->version[0] == 'v' && strcmp(version, it->version + 1) == 0);
+				sku_snprintf(title, sizeof title, "%s %s%s", newer ? "\xE2\x96\xB6" : "\xE2\x96\xAB", version, newer ? "   (new)" : installed ? "   (installed)" : "");
+				nk_layout_row_dynamic(ctx, (float)ap->prefs.text_size + 8, 1);
+				nk_label_colored(ctx, title, NK_TEXT_LEFT, newer ? (ap->dark ? nk_rgb(0, 255, 255) : nk_rgb(0, 130, 160)) : (ap->dark ? nk_rgb(200, 200, 200) : nk_rgb(80, 80, 80)));
+			} else {
+				const struct nk_user_font *f = ctx->style.font;
+				float w = f->width(f->userdata, f->height, line, (int)strlen(line));
+				float avail = nk_window_get_content_region(ctx).w - 30;
+				int lines = avail > 0 ? (int)(w / avail) + 1 : 1;
+				nk_layout_row_dynamic(ctx, (float)lines * ((float)ap->prefs.text_size + 4), 1);
+				if (newer) nk_label_colored_wrap(ctx, line, ap->dark ? nk_rgb(240, 240, 240) : nk_rgb(30, 30, 30));
+				else nk_label_colored_wrap(ctx, line, ap->dark ? nk_rgb(160, 160, 160) : nk_rgb(110, 110, 110));
+			}
+			lineno++;
+		}
+		free(copy);
+		nk_group_end(ctx);
+	}
+	free(sec);
+}
+
 void ui_detail(app *ap)
 {
 	struct nk_context *ctx = ap->ctx;
@@ -178,11 +229,15 @@ void ui_detail(app *ap)
 	}
 
 	/* sub tabs */
-	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
+	nk_layout_row_begin(ctx, NK_STATIC, row, 4);
 	nk_layout_row_push(ctx, 120);
 	if (nk_selectable_label(ctx, "Files", NK_TEXT_CENTERED, &(nk_bool){ ap->detail_tab == 0 })) ap->detail_tab = 0;
 	nk_layout_row_push(ctx, 120);
 	if (nk_selectable_label(ctx, "Report", NK_TEXT_CENTERED, &(nk_bool){ ap->detail_tab == 1 })) ap->detail_tab = 1;
+	nk_layout_row_push(ctx, 120);
+	if (nk_selectable_label(ctx, "Changelog", NK_TEXT_CENTERED, &(nk_bool){ ap->detail_tab == 2 })) ap->detail_tab = 2;
+	nk_layout_row_push(ctx, 120);
+	if (nk_selectable_label(ctx, "Readme", NK_TEXT_CENTERED, &(nk_bool){ ap->detail_tab == 3 })) ap->detail_tab = 3;
 	nk_layout_row_end(ctx);
 	{
 		struct nk_rect r = nk_window_get_content_region(ctx);
@@ -192,6 +247,7 @@ void ui_detail(app *ap)
 		if (ap->detail_tab == 0) {
 			if (busy) { nk_layout_row_dynamic(ctx, row, 1); nk_label(ctx, "Working...", NK_TEXT_LEFT); }
 			else files_tab(ap, it, row, height);
-		} else report_tab(ap, ap->selected, height);
+		} else if (ap->detail_tab == 1) report_tab(ap, ap->selected, height);
+		else doc_tab(ap, ap->selected, ap->detail_tab, height);
 	}
 }

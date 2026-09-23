@@ -7,6 +7,7 @@
 #include "crc_cache.h"
 #include "worker.h"
 #include "strmap.h"
+#include "changelog.h"
 #include "log.h"
 #include <stdlib.h>
 #include <string.h>
@@ -199,6 +200,23 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	sku_strlcpy(a->remote_version, sku_cfg_get(&a->remote, "version"), sizeof a->remote_version);
 	sku_strlcpy(a->changelog, sku_cfg_get_or(&a->remote, "changelog", ""), sizeof a->changelog);
 	if (*a->changelog && sku_path_check_relative(a->changelog) != SKU_OK) a->changelog[0] = 0;
+	sku_strlcpy(a->readme, sku_cfg_get_or(&a->remote, "readme", ""), sizeof a->readme);
+	if (*a->readme && sku_path_check_relative(a->readme) != SKU_OK) a->readme[0] = 0;
+	/* changelog / readme: fetched when declared, or by default from protocol level 2 */
+	if (!opts->dry_run) {
+		const char *docs[2][2] = { { "changelog", a->changelog[0] ? a->changelog : SKU_F_CHANGELOG }, { "readme", a->readme[0] ? a->readme : SKU_F_README } };
+		bool declared[2] = { a->changelog[0] != 0, a->readme[0] != 0 };
+		for (int d = 0; d < 2; d++) {
+			char cache[SKU_PATH_MAX];
+			sku_http_result dr;
+			if (!declared[d] && a->level < 2) continue;
+			if (fetch_text(a, h, docs[d][1], false, &text, &dr) == SKU_OK) {
+				sku_addon_doc_cache_path(a, docs[d][0], cache, sizeof cache);
+				sku_write_file_atomic(cache, text, strlen(text));
+				free(text); text = NULL;
+			}
+		}
+	}
 
 	/* the depot may move: name/zone/module follow the remote (stable channel only) */
 	if (strcmp(a->channel, "stable") == 0) {

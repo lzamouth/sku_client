@@ -13,6 +13,7 @@
 #include "report.h"
 #include "crc32.h"
 #include "pack.h"
+#include "changelog.h"
 
 static const char *xp, *url;
 
@@ -73,20 +74,43 @@ static void test_level(const char *level, bool second_run_uses_cache)
 	CHECK_EQ_INT(sku_addon_status(a, NULL, 0, NULL, 0), SKU_ST_UPDATE);
 	CHECK_EQ_STR(a->remote_version, "2.0");
 	CHECK_EQ_INT(a->level, strcmp(level, "level2") == 0 ? 2 : 1);
-	CHECK_EQ_INT(a->files.n, 8);                    /* the ../../evil line was rejected */
+	CHECK_EQ_INT(a->files.n, 9);                    /* the ../../evil line was rejected */
 	CHECK_EQ_INT(a->blacklist.n, 1);
-	CHECK_EQ_INT(a->plan.n_new, 4);                 /* new.obj, OptionSave.prf, Blue livery, with space */
+	CHECK_EQ_INT(a->plan.n_new, 5);                 /* new.obj, OptionSave.prf, Blue livery, with space, changelog */
 	CHECK_EQ_INT(a->plan.n_changed, 2);             /* wing.obj, Red livery */
 	CHECK_EQ_INT(a->plan.n_delete, 1);
 	CHECK_EQ_INT(a->plan.n_ignored, 1);             /* data/user.prf */
 	CHECK_EQ_INT(a->plan.n_unchanged, 1);           /* plane.acf */
 	CHECK_EQ_INT(a->plan.n_error, 0);
-	if (strcmp(level, "level2") == 0) { CHECK_EQ_STR(a->changelog, "changelog.txt"); CHECK(a->plan.bytes > 0); }
+	if (strcmp(level, "level2") == 0) {
+		char doc[SKU_PATH_MAX], *text;
+		sku_changelog_section *sec;
+		int ns;
+		CHECK_EQ_STR(a->changelog, "docs/CHANGELOG.md");
+		CHECK_EQ_STR(a->readme, "readme.txt");
+		CHECK(a->plan.bytes > 0);
+		/* both documents were fetched into the instance cache */
+		CHECK_EQ_INT(sku_addon_doc_path(a, "changelog", doc, sizeof doc), SKU_OK);
+		CHECK(strstr(doc, "/Output/skunkcrafts/updater/cache/") != NULL);
+		CHECK_EQ_INT(sku_read_file(doc, &text, NULL), SKU_OK);
+		ns = sku_changelog_sections(text, a->version, &sec);
+		CHECK_EQ_INT(ns, 4);                              /* "# Test plane" preamble, 2.0, 1.5, 1.0 */
+		CHECK_EQ_STR(sec[0].version, ""); CHECK(!sec[0].newer);
+		CHECK_EQ_STR(sec[1].version, "2.0"); CHECK(sec[1].newer);
+		CHECK_EQ_STR(sec[2].version, "1.5"); CHECK(sec[2].newer);
+		CHECK_EQ_STR(sec[3].version, "1.0"); CHECK(!sec[3].newer);
+		CHECK_EQ_INT(sec[1].first_line, 2); CHECK_EQ_INT(sec[1].last_line, 5);
+		free(sec); free(text);
+		CHECK_EQ_INT(sku_addon_doc_path(a, "readme", doc, sizeof doc), SKU_OK);
+	} else {
+		char doc[SKU_PATH_MAX];
+		CHECK_EQ_INT(sku_addon_doc_path(a, "changelog", doc, sizeof doc), SKU_ERR_NOTFOUND);   /* not installed yet at level 1 */
+	}
 
 	/* liveries off: the two livery files drop out of the plan */
 	CHECK_EQ_INT(sku_addon_set_liveries(a, false, true), SKU_OK);
 	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
-	CHECK_EQ_INT(a->plan.n_new, 3);
+	CHECK_EQ_INT(a->plan.n_new, 4);
 	CHECK_EQ_INT(a->plan.n_changed, 1);
 	CHECK_EQ_INT(sku_addon_set_liveries(a, true, true), SKU_OK);
 
@@ -102,7 +126,19 @@ static void test_level(const char *level, bool second_run_uses_cache)
 	CHECK(file_is(addon_dir, "plane.acf", "ACF v1"));
 	sku_path_join(p, sizeof p, addon_dir, "objects/obsolete.png"); CHECK(!sku_exists(p));
 	for (int i = 0; i < a->plan.n; i++) if (a->plan.v[i].reason != SKU_PLAN_IGNORED) { CHECK_EQ_INT(a->plan.v[i].result, SKU_OK); ndl++; }
-	CHECK_EQ_INT(ndl, 7);
+	CHECK_EQ_INT(ndl, 8);
+
+	/* level 1: the changelog shipped in the package is now available locally */
+	if (strcmp(level, "level1") == 0) {
+		char doc[SKU_PATH_MAX], *text;
+		sku_changelog_section *sec;
+		CHECK_EQ_INT(sku_addon_doc_path(a, "changelog", doc, sizeof doc), SKU_OK);
+		CHECK(sku_str_ends(doc, "Plane/changelog.txt"));
+		CHECK_EQ_INT(sku_read_file(doc, &text, NULL), SKU_OK);
+		CHECK_EQ_INT(sku_changelog_sections(text, "2.0", &sec), 2);   /* bare "2.0" / "1.0" headers */
+		CHECK_EQ_STR(sec[0].version, "2.0"); CHECK(!sec[0].newer);      /* installed = newest: nothing newer */
+		free(sec); free(text);
+	}
 
 	/* v4 layout after the first save */
 	CHECK(a->v4);

@@ -20,6 +20,7 @@ set(SKU_CORE_SOURCES
 	addon_update.c
 	report.c
 	pack.c
+	changelog.c
 )
 if(WIN32)
 	list(APPEND SKU_CORE_SOURCES platform_win32.c)

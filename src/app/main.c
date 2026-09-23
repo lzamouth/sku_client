@@ -77,6 +77,7 @@ static void close_items(app *ap)
 	sku_pack_list_free(&ap->packs);
 	free(ap->missing); ap->missing = NULL; ap->nmissing = 0; ap->missing_for = -1;
 	free(ap->report_text); ap->report_text = NULL; ap->report_for = -1;
+	free(ap->doc_text); ap->doc_text = NULL; ap->doc_for = -1;
 }
 
 void app_rescan(app *ap)
@@ -337,7 +338,7 @@ int main(int argc, char **argv)
 		else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) sku_strlcpy(ap.shot_dir, argv[++i], sizeof ap.shot_dir);
 		else if (strcmp(argv[i], "--version") == 0) { printf("%s %s\n", APP_NAME, SKU_VERSION); return 0; }
 	}
-	ap.selected = -1; ap.report_for = -1; ap.selected_pack = -1; ap.missing_for = -1;
+	ap.selected = -1; ap.report_for = -1; ap.selected_pack = -1; ap.missing_for = -1; ap.doc_for = -1;
 	ap.filter_aircraft = ap.filter_scenery = ap.filter_plugins = ap.filter_other = true;
 	prefs_load(&ap);
 	sku_log_set_level(ap.prefs.verbose ? SKU_LOG_DEBUG : SKU_LOG_INFO);

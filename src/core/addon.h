@@ -93,6 +93,7 @@ typedef struct {
 	sku_strlist blacklist;
 	sku_plan   plan;
 	char       changelog[SKU_PATH_MAX];  /* relative path declared by the depot, or "" */
+	char       readme[SKU_PATH_MAX];
 
 	/* live status */
 	pthread_mutex_t lock;
