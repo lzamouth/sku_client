@@ -165,7 +165,7 @@ void ui_client_banner(app *ap)
 	case CLIENT_DOWNLOADED:
 		{
 			char tail[200];
-			ui_left_truncate(ap, ap->client_file, 300, tail, sizeof tail);
+			ui_left_truncate(ap, ap->client_file, 270, tail, sizeof tail);
 			sku_snprintf(buf, sizeof buf, "%s %s saved: %s", APP_NAME, ap->client.version, tail);
 		}
 		nk_label_colored(ctx, buf, NK_TEXT_LEFT, accent);
