@@ -26,7 +26,7 @@ Barre de titre sous GNOME Wayland : SDL délègue la décoration à libdecor ; s
 
 ## Packs
 
-Guide de publication pour les développeurs dont le produit occupe plusieurs dossiers : [docs/PACKS.md](docs/PACKS.md) (anglais). Les clés de pack du cfg distant sont adoptées à la vérification, comme l'identité du dépôt.
+Guide de publication pour les développeurs dont le produit occupe plusieurs dossiers : [docs/PUBLISHING.md](docs/PUBLISHING.md) (anglais : dépôts, betas multiples, packs). Les clés de pack du cfg distant sont adoptées à la vérification, comme l'identité du dépôt.
 
 ## Mise à jour du client lui-même
 
