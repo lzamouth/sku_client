@@ -228,7 +228,20 @@ int sku_addon_reload(sku_addon *a)
 
 	sku_path_join(p, sizeof p, a->dir, SKU_F_V4_CFG);
 	a->v4 = sku_is_file(p);
-	if (!a->v4) sku_path_join(p, sizeof p, a->dir, SKU_F_CFG);
+	if (a->v4) {
+		/* a 3.x cfg put back next to the v4 layout (package reinstalled, user restoring a file):
+		 * the v4 file keeps the user's settings and wins; the files decide by CRC anyway */
+		char old[SKU_PATH_MAX];
+		sku_path_join(old, sizeof old, a->dir, SKU_F_CFG);
+		if (sku_is_file(old)) {
+			sku_cfg o;
+			sku_cfg_init(&o);
+			sku_cfg_load(&o, old);
+			sku_warn("%s: both %s and %s exist: the v4 file wins, the 3.x one (version %s) is ignored and will be removed at the next save",
+				a->dir, SKU_F_V4_CFG, SKU_F_CFG, sku_cfg_get_or(&o, "version", "?"));
+			sku_cfg_free(&o);
+		}
+	} else sku_path_join(p, sizeof p, a->dir, SKU_F_CFG);
 	rc = sku_cfg_load(&a->local, p);
 	if (rc != SKU_OK) {
 		sku_addon_set_status(a, SKU_ST_ERROR_CONFIG, "Cannot read the local configuration", p);
@@ -246,6 +259,9 @@ int sku_addon_reload(sku_addon *a)
 	if (a->v4) {
 		sku_path_join(p, sizeof p, a->dir, SKU_F_V4_IGNORE);
 		load_ignore(a, p);
+		/* a 3.x ignore list put back later counts too; it is folded into ours at the next save */
+		sku_path_join(p, sizeof p, a->dir, SKU_F_IGNORE);
+		if (sku_is_file(p)) { sku_info("%s: 3.x ignore list also present, merged", a->dir); load_ignore(a, p); }
 	} else {
 		sku_path_join(p, sizeof p, a->dir, SKU_F_IGNORE);
 		load_ignore(a, p);
@@ -306,6 +322,37 @@ static int cleanup_cb(const char *name, bool is_dir, bool is_symlink, void *user
 	return 0;
 }
 
+/* Folds the lines of a 3.x ignore list into the v4 one (union, order kept). */
+static void merge_ignore_file(const sku_addon *a, const char *old, const char *v4)
+{
+	char *text;
+	sku_strlist lines = {0}, all = {0};
+	size_t cap = 1024, n = 0;
+	char *buf;
+	if (sku_read_file(v4, &text, NULL) == SKU_OK) {
+		sku_split_lines(text, &lines);
+		for (int i = 0; i < lines.n; i++) if (*sku_str_trim(lines.v[i])) sku_strlist_push(&all, sku_str_trim(lines.v[i]));
+		sku_strlist_free(&lines); free(text);
+	}
+	if (sku_read_file(old, &text, NULL) == SKU_OK) {
+		sku_split_lines(text, &lines);
+		for (int i = 0; i < lines.n; i++) {
+			char *l = sku_str_trim(lines.v[i]);
+			if (*l && !sku_strlist_has(&all, l)) sku_strlist_push(&all, l);
+		}
+		sku_strlist_free(&lines); free(text);
+	}
+	buf = sku_xmalloc(cap);
+	for (int i = 0; i < all.n; i++) {
+		size_t need = strlen(all.v[i]) + 2;
+		if (n + need > cap) { while (n + need > cap) cap *= 2; buf = sku_xrealloc(buf, cap); }
+		n += (size_t)sprintf(buf + n, "%s\n", all.v[i]);
+	}
+	if (sku_write_file_atomic(v4, buf, n) == SKU_OK) sku_info("%s: 3.x ignore list folded into %s", a->dir, SKU_F_V4_IGNORE);
+	free(buf);
+	sku_strlist_free(&all);
+}
+
 int sku_addon_save(sku_addon *a)
 {
 	char dir[SKU_PATH_MAX], p[SKU_PATH_MAX];
@@ -326,8 +373,12 @@ int sku_addon_save(sku_addon *a)
 		sku_info("%s: converted to the v4 layout", a->dir);
 		a->v4 = true;
 	} else {
-		/* beta files dropped in later are merged on load: remove them now */
+		/* 3.x files dropped in later: beta files were merged on load, the ignore
+		 * list is folded into ours, the cfg is ignored; then all of them go away */
+		char old[SKU_PATH_MAX];
 		struct v1_cleanup c = { a };
+		sku_path_join(old, sizeof old, a->dir, SKU_F_IGNORE);
+		if (sku_is_file(old)) { sku_path_join(p, sizeof p, a->dir, SKU_F_V4_IGNORE); merge_ignore_file(a, old, p); }
 		sku_list_dir(a->dir, cleanup_cb, &c);
 	}
 	a->dirty = false;

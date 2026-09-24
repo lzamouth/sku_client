@@ -23,13 +23,13 @@ cmake/, docker/, macos/, tools/   toolchains, image de build Linux, bundle .app,
 ```bash
 sku instances                        # installations connues de X-Plane (x-plane_install_12.txt / _11.txt)
 sku --xp DIR list                    # addons gérés
-sku --xp DIR --dry-run check [nom]   # vérification sans rien écrire (ni cache, ni log, ni conversion)
+sku --xp DIR --dry-run check [nom]   # vérification sans rien écrire (ni cache, ni log, ni conversion), liste prévisionnelle
 sku --xp DIR check --report [nom]    # vérification, cache CRC et rapport écrits dans Output/skunkcrafts/updater
-sku --xp DIR update [nom]            # vérification puis mise à jour / réparation
+sku --xp DIR update [nom]            # vérification puis mise à jour / réparation, liste effective des fichiers
 sku --xp DIR report [nom]            # dernier rapport
 sku --xp DIR changelog [nom]         # changelog (sections plus récentes que la version installée marquées ">")
 sku --xp DIR readme [nom]            # readme
-# options : --full (ignore le cache CRC) --verbose --threads N --downloads N
+# options : --full (ignore le cache CRC) --verbose (log de débogage sur stderr) --threads N --downloads N
 #           --create-members (update : crée les membres de pack déclarés mais absents)
 ```
 

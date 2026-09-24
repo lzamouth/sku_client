@@ -12,3 +12,5 @@ dist/
 *.geany
 *~
 .vscode/
+# local backups of user files (never committed)
+backup/

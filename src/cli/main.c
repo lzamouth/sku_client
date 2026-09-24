@@ -2,14 +2,14 @@
  *
  *   sku [options] instances            list the X-Plane installations X-Plane knows about
  *   sku [options] list                 list the managed addons (packs grouped) of an instance
- *   sku [options] check  [name...]     check for updates (all addons, or those matching)
- *   sku [options] update [name...]     check then update/repair
+ *   sku [options] check  [name...]     check for updates (all addons, or those matching), lists what would change
+ *   sku [options] update [name...]     check then update/repair, lists what was done
  *   sku [options] report [name...]     print the last saved report(s)
  *   sku [options] changelog [name...]  print the changelog (new sections marked with ">")
  *   sku [options] readme [name...]     print the readme
  *
  * name matches an addon name/folder or a pack name/id (then all its members).
- * Options: --xp DIR  --full  --dry-run  --verbose  --threads N  --downloads N
+ * Options: --xp DIR  --full  --dry-run  --verbose (debug log mirrored to stderr)  --threads N  --downloads N
  *          --report  --create-members (update: create the pack members declared but absent)
  */
 #include "sku.h"
@@ -86,7 +86,7 @@ static int run_command(const char *cmd, sku_addon *a, const struct opts *o, cons
 		sku_check_opts co = { o->full, o->dry_run, o->threads };
 		if (sku_addon_check(a, &co) != SKU_OK) rc = 1;
 		print_addon(a, indent);
-		if (o->verbose) print_plan(a);
+		print_plan(a);
 		if (o->save_report && !o->dry_run) sku_report_save(a, "Check");
 	} else if (strcmp(cmd, "update") == 0) {
 		sku_check_opts co = { o->full, o->dry_run, o->threads };

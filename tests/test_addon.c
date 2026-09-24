@@ -103,8 +103,17 @@ static void test_level(const char *level, bool second_run_uses_cache)
 		free(sec); free(text);
 		CHECK_EQ_INT(sku_addon_doc_path(a, "readme", doc, sizeof doc), SKU_OK);
 	} else {
-		char doc[SKU_PATH_MAX];
-		CHECK_EQ_INT(sku_addon_doc_path(a, "changelog", doc, sizeof doc), SKU_ERR_NOTFOUND);   /* not installed yet at level 1 */
+		/* level 1: the changelog is published under its default name, so it is fetched too */
+		char doc[SKU_PATH_MAX], *text;
+		sku_changelog_section *sec;
+		CHECK_EQ_INT(sku_addon_doc_path(a, "changelog", doc, sizeof doc), SKU_OK);
+		CHECK(sku_str_ends(doc, ".changelog.txt"));
+		CHECK_EQ_INT(sku_read_file(doc, &text, NULL), SKU_OK);
+		CHECK_EQ_INT(sku_changelog_sections(text, a->version, &sec), 2);   /* bare "2.0" / "1.0" headers */
+		CHECK_EQ_STR(sec[0].version, "2.0"); CHECK(sec[0].newer);
+		CHECK_EQ_STR(sec[1].version, "1.0"); CHECK(!sec[1].newer);
+		free(sec); free(text);
+		CHECK_EQ_INT(sku_addon_doc_path(a, "readme", doc, sizeof doc), SKU_ERR_NOTFOUND);   /* not published at level 1 */
 	}
 
 	/* liveries off: the two livery files drop out of the plan */
@@ -128,10 +137,14 @@ static void test_level(const char *level, bool second_run_uses_cache)
 	for (int i = 0; i < a->plan.n; i++) if (a->plan.v[i].reason != SKU_PLAN_IGNORED) { CHECK_EQ_INT(a->plan.v[i].result, SKU_OK); ndl++; }
 	CHECK_EQ_INT(ndl, 8);
 
-	/* level 1: the changelog shipped in the package is now available locally */
+	/* level 1: the changelog now also sits in the addon; the cached copy is preferred,
+	 * the shipped one is the fallback when the cache is gone */
 	if (strcmp(level, "level1") == 0) {
 		char doc[SKU_PATH_MAX], *text;
 		sku_changelog_section *sec;
+		CHECK_EQ_INT(sku_addon_doc_path(a, "changelog", doc, sizeof doc), SKU_OK);
+		CHECK(sku_str_ends(doc, ".changelog.txt"));
+		sku_remove_file(doc);
 		CHECK_EQ_INT(sku_addon_doc_path(a, "changelog", doc, sizeof doc), SKU_OK);
 		CHECK(sku_str_ends(doc, "Plane/changelog.txt"));
 		CHECK_EQ_INT(sku_read_file(doc, &text, NULL), SKU_OK);
@@ -154,6 +167,26 @@ static void test_level(const char *level, bool second_run_uses_cache)
 		CHECK_EQ_STR(sku_cfg_get_or(&a->local, "channel.beta.module", "?"), beta);
 	}
 	CHECK_EQ_STR(sku_cfg_get_or(&a->local, "channel", "?"), "stable");
+
+	/* --- 3.x files put back next to the v4 layout (package reinstalled, file restored by hand):
+	 * the v4 cfg wins, the old ignore list is folded in, the old files go away at the next save */
+	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater.cfg");
+	CHECK_EQ_INT(sku_write_file_atomic(p, "name|Old name\nmodule|http://nowhere/x\nversion|0.1\ndisabled|true\n", 60), SKU_OK);
+	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_ignore.txt");
+	CHECK_EQ_INT(sku_write_file_atomic(p, "data/restored.prf\ndata/user.prf\n", 32), SKU_OK);
+	CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+	CHECK(a->v4);
+	CHECK_EQ_STR(a->version, "2.0");
+	CHECK(!a->disabled);
+	CHECK(sku_strlist_has(&a->ignore, "data/restored.prf"));
+	CHECK(sku_strlist_has(&a->ignore, "data/user.prf"));
+	CHECK_EQ_INT(sku_addon_save(a), SKU_OK);
+	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater.cfg");        CHECK(!sku_exists(p));
+	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_ignore.txt"); CHECK(!sku_exists(p));
+	CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+	CHECK_EQ_INT(a->ignore.n, 2);
+	CHECK(sku_strlist_has(&a->ignore, "data/restored.prf"));
+	CHECK(sku_strlist_has(&a->ignore, "data/user.prf"));
 
 	/* --- second check: everything up to date, hashes come from the cache,
 	 * and the unchanged remote lists were answered with 304 */

@@ -95,6 +95,12 @@ static int fetch_list(sku_addon *a, sku_http *h, const char *file, bool required
 	return SKU_OK;
 }
 
+static bool remote_has(const sku_addon *a, const char *path)
+{
+	for (int i = 0; i < a->files.n; i++) if (strcmp(a->files.v[i].path, path) == 0) return true;
+	return false;
+}
+
 /* One CRC job: hash a local file and compare with the depot. */
 struct crc_job {
 	int      file_index;   /* into a->files */
@@ -264,22 +270,6 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	if (*a->changelog && sku_path_check_relative(a->changelog) != SKU_OK) a->changelog[0] = 0;
 	sku_strlcpy(a->readme, sku_cfg_get_or(&a->remote, "readme", ""), sizeof a->readme);
 	if (*a->readme && sku_path_check_relative(a->readme) != SKU_OK) a->readme[0] = 0;
-	/* changelog / readme: fetched when declared, or by default from protocol level 2 */
-	if (!opts->dry_run) {
-		const char *docs[2][2] = { { "changelog", a->changelog[0] ? a->changelog : SKU_F_CHANGELOG }, { "readme", a->readme[0] ? a->readme : SKU_F_README } };
-		bool declared[2] = { a->changelog[0] != 0, a->readme[0] != 0 };
-		for (int d = 0; d < 2; d++) {
-			char cache[SKU_PATH_MAX];
-			sku_http_result dr;
-			if (!declared[d] && a->level < 2) continue;
-			if (fetch_text(a, h, docs[d][1], false, &text, &dr) == SKU_OK) {
-				sku_addon_doc_cache_path(a, docs[d][0], cache, sizeof cache);
-				sku_write_file_atomic(cache, text, strlen(text));
-				free(text); text = NULL;
-			}
-		}
-	}
-
 	/* the depot may move: name/zone/module follow the remote (stable channel only) */
 	if (strcmp(a->channel, "stable") == 0) {
 		const char *rn = sku_cfg_get(&a->remote, "name"), *rz = sku_cfg_get(&a->remote, "zone"), *rm = sku_cfg_get(&a->remote, "module");
@@ -321,6 +311,23 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	}
 	if (rejected) sku_warn("%s: %d unsafe or malformed line(s) rejected from the remote lists", a->name, rejected);
 	sku_info("%s: remote version %s, protocol %d, %d file(s), %d blacklisted, %d list(s) unchanged since last check", a->name, a->remote_version, a->level, a->files.n, a->blacklist.n, a->lists_from_cache);
+
+	/* changelog / readme: fetched when declared, by default from protocol level 2,
+	 * and at level 1 when the depot publishes them under the default names */
+	if (!opts->dry_run) {
+		const char *docs[2][2] = { { "changelog", a->changelog[0] ? a->changelog : SKU_F_CHANGELOG }, { "readme", a->readme[0] ? a->readme : SKU_F_README } };
+		bool declared[2] = { a->changelog[0] != 0, a->readme[0] != 0 };
+		for (int d = 0; d < 2; d++) {
+			char cache[SKU_PATH_MAX];
+			sku_http_result dr;
+			if (!declared[d] && a->level < 2 && !remote_has(a, docs[d][1])) continue;
+			if (fetch_text(a, h, docs[d][1], false, &text, &dr) == SKU_OK) {
+				sku_addon_doc_cache_path(a, docs[d][0], cache, sizeof cache);
+				sku_write_file_atomic(cache, text, strlen(text));
+				free(text); text = NULL;
+			}
+		}
+	}
 
 	rc = build_plan(a, opts);
 	a->plan.duration_ms = sku_time_ms() - t0;

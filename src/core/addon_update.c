@@ -73,7 +73,7 @@ static void dl_worker(int job, int thread, void *user)
 		}
 		it->result = SKU_OK;
 		atomic_fetch_add(&a->prog_done, 1);
-		sku_debug("%s: downloaded %s (%lld bytes)", a->name, it->path, (long long)r.bytes);
+		sku_info("%s: downloaded %s (%lld bytes)", a->name, it->path, (long long)r.bytes);
 		return;
 	}
 	fail(c, it, rc, r.error);
