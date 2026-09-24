@@ -18,6 +18,10 @@ deps/         sources tierces figées et leurs builds (ignorés par git, voir de
 cmake/, docker/, macos/, tools/   toolchains, image de build Linux, bundle .app, scripts utilitaires
 ```
 
+## Mise à jour du client lui-même
+
+Le client vérifie au plus une fois par jour (préférence `client_check`, case dans Options) un dépôt au même protocole que les addons, `SKU_CLIENT_DEPOT_URL` à la compilation, `client_url` dans les préférences ensuite : si le cfg distant annonce un autre `module`, le client le suit, ce qui permet de déménager le dépôt sans recompiler. Le dépôt publie les livrables sous des noms fixes (`SkunkcraftsUpdater-windows-setup.exe`, `-windows.zip`, `-macos.zip`, `-linux.zip`, `-x86_64.AppImage`, `sku-cli.zip`), `release.sh` les prépare dans `dist/<version>/depot/` avec le cfg et le changelog (`CHANGELOG.txt`, première ligne = version, comme un changelog d'avion). Quand une version plus récente existe, un bandeau dans la liste propose « What's new » (changelog dans About, nouveautés en couleur), « Download » (le paquet de la plateforme et du mode d'installation, CRC vérifié, déposé dans `<config utilisateur>/downloads`) et « Later ». L'installation reste manuelle pour l'instant (palier 2 : remplacement en place). `SKU_NO_CLIENT_CHECK=1` désactive la vérification au démarrage (tests).
+
 ## CLI
 
 ```bash
@@ -29,6 +33,7 @@ sku --xp DIR update [nom]            # vérification puis mise à jour / répara
 sku --xp DIR report [nom]            # dernier rapport
 sku --xp DIR changelog [nom]         # changelog (sections plus récentes que la version installée marquées ">")
 sku --xp DIR readme [nom]            # readme
+sku client [download [DIR]]          # une version plus récente du client est-elle publiée ? (download : la récupère)
 # options : --full (ignore le cache CRC) --verbose (log de débogage sur stderr) --threads N --downloads N
 #           --create-members (update : crée les membres de pack déclarés mais absents)
 ```
@@ -45,7 +50,7 @@ Sans `--xp`, l'instance est celle du dossier courant ou de l'exécutable. `nom` 
 
 `SkunkcraftsUpdater_lin [--xp DIR]` : sans `--xp`, l'instance vient du dossier courant/exécutable, puis de la dernière utilisée, puis de `x-plane_install_12.txt` ; sinon le sélecteur s'affiche. Préférences dans le dossier de config utilisateur (`prefs.cfg`), migration automatique de `skunkcrafts_updater_go.json`.
 
-Aides de test : `--screenshot DIR` (une capture BMP par seconde) et `SKU_AUTOPILOT=fichier` (lignes `<n> click <x> <y>` en pixels de capture, injectées dans Nuklear). Voir `tests/` pour l'usage avec le faux X-Plane de `make_fixture.py`.
+Aides de test : `--screenshot DIR` (une capture BMP par seconde) et `SKU_AUTOPILOT=fichier` (lignes `<n> click <x> <y>` en pixels de capture, injectées dans Nuklear sur trois images : survol, appui, relâchement, parce que Nuklear n'active une fenêtre que survolée bouton relâché). `SKU_NO_CLIENT_CHECK=1` évite la vérification réseau du client au démarrage. Voir `tests/` pour l'usage avec le faux X-Plane de `make_fixture.py`.
 
 ## Release
 

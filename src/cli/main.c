@@ -7,6 +7,7 @@
  *   sku [options] report [name...]     print the last saved report(s)
  *   sku [options] changelog [name...]  print the changelog (new sections marked with ">")
  *   sku [options] readme [name...]     print the readme
+ *   sku client [download [DIR]]        is a newer updater published? (download: fetch the package for this platform)
  *
  * name matches an addon name/folder or a pack name/id (then all its members).
  * Options: --xp DIR  --full  --dry-run  --verbose (debug log mirrored to stderr)  --threads N  --downloads N
@@ -23,6 +24,7 @@
 #include "pack.h"
 #include "report.h"
 #include "changelog.h"
+#include "client.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,7 +38,8 @@ struct opts {
 static void usage(void)
 {
 	fputs("usage: sku [--xp DIR] [--full] [--dry-run] [--verbose] [--threads N] [--downloads N] [--report] [--create-members]\n"
-	      "           instances | list | check [name...] | update [name...] | report [name...] | changelog [name...] | readme [name...]\n", stderr);
+	      "           instances | list | check [name...] | update [name...] | report [name...] | changelog [name...] | readme [name...]\n"
+	      "       sku client [download [DIR]]     (SKU_CLIENT_URL overrides the depot)\n", stderr);
 }
 
 static int cmd_instances(void)
@@ -48,6 +51,29 @@ static int cmd_instances(void)
 	if (sku_instance_detect(here, sizeof here) == SKU_OK && !sku_strlist_has(&l, here)) printf("%s  (current)\n", here);
 	if (!l.n && !*here) { fprintf(stderr, "no X-Plane installation found\n"); return 1; }
 	sku_strlist_free(&l);
+	return 0;
+}
+
+/* The updater's own update: prints what is published, optionally downloads it. */
+static int cmd_client(char **args, int nargs)
+{
+	const char *url = getenv("SKU_CLIENT_URL");
+	sku_client_info info;
+	char err[256], nice[32], dest[SKU_PATH_MAX];
+	int rc;
+	if (!url || !*url) url = SKU_CLIENT_DEPOT_URL;
+	rc = sku_client_check(url, NULL, &info, err, sizeof err);
+	if (rc != SKU_OK) { fprintf(stderr, "cannot check %s: %s\n", url, err); return 1; }
+	printf("installed : %s\npublished : %s (%s)\ndepot     : %s%s\n", SKU_VERSION, info.version, info.newer ? "newer" : "not newer", url, info.locked ? "  [locked]" : "");
+	if (info.package[0]) { sku_nice_size(nice, sizeof nice, info.size); printf("package   : %s (%s)\n", info.package, info.size >= 0 ? nice : "size unknown"); }
+	else printf("package   : none for this platform (%s)\n", sku_client_package());
+	if (nargs >= 1 && strcmp(args[0], "download") == 0) {
+		const char *dir = nargs >= 2 ? args[1] : ".";
+		rc = sku_client_download(url, &info, dir, NULL, NULL, NULL, dest, sizeof dest, err, sizeof err);
+		if (rc != SKU_OK) { fprintf(stderr, "download failed: %s\n", err); sku_client_info_free(&info); return 1; }
+		printf("saved     : %s\n", dest);
+	}
+	sku_client_info_free(&info);
 	return 0;
 }
 
@@ -156,6 +182,14 @@ int main(int argc, char **argv)
 	}
 	if (!cmd) { usage(); return 2; }
 	if (strcmp(cmd, "instances") == 0) return cmd_instances();
+	if (strcmp(cmd, "client") == 0) {
+		sku_log_set_level(o.verbose ? SKU_LOG_DEBUG : SKU_LOG_INFO);
+		sku_log_set_stderr(o.verbose);
+		sku_http_global_init_default(NULL);
+		rc = cmd_client(names, nnames);
+		sku_http_global_cleanup();
+		return rc;
+	}
 	if (strcmp(cmd, "list") && strcmp(cmd, "check") && strcmp(cmd, "update") && strcmp(cmd, "report") && strcmp(cmd, "changelog") && strcmp(cmd, "readme")) { usage(); return 2; }
 
 	if (o.xp) sku_strlcpy(root, o.xp, sizeof root);

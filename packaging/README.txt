@@ -41,6 +41,15 @@ X-Plane folder: Output/skunkcrafts/updater (log, cache, reports). Your own
 preferences: in your user profile (AppData on Windows, Library/Application
 Support on macOS, ~/.config on Linux).
 
+Updates of the updater
+----------------------
+
+Once a day the program checks whether a newer version of itself has been
+published. If so, a banner offers to show what changed and to download the
+package for your system into your user profile folder (a button opens it);
+install it the same way you installed this one. You can turn the check off
+in Options.
+
 Command line
 ------------
 
@@ -52,6 +61,7 @@ Command line
      sku --xp DIR update [name]       update / repair
      sku --xp DIR report [name]       last report
      sku --xp DIR changelog [name]    what changed
+     sku client [download [DIR]]      is a newer updater published?
 
 Support: the log file is Output/skunkcrafts/updater/updater_log.txt in your
 X-Plane folder. Third-party components and their licenses are listed in

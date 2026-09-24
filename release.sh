@@ -5,6 +5,9 @@
 #   SkunkcraftsUpdater-<v>-macos.zip         SkunkcraftsUpdater.app
 #   SkunkcraftsUpdater-<v>-x86_64.AppImage   Linux
 #   sku-cli-<v>.zip                          command-line client for the three OS
+#   depot/                                   the same packages under fixed names + config + changelog: the
+#                                            client's own update depot, to push with xp_depot (CHANGELOG.txt
+#                                            must start with the version line, like an aircraft changelog)
 # Usage: release.sh <version>   (e.g. 4.0.0 or 4.0.0-beta1)
 set -e
 VER="$1"
@@ -14,11 +17,14 @@ DIST="$ROOT/dist/$VER"
 STAGE="$DIST/stage"
 OSX=/usr/local/osxcross/bin
 OTOOL=$OSX/x86_64-apple-darwin20.4-otool
+# depot the clients check for their own updates (the client follows the module announced there if it moves)
+CLIENT_URL="${SKU_CLIENT_DEPOT_URL:-https://cdn.skunkcrafts.com/updater/skunkcrafts/sku_client}"
+[ "$(head -1 "$ROOT/CHANGELOG.txt" | tr -d '\r')" = "$VER" ] || { echo "CHANGELOG.txt must start with the line \"$VER\" (the aircraft-style bare version header)" >&2; exit 1; }
 
 echo "=== building $VER"
-"$ROOT/docker/run.sh" ./build.sh linux   -DSKU_BUILD_APP=ON -DSKU_VERSION="$VER" > "$ROOT/build/release-linux.log" 2>&1
-"$ROOT/build.sh" windows -DSKU_BUILD_APP=ON -DSKU_VERSION="$VER" > "$ROOT/build/release-windows.log" 2>&1
-"$ROOT/build.sh" macos   -DSKU_BUILD_APP=ON -DSKU_VERSION="$VER" > "$ROOT/build/release-macos.log" 2>&1
+"$ROOT/docker/run.sh" ./build.sh linux   -DSKU_BUILD_APP=ON -DSKU_VERSION="$VER" -DSKU_CLIENT_DEPOT_URL="$CLIENT_URL" > "$ROOT/build/release-linux.log" 2>&1
+"$ROOT/build.sh" windows -DSKU_BUILD_APP=ON -DSKU_VERSION="$VER" -DSKU_CLIENT_DEPOT_URL="$CLIENT_URL" > "$ROOT/build/release-windows.log" 2>&1
+"$ROOT/build.sh" macos   -DSKU_BUILD_APP=ON -DSKU_VERSION="$VER" -DSKU_CLIENT_DEPOT_URL="$CLIENT_URL" > "$ROOT/build/release-macos.log" 2>&1
 "$ROOT/deps/licenses.sh" > /dev/null
 
 rm -rf "$DIST"; mkdir -p "$STAGE"
@@ -71,6 +77,19 @@ cp "$STAGE/sku.exe" "$STAGE/cli/windows/"
 cp "$ROOT/build/macos/src/cli/sku" "$STAGE/cli/macos/"   # never strip: it would break the ad-hoc arm64 signature
 cp "$STAGE/README.txt" "$STAGE/THIRD_PARTY_NOTICES.txt" "$STAGE/cli/"
 ( cd "$STAGE" && zip -qry "$DIST/sku-cli-$VER.zip" cli )
+
+echo "=== client depot: dist/$VER/depot, to copy into the depot folder and push with xp_depot"
+DEPOT="$DIST/depot"
+mkdir -p "$DEPOT"
+cp "$DIST/SkunkcraftsUpdater-$VER-windows-setup.exe" "$DEPOT/SkunkcraftsUpdater-windows-setup.exe"
+( cd "$STAGE" && zip -qr "$DEPOT/SkunkcraftsUpdater-windows.zip" SkunkcraftsUpdater.exe README.txt THIRD_PARTY_NOTICES.txt )
+cp "$DIST/SkunkcraftsUpdater-$VER-macos.zip" "$DEPOT/SkunkcraftsUpdater-macos.zip"
+( cd "$STAGE" && zip -qr "$DEPOT/SkunkcraftsUpdater-linux.zip" SkunkcraftsUpdater_lin README.txt THIRD_PARTY_NOTICES.txt )
+cp "$DIST/SkunkcraftsUpdater-$VER-x86_64.AppImage" "$DEPOT/SkunkcraftsUpdater-x86_64.AppImage"
+cp "$DIST/sku-cli-$VER.zip" "$DEPOT/sku-cli.zip"
+tr -d '\r' < "$ROOT/CHANGELOG.txt" > "$DEPOT/changelog.txt"
+cp "$STAGE/README.txt" "$DEPOT/readme.txt"
+printf 'zone|custom\nmodule|%s\nname|SkunkCrafts Updater\nversion|%s\nlocked|false\n' "$CLIENT_URL" "$VER" > "$DEPOT/skunkcrafts_updater_config.txt"
 
 rm -rf "$STAGE"
 echo "=== done"

@@ -102,6 +102,9 @@ void ui_options(app *ap)
 		nk_layout_row_end(ctx);
 	}
 
+	nk_layout_row_dynamic(ctx, row / 2, 1); nk_label(ctx, "", NK_TEXT_LEFT);
+	ui_client_options(ap);
+
 	if (changed) prefs_save(ap);
 }
 
@@ -128,20 +131,27 @@ void ui_about(app *ap)
 {
 	struct nk_context *ctx = ap->ctx;
 	float row = (float)ap->prefs.text_size + 10;
-	static bool show_notices;
 	char buf[256];
+	bool news = atomic_load(&ap->client_state) == CLIENT_CHECKED && ap->client.changelog;
 
 	nk_layout_row_dynamic(ctx, row, 1);
 	sku_snprintf(buf, sizeof buf, "%s %s  -  %s / SDL %d.%d.%d", APP_NAME, SKU_VERSION, sku_http_version(),
 		SDL_VERSIONNUM_MAJOR(SDL_GetVersion()), SDL_VERSIONNUM_MINOR(SDL_GetVersion()), SDL_VERSIONNUM_MICRO(SDL_GetVersion()));
 	nk_label(ctx, buf, NK_TEXT_LEFT);
-	nk_layout_row_dynamic(ctx, row, 2);
-	if (nk_button_label(ctx, show_notices ? "Show the license" : "Show third-party notices")) show_notices = !show_notices;
+	nk_layout_row_dynamic(ctx, row, news ? 4 : 3);
+	if (nk_button_label(ctx, "License")) ap->about_mode = 0;
+	if (nk_button_label(ctx, "Third-party notices")) ap->about_mode = 1;
+	if (news) {
+		sku_snprintf(buf, sizeof buf, "What's new (%s)", ap->client.version);
+		if (nk_button_label(ctx, buf)) ap->about_mode = 2;
+	}
 	if (nk_button_label(ctx, "Open skunkcrafts.com")) SDL_OpenURL("https://www.skunkcrafts.com/");
+	if (ap->about_mode == 2 && !news) ap->about_mode = 0;
 
 	nk_layout_row_dynamic(ctx, nk_window_get_height(ctx) - 3 * row, 1);
 	if (nk_group_begin(ctx, "about", NK_WINDOW_BORDER)) {
-		if (show_notices) {
+		if (ap->about_mode == 2) ui_client_news(ap);
+		else if (ap->about_mode == 1) {
 			char *text = sku_xmalloc(sku_notices_len + 1);
 			memcpy(text, sku_notices, sku_notices_len); text[sku_notices_len] = 0;
 			nk_style_set_font(ctx, &ap->mono->handle);

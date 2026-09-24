@@ -225,21 +225,28 @@ void app_apply_theme(app *ap)
 /* ------------------------------------------------------------ test hook */
 
 /* SKU_AUTOPILOT=<file>: lines "<seq> click <x> <y>" (pixels, as seen in a
- * --screenshot frame) are fed straight into Nuklear's input, once each:
- * press on one frame, release on the next (Nuklear triggers buttons on
- * press). Lets the test scripts drive the UI without a window manager in the
+ * --screenshot frame) are fed straight into Nuklear's input, once each, over
+ * three frames: hover (Nuklear activates a window only when it is hovered
+ * with the button up), press (buttons trigger on press), release. Lets the
+ * test scripts drive the UI without a window manager or a real mouse in the
  * loop. Must be called between nk_input_begin() and nk_input_end(). */
 static void autopilot(app *ap)
 {
 	static const char *file;
-	static int last_seq = 0, press_x, press_y;
-	static bool checked, pressed;
+	static int last_seq = 0, cx, cy, phase;   /* phase: 0 idle, 1 hovered, 2 pressed */
+	static bool checked;
 	char *text;
 	if (!checked) { file = getenv("SKU_AUTOPILOT"); checked = true; }
 	if (!file) return;
-	if (pressed) {
-		nk_input_button(ap->ctx, NK_BUTTON_LEFT, (int)(press_x / ap->scale), (int)(press_y / ap->scale), nk_false);
-		pressed = false;
+	if (phase == 1) {
+		nk_input_motion(ap->ctx, (int)(cx / ap->scale), (int)(cy / ap->scale));
+		nk_input_button(ap->ctx, NK_BUTTON_LEFT, (int)(cx / ap->scale), (int)(cy / ap->scale), nk_true);
+		phase = 2;
+		return;
+	}
+	if (phase == 2) {
+		nk_input_button(ap->ctx, NK_BUTTON_LEFT, (int)(cx / ap->scale), (int)(cy / ap->scale), nk_false);
+		phase = 0;
 		return;
 	}
 	if (sku_read_file(file, &text, NULL) != SKU_OK) return;
@@ -248,9 +255,8 @@ static void autopilot(app *ap)
 		while ((line = sku_next_line(&cursor)) != NULL) {
 			int seq, x, y;
 			if (sscanf(line, "%d click %d %d", &seq, &x, &y) == 3 && seq > last_seq) {
-				last_seq = seq; press_x = x; press_y = y; pressed = true;
+				last_seq = seq; cx = x; cy = y; phase = 1;
 				nk_input_motion(ap->ctx, (int)(x / ap->scale), (int)(y / ap->scale));
-				nk_input_button(ap->ctx, NK_BUTTON_LEFT, (int)(x / ap->scale), (int)(y / ap->scale), nk_true);
 				sku_info("autopilot: click %d %d", x, y);
 				break;
 			}
@@ -369,6 +375,7 @@ int main(int argc, char **argv)
 	app_apply_theme(&ap);
 	ap.jobs = jobs_create(&ap, 3);
 	ap.running = true;
+	app_client_maybe_check(&ap);
 
 	choose_startup_instance(&ap, forced);
 
@@ -398,6 +405,7 @@ int main(int argc, char **argv)
 		nk_input_end(ap.ctx);
 
 		handle_browse_result(&ap);
+		app_client_poll(&ap);
 		if (jobs_done(ap.jobs) != ap.last_jobs_done) {
 			ap.last_jobs_done = jobs_done(ap.jobs);
 			for (int i = 0; i < ap.nitems; i++) app_refresh_item(&ap.items[i]);
@@ -412,6 +420,10 @@ int main(int argc, char **argv)
 
 	prefs_save(&ap);
 	app_close_instance(&ap);
+	while (atomic_load(&ap.client_state) == CLIENT_CHECKING || atomic_load(&ap.client_state) == CLIENT_DOWNLOADING) {
+		atomic_store(&ap.client_cancel, 1);   /* the download stops; a check finishes on its own */
+		sku_sleep_ms(50);
+	}
 	jobs_destroy(ap.jobs);
 	nk_sdl_shutdown(ap.ctx);
 	SDL_DestroyRenderer(ap.ren);

@@ -17,7 +17,7 @@ sku_embed(${CMAKE_SOURCE_DIR}/deps/src/fonts/ttf/DejaVuSans.ttf     sku_font_san
 sku_embed(${CMAKE_SOURCE_DIR}/deps/src/fonts/ttf/DejaVuSansMono.ttf sku_font_mono)
 sku_embed(${CMAKE_SOURCE_DIR}/THIRD_PARTY_NOTICES.txt                 sku_notices)
 
-set(SKU_APP_SOURCES main.c prefs.c jobs.c theme.c widgets.c ui_list.c ui_detail.c ui_pack.c ui_options.c ${SKU_EMBEDDED})
+set(SKU_APP_SOURCES main.c prefs.c jobs.c theme.c widgets.c ui_list.c ui_detail.c ui_pack.c ui_options.c ui_client.c ${SKU_EMBEDDED})
 if(APPLE)
 	list(APPEND SKU_APP_SOURCES apple_compat.c)   # osxcross has no compiler-rt (@available helpers)
 endif()

@@ -40,6 +40,8 @@ void ui_list(app *ap)
 	bool busy = app_any_busy(ap);
 	char buf[300];
 
+	ui_client_banner(ap);
+
 	/* row 1: filters + rescan */
 	nk_layout_row_begin(ctx, NK_STATIC, row, 6);
 	nk_layout_row_push(ctx, 60);  nk_label(ctx, "Filters:", NK_TEXT_RIGHT);

@@ -1,0 +1,14 @@
+4.0.0-beta3
+- The updater checks daily whether a newer version of itself is published, shows what changed and downloads it
+
+4.0.0-beta2
+- Changelog and readme are fetched after the lock check, and from level 1 depots as soon as they publish them
+- The log tells why the scan stopped in each Aircraft folder, and lists every file downloaded or deleted
+- A 3.x config file put back next to the v4 layout is ignored, then removed; its ignore list is merged
+- The remote "locked" key is optional (absent means unlocked)
+- The AppImage integrates with AppImageLauncher (gzip squashfs, .DirIcon)
+
+4.0.0-beta1
+- First beta of the rewritten client: single C code base, Windows, macOS (universal) and Linux
+- Protocol level 2 (unified manifest, packs, changelog and readme, several beta channels)
+- CRC cache for fast checks, conditional downloads of the remote lists, per-instance reports

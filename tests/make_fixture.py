@@ -99,6 +99,22 @@ for level in ("level1", "level2"):
 	write(os.path.join(base, "skunkcrafts_updater.cfg"), cfg)
 	write(os.path.join(base, "skunkcrafts_updater_blacklist.txt"), "objects/obsolete.png\r\n../../etc/passwd\r\n")
 
+# the updater's own depot: fixed package names, at two versions
+packages = ["SkunkcraftsUpdater-windows-setup.exe", "SkunkcraftsUpdater-windows.zip", "SkunkcraftsUpdater-macos.zip",
+            "SkunkcraftsUpdater-linux.zip", "SkunkcraftsUpdater-x86_64.AppImage", "sku-cli.zip"]
+for name, version in (("client", "9.9.9"), ("client_old", "0.1.0")):
+	base = os.path.join(depot, name)
+	wl, sz = [], []
+	for p in packages:
+		data = ("package " + p + " " + version).encode()
+		write(os.path.join(base, p), data)
+		wl.append("%s|%d" % (p, crc(data)))
+		sz.append("%s|%d" % (p, len(data)))
+	write(os.path.join(base, "skunkcrafts_updater.cfg"), "zone|custom\nmodule|http://127.0.0.1:%s/%s\nname|SkunkCrafts Updater\nversion|%s\nlocked|false\n" % (port, name, version))
+	write(os.path.join(base, "skunkcrafts_updater_whitelist.txt"), "\n".join(wl) + "\n")
+	write(os.path.join(base, "skunkcrafts_updater_sizeslist.txt"), "\n".join(sz) + "\n")
+	write(os.path.join(base, "changelog.txt"), version + "\n- self update\n\n0.0.1\n- first\n")
+
 # a locked depot and one answering HTML instead of the cfg
 write(os.path.join(depot, "locked", "skunkcrafts_updater.cfg"), "name|Test plane\nmodule|x\nversion|3.0\nlocked|true\n")
 write(os.path.join(depot, "html", "skunkcrafts_updater.cfg"), "<!DOCTYPE html><html><body>403</body></html>")

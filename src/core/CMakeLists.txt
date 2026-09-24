@@ -21,6 +21,7 @@ set(SKU_CORE_SOURCES
 	report.c
 	pack.c
 	changelog.c
+	client.c
 )
 if(WIN32)
 	list(APPEND SKU_CORE_SOURCES platform_win32.c)
@@ -40,7 +41,7 @@ list(APPEND SKU_CORE_SOURCES ${SKU_CACERT_C})
 add_library(sku_core STATIC ${SKU_CORE_SOURCES})
 target_include_directories(sku_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(sku_core PRIVATE ${SKU_WARNINGS})
-target_compile_definitions(sku_core PUBLIC CURL_STATICLIB SKU_VERSION="${SKU_VERSION}")
+target_compile_definitions(sku_core PUBLIC CURL_STATICLIB SKU_VERSION="${SKU_VERSION}" SKU_CLIENT_DEPOT_URL="${SKU_CLIENT_DEPOT_URL}")
 if(NOT WIN32)
 	target_compile_definitions(sku_core PRIVATE _GNU_SOURCE _FILE_OFFSET_BITS=64)
 endif()

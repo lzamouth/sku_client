@@ -14,6 +14,7 @@
 #include "crc32.h"
 #include "pack.h"
 #include "changelog.h"
+#include "client.h"
 
 static const char *xp, *url;
 
@@ -35,6 +36,61 @@ static bool file_is(const char *addon_dir, const char *rel, const char *content)
 	ok = strcmp(data, content) == 0;
 	free(data);
 	return ok;
+}
+
+static void test_client(void)
+{
+	sku_client_info info;
+	char depot[SKU_URL_MAX], err[256], dir[SKU_PATH_MAX], dest[SKU_PATH_MAX], *data;
+
+	/* version order */
+	CHECK(sku_client_version_cmp("4.0.0", "4.0.0") == 0);
+	CHECK(sku_client_version_cmp("v4.0.0", "4.0.0") == 0);
+	CHECK(sku_client_version_cmp("4.0.1", "4.0.0") > 0);
+	CHECK(sku_client_version_cmp("4.1", "4.0.9") > 0);
+	CHECK(sku_client_version_cmp("4.0.0-beta2", "4.0.0-beta1") > 0);
+	CHECK(sku_client_version_cmp("4.0.0", "4.0.0-beta2") > 0);        /* release after its betas */
+	CHECK(sku_client_version_cmp("4.0.0-rc1", "4.0.0-beta9") > 0);    /* beta < rc */
+	CHECK(sku_client_version_cmp("4.0.0-dev", "4.0.0") < 0);
+	CHECK(sku_client_version_cmp("10.0.0", "9.9.9") > 0);
+	CHECK_EQ_STR(sku_client_package(), SKU_PKG_LINUX_ZIP);            /* tests run on Linux, not as an AppImage */
+
+	/* a newer version is published: package found, changelog fetched */
+	sku_snprintf(depot, sizeof depot, "%s/client", url);
+	CHECK_EQ_INT(sku_client_check(depot, NULL, &info, err, sizeof err), SKU_OK);
+	CHECK_EQ_STR(info.version, "9.9.9");
+	CHECK(info.newer);
+	CHECK(!info.locked);
+	CHECK_EQ_STR(info.package, SKU_PKG_LINUX_ZIP);
+	CHECK(info.check_crc);
+	CHECK(info.size > 0);
+	CHECK(info.changelog && strstr(info.changelog, "self update"));
+	CHECK(sku_str_ends(info.module, "/client/"));
+	sku_path_join(dir, sizeof dir, xp, "Output/client_downloads");
+	CHECK_EQ_INT(sku_client_download(depot, &info, dir, NULL, NULL, NULL, dest, sizeof dest, err, sizeof err), SKU_OK);
+	CHECK(sku_str_ends(dest, SKU_PKG_LINUX_ZIP));
+	CHECK_EQ_INT(sku_read_file(dest, &data, NULL), SKU_OK);
+	CHECK_EQ_STR(data, "package SkunkcraftsUpdater-linux.zip 9.9.9");
+	free(data);
+	sku_client_info_free(&info);
+
+	/* an unknown package name: the check still reports the version */
+	CHECK_EQ_INT(sku_client_check(depot, "nope.zip", &info, err, sizeof err), SKU_OK);
+	CHECK_EQ_STR(info.package, "");
+	CHECK_EQ_INT(sku_client_download(depot, &info, dir, NULL, NULL, NULL, dest, sizeof dest, err, sizeof err), SKU_ERR_NOTFOUND);
+	sku_client_info_free(&info);
+
+	/* an older version: nothing to do */
+	sku_snprintf(depot, sizeof depot, "%s/client_old", url);
+	CHECK_EQ_INT(sku_client_check(depot, NULL, &info, err, sizeof err), SKU_OK);
+	CHECK(!info.newer);
+	sku_client_info_free(&info);
+
+	/* a web page instead of the depot */
+	sku_snprintf(depot, sizeof depot, "%s/html", url);
+	CHECK(sku_client_check(depot, NULL, &info, err, sizeof err) != SKU_OK);
+	CHECK(err[0]);
+	sku_client_info_free(&info);
 }
 
 static void test_level(const char *level, bool second_run_uses_cache)
@@ -350,6 +406,7 @@ int main(void)
 	if (!xp || !url) { fprintf(stderr, "SKU_TEST_XP / SKU_TEST_URL not set\n"); return 2; }
 	sku_log_set_level(SKU_LOG_DEBUG);
 	sku_http_global_init(NULL, 0, "sku-test");
+	test_client();
 	test_level(getenv("SKU_TEST_LEVEL") ? getenv("SKU_TEST_LEVEL") : "level1", true);
 	test_errors();
 	test_pack();

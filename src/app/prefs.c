@@ -21,6 +21,8 @@ void prefs_defaults(app_prefs *p)
 	p->verbose = false;
 	p->window_w = 1100;
 	p->window_h = 700;
+	p->client_check = true;
+	sku_strlcpy(p->client_url, SKU_CLIENT_DEPOT_URL, sizeof p->client_url);
 }
 
 int prefs_load(app *ap)
@@ -46,6 +48,11 @@ int prefs_load(app *ap)
 	p->window_w    = clamp(atoi(sku_cfg_get_or(&c, "window_w", "1100")), 640, 8192);
 	p->window_h    = clamp(atoi(sku_cfg_get_or(&c, "window_h", "700")), 400, 8192);
 	sku_strlcpy(p->instance, sku_cfg_get_or(&c, "instance", ""), sizeof p->instance);
+	p->client_check = sku_cfg_get_bool(&c, "client_check", true);
+	sku_strlcpy(p->client_url, sku_cfg_get_or(&c, "client_url", SKU_CLIENT_DEPOT_URL), sizeof p->client_url);
+	if (strncmp(p->client_url, "http", 4) != 0) sku_strlcpy(p->client_url, SKU_CLIENT_DEPOT_URL, sizeof p->client_url);
+	p->client_last = strtoll(sku_cfg_get_or(&c, "client_last", "0"), NULL, 10);
+	sku_strlcpy(p->client_skip, sku_cfg_get_or(&c, "client_skip", ""), sizeof p->client_skip);
 	v = sku_cfg_get(&c, "instances");
 	if (v) {
 		char *copy = sku_xstrdup(v), *tok = strtok(copy, ";");
@@ -85,6 +92,10 @@ int prefs_save(app *ap)
 	}
 	sku_cfg_set(&c, "instances", list ? list : "");
 	free(list);
+	sku_cfg_set_bool(&c, "client_check", p->client_check);
+	sku_cfg_set(&c, "client_url", p->client_url);
+	sku_snprintf(num, sizeof num, "%lld", (long long)p->client_last); sku_cfg_set(&c, "client_last", num);
+	sku_cfg_set(&c, "client_skip", p->client_skip);
 	rc = sku_cfg_save(&c, ap->prefs_path);
 	sku_cfg_free(&c);
 	return rc;

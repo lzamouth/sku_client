@@ -14,6 +14,7 @@
 #include "scan.h"
 #include "addon.h"
 #include "pack.h"
+#include "client.h"
 
 /* Nuklear is included by main.c only; the views receive an opaque context. */
 struct nk_context;
@@ -54,7 +55,13 @@ typedef struct {
 	char instance[SKU_PATH_MAX];      /* last used X-Plane root */
 	sku_strlist instances;            /* roots added by hand (browse) */
 	int  window_w, window_h;
+	bool client_check;                /* daily check for a new version of the updater */
+	char client_url[SKU_URL_MAX];     /* its depot (follows the module the depot announces) */
+	int64_t client_last;              /* last check, seconds since the epoch */
+	char client_skip[64];             /* "Later" on this version: no banner until the next one */
 } app_prefs;
+
+typedef enum { CLIENT_IDLE, CLIENT_CHECKING, CLIENT_CHECKED, CLIENT_DOWNLOADING, CLIENT_DOWNLOADED, CLIENT_FAILED } client_state;
 
 typedef struct app {
 	SDL_Window   *win;
@@ -94,6 +101,17 @@ typedef struct app {
 	int  last_jobs_done;              /* to detect completed jobs and refresh snapshots */
 	char message[256];                /* transient message in the status bar */
 	int64_t message_until;
+	/* the updater's own update (ui_client.c): one background thread at a time */
+	sku_client_info client;           /* written by the thread, read by the UI once client_state is CHECKED */
+	atomic_int client_state;          /* client_state */
+	atomic_int client_cancel;
+	_Atomic int64_t client_done;      /* download progress */
+	char client_err[256];
+	char client_file[SKU_PATH_MAX];   /* downloaded package */
+	bool client_seen;                 /* the UI reacted to the last check */
+	bool client_dismissed;            /* banner closed */
+	bool client_manual;               /* "Check now": show failures too */
+	int  about_mode;                  /* 0 license, 1 notices, 2 what's new */
 	char shot_dir[SKU_PATH_MAX];      /* --screenshot DIR: one BMP per second, for testing */
 	int64_t last_shot;
 	int shot_index;
@@ -143,6 +161,15 @@ void ui_options(app *ap);
 void ui_about(app *ap);
 void ui_instance(app *ap);
 void ui_statusbar(app *ap);
+
+/* ui_client.c */
+void app_client_maybe_check(app *ap);     /* at startup: once a day */
+void app_client_check_start(app *ap);
+void app_client_download_start(app *ap);
+void app_client_poll(app *ap);            /* every frame: reacts to a finished check */
+void ui_client_banner(app *ap);           /* top of the addon list */
+void ui_client_options(app *ap);          /* in the Options view */
+void ui_client_news(app *ap);             /* the published changelog, in About */
 
 /* widgets.c */
 void ui_left_truncate(app *ap, const char *path, float width, char *out, size_t n);
