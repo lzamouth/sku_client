@@ -1,3 +1,10 @@
+4.0.0-beta4
+- New look: Roboto font, optional bevelled (relief) theme, outlined buttons and tabs, distinct menu backgrounds
+- Addon list: column titles, columns resizable from the header, channel drop-down per addon (stable in blue, others in yellow)
+- Options page laid out proportionally to the window; widths follow the text size
+- Packs: members adopt the pack keys published by their depot, so an installed folder joins its pack without reinstalling
+- Depot changelog headers are bare version lines again (the aircraft read them)
+
 4.0.0-beta3
 - The updater checks daily whether a newer version of itself is published, shows what changed and downloads it
 
