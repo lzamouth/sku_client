@@ -46,8 +46,8 @@ Support on macOS, ~/.config on Linux).
 Updates of the updater
 ----------------------
 
-Once a day the program checks whether a newer version of itself has been
-published. If so, a banner offers to show what changed and to download the
+At startup the program checks whether a newer version of itself has been
+published (at most once an hour). If so, a banner offers to show what changed and to download the
 package for your system into your user profile folder (a button opens it);
 install it the same way you installed this one. You can turn the check off
 in Options.

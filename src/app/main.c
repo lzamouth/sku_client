@@ -315,8 +315,10 @@ static void draw(app *ap)
 			if (ui_tab(ap, "About", ap->view == VIEW_ABOUT)) ap->view = VIEW_ABOUT;
 			nk_layout_row_end(ctx);
 		}
+		/* the updater's own update, above every view */
+		float banner = ui_client_banner(ap) ? (float)ap->prefs.text_size + 16 : 0;
 		/* content area: everything but the status bar */
-		nk_layout_row_dynamic(ctx, (float)h - (ap->inst_open ? 2 * row : row) - 30, 1);
+		nk_layout_row_dynamic(ctx, (float)h - (ap->inst_open ? 2 * row : row) - 30 - banner, 1);
 		if (nk_group_begin(ctx, "content", NK_WINDOW_NO_SCROLLBAR)) {
 			switch (ap->view) {
 			case VIEW_LIST:     ui_list(ap); break;

@@ -42,8 +42,6 @@ void ui_list(app *ap)
 	float *cols = ap->prefs.cols;   /* channel, name, version, status: dragged from the header */
 	static const char *titles[] = { "Channel", "Name", "Version", "Status" };
 
-	ui_client_banner(ap);
-
 	/* row 1: filters + rescan */
 	nk_layout_row_begin(ctx, NK_STATIC, row, 6);
 	nk_layout_row_push(ctx, UI_W(ap, 64));  nk_label(ctx, "Filters:", NK_TEXT_RIGHT);

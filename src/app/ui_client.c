@@ -11,7 +11,7 @@
 #include <string.h>
 #include <pthread.h>
 
-#define CLIENT_CHECK_INTERVAL (24 * 3600)
+#define CLIENT_CHECK_INTERVAL 3600   /* at every start, but not more than once an hour */
 
 static void downloads_dir(char *out, size_t n)
 {
@@ -95,6 +95,7 @@ void app_client_check_start(app *ap)
 
 void app_client_maybe_check(app *ap)
 {
+	ap->client_manual = false;
 	if (!ap->prefs.client_check) return;
 	if (getenv("SKU_NO_CLIENT_CHECK")) return;   /* tests and screenshots: no network surprise */
 	if (sku_time_now() - ap->prefs.client_last < CLIENT_CHECK_INTERVAL) return;
@@ -139,10 +140,10 @@ static bool banner_wanted(app *ap)
 	if (ap->client_dismissed) return false;
 	if (st == CLIENT_DOWNLOADING || st == CLIENT_DOWNLOADED) return true;
 	if (st == CLIENT_FAILED) return ap->client_err[0] && ap->client_manual;
-	return st == CLIENT_CHECKED && ap->client.newer && strcmp(ap->client.version, ap->prefs.client_skip) != 0;
+	return st == CLIENT_CHECKED && ap->client.newer && (ap->client_manual || strcmp(ap->client.version, ap->prefs.client_skip) != 0);
 }
 
-void ui_client_banner(app *ap)
+bool ui_client_banner(app *ap)
 {
 	struct nk_context *ctx = ap->ctx;
 	float row = (float)ap->prefs.text_size + 10;
@@ -150,7 +151,7 @@ void ui_client_banner(app *ap)
 	char buf[SKU_PATH_MAX + 128], nice[32], total[32];
 	struct nk_color accent = ap->dark ? nk_rgb(255, 200, 80) : nk_rgb(160, 90, 0);
 
-	if (!banner_wanted(ap)) return;
+	if (!banner_wanted(ap)) return false;
 	nk_layout_row_begin(ctx, NK_STATIC, row, 4);
 	nk_layout_row_push(ctx, UI_W(ap, 520));
 	switch (st) {
@@ -193,10 +194,11 @@ void ui_client_banner(app *ap)
 		nk_layout_row_push(ctx, UI_W(ap, 120));
 		if (ap->client.package[0] && !ap->client.locked && ui_button(ap, "Download")) app_client_download_start(ap);
 		nk_layout_row_push(ctx, UI_W(ap, 120));
-		if (ui_button(ap, "Later")) { sku_strlcpy(ap->prefs.client_skip, ap->client.version, sizeof ap->prefs.client_skip); prefs_save(ap); }
+		if (ui_button(ap, "Later")) { sku_strlcpy(ap->prefs.client_skip, ap->client.version, sizeof ap->prefs.client_skip); prefs_save(ap); ap->client_manual = false; }
 		break;
 	}
 	nk_layout_row_end(ctx);
+	return true;
 }
 
 void ui_client_options(app *ap)
@@ -213,7 +215,7 @@ void ui_client_options(app *ap)
 	nk_label(ctx, "Updater updates:", NK_TEXT_RIGHT);
 	{
 		nk_bool on = p->client_check;
-		if (nk_checkbox_label(ctx, "Check daily for a new version of the updater", &on)) { p->client_check = on; changed = true; }
+		if (nk_checkbox_label(ctx, "Check for a new version of the updater at startup", &on)) { p->client_check = on; changed = true; }
 	}
 	if (st == CLIENT_CHECKING || st == CLIENT_DOWNLOADING) nk_label(ctx, "Checking...", NK_TEXT_CENTERED);
 	else if (ui_button(ap, "Check now")) { ap->client_manual = true; app_client_check_start(ap); }

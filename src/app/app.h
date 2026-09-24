@@ -173,7 +173,7 @@ void app_client_maybe_check(app *ap);     /* at startup: once a day */
 void app_client_check_start(app *ap);
 void app_client_download_start(app *ap);
 void app_client_poll(app *ap);            /* every frame: reacts to a finished check */
-void ui_client_banner(app *ap);           /* top of the addon list */
+bool ui_client_banner(app *ap);           /* above every view; true when a row was drawn */
 void ui_client_options(app *ap);          /* in the Options view */
 void ui_client_news(app *ap);             /* the published changelog, in About */
 
