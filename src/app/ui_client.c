@@ -152,15 +152,15 @@ void ui_client_banner(app *ap)
 
 	if (!banner_wanted(ap)) return;
 	nk_layout_row_begin(ctx, NK_STATIC, row, 4);
-	nk_layout_row_push(ctx, 520);
+	nk_layout_row_push(ctx, UI_W(ap, 520));
 	switch (st) {
 	case CLIENT_DOWNLOADING:
 		sku_nice_size(nice, sizeof nice, atomic_load(&ap->client_done));
 		sku_nice_size(total, sizeof total, ap->client.size);
 		sku_snprintf(buf, sizeof buf, "Downloading %s: %s / %s", ap->client.package, nice, ap->client.size >= 0 ? total : "?");
 		nk_label_colored(ctx, buf, NK_TEXT_LEFT, accent);
-		nk_layout_row_push(ctx, 120);
-		if (nk_button_label(ctx, "Cancel")) atomic_store(&ap->client_cancel, 1);
+		nk_layout_row_push(ctx, UI_W(ap, 120));
+		if (ui_button(ap, "Cancel")) atomic_store(&ap->client_cancel, 1);
 		break;
 	case CLIENT_DOWNLOADED:
 		{
@@ -169,31 +169,31 @@ void ui_client_banner(app *ap)
 			sku_snprintf(buf, sizeof buf, "%s %s saved: %s", APP_NAME, ap->client.version, tail);
 		}
 		nk_label_colored(ctx, buf, NK_TEXT_LEFT, accent);
-		nk_layout_row_push(ctx, 120);
-		if (nk_button_label(ctx, "Open folder")) {
+		nk_layout_row_push(ctx, UI_W(ap, 120));
+		if (ui_button(ap, "Open folder")) {
 			char dir[SKU_PATH_MAX], url[SKU_PATH_MAX + 8];
 			sku_path_dirname(dir, sizeof dir, ap->client_file);
 			sku_snprintf(url, sizeof url, "file://%s", dir);
 			SDL_OpenURL(url);
 		}
-		nk_layout_row_push(ctx, 120);
-		if (nk_button_label(ctx, "Close")) ap->client_dismissed = true;
+		nk_layout_row_push(ctx, UI_W(ap, 120));
+		if (ui_button(ap, "Close")) ap->client_dismissed = true;
 		break;
 	case CLIENT_FAILED:
 		sku_snprintf(buf, sizeof buf, "Updater update: %s", ap->client_err);
 		nk_label_colored(ctx, buf, NK_TEXT_LEFT, nk_rgb(255, 80, 80));
-		nk_layout_row_push(ctx, 120);
-		if (nk_button_label(ctx, "Close")) ap->client_dismissed = true;
+		nk_layout_row_push(ctx, UI_W(ap, 120));
+		if (ui_button(ap, "Close")) ap->client_dismissed = true;
 		break;
 	default:
 		sku_snprintf(buf, sizeof buf, "%s %s is available (you have %s)", APP_NAME, ap->client.version, SKU_VERSION);
 		nk_label_colored(ctx, buf, NK_TEXT_LEFT, accent);
-		nk_layout_row_push(ctx, 120);
-		if (ap->client.changelog && nk_button_label(ctx, "What's new")) { ap->about_mode = 2; ap->view = VIEW_ABOUT; }
-		nk_layout_row_push(ctx, 120);
-		if (ap->client.package[0] && !ap->client.locked && nk_button_label(ctx, "Download")) app_client_download_start(ap);
-		nk_layout_row_push(ctx, 120);
-		if (nk_button_label(ctx, "Later")) { sku_strlcpy(ap->prefs.client_skip, ap->client.version, sizeof ap->prefs.client_skip); prefs_save(ap); }
+		nk_layout_row_push(ctx, UI_W(ap, 120));
+		if (ap->client.changelog && ui_button(ap, "What's new")) { ap->about_mode = 2; ap->view = VIEW_ABOUT; }
+		nk_layout_row_push(ctx, UI_W(ap, 120));
+		if (ap->client.package[0] && !ap->client.locked && ui_button(ap, "Download")) app_client_download_start(ap);
+		nk_layout_row_push(ctx, UI_W(ap, 120));
+		if (ui_button(ap, "Later")) { sku_strlcpy(ap->prefs.client_skip, ap->client.version, sizeof ap->prefs.client_skip); prefs_save(ap); }
 		break;
 	}
 	nk_layout_row_end(ctx);
@@ -205,24 +205,21 @@ void ui_client_options(app *ap)
 	app_prefs *p = &ap->prefs;
 	float row = (float)ap->prefs.text_size + 10;
 	int st = atomic_load(&ap->client_state);
+	static const float r2[] = { 0.30f, 0.70f }, r3[] = { 0.30f, 0.50f, 0.20f };
 	char buf[512], when[32];
 	bool changed = false;
 
-	nk_layout_row_begin(ctx, NK_STATIC, row, 3);
-	nk_layout_row_push(ctx, 260); nk_label(ctx, "Updater updates:", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 360);
+	nk_layout_row(ctx, NK_DYNAMIC, row, 3, r3);
+	nk_label(ctx, "Updater updates:", NK_TEXT_RIGHT);
 	{
 		nk_bool on = p->client_check;
 		if (nk_checkbox_label(ctx, "Check daily for a new version of the updater", &on)) { p->client_check = on; changed = true; }
 	}
-	nk_layout_row_push(ctx, 160);
 	if (st == CLIENT_CHECKING || st == CLIENT_DOWNLOADING) nk_label(ctx, "Checking...", NK_TEXT_CENTERED);
-	else if (nk_button_label(ctx, "Check now")) { ap->client_manual = true; app_client_check_start(ap); }
-	nk_layout_row_end(ctx);
+	else if (ui_button(ap, "Check now")) { ap->client_manual = true; app_client_check_start(ap); }
 
-	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-	nk_layout_row_push(ctx, 260); nk_label(ctx, "", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 520);
+	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
+	nk_label(ctx, "", NK_TEXT_RIGHT);
 	if (st == CLIENT_CHECKED) {
 		if (ap->client.newer) sku_snprintf(buf, sizeof buf, "Version %s is available (you have %s)", ap->client.version, SKU_VERSION);
 		else sku_snprintf(buf, sizeof buf, "You have the latest version (%s, published %s)", SKU_VERSION, ap->client.version);
@@ -230,7 +227,6 @@ void ui_client_options(app *ap)
 	else if (p->client_last) { sku_format_time(when, sizeof when, p->client_last); sku_snprintf(buf, sizeof buf, "Last check: %s", when); }
 	else sku_strlcpy(buf, "Not checked yet", sizeof buf);
 	nk_label(ctx, buf, NK_TEXT_LEFT);
-	nk_layout_row_end(ctx);
 
 	if (changed) prefs_save(ap);
 }

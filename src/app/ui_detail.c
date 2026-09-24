@@ -18,10 +18,11 @@ static void load_report(app *ap, int index)
 	if (sku_read_file(path, &ap->report_text, NULL) != SKU_OK) ap->report_text = sku_xstrdup("No report yet: run a check or an update.");
 }
 
-static void form_row(struct nk_context *ctx, float row, const char *label, const char *value, struct nk_color *color)
+static void form_row(app *ap, float row, const char *label, const char *value, struct nk_color *color)
 {
+	struct nk_context *ctx = ap->ctx;
 	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-	nk_layout_row_push(ctx, 170);
+	nk_layout_row_push(ctx, UI_W(ap, 170));
 	nk_label(ctx, label, NK_TEXT_RIGHT);
 	nk_layout_row_push(ctx, nk_window_get_width(ctx) - 200);
 	if (color) nk_label_colored(ctx, value, NK_TEXT_LEFT, *color); else nk_label(ctx, value, NK_TEXT_LEFT);
@@ -160,45 +161,45 @@ void ui_detail(app *ap)
 
 	/* actions */
 	nk_layout_row_dynamic(ctx, row, 5);
-	if (nk_button_label(ctx, ap->detail_from_pack ? "Back to pack" : "Back to list")) { ap->view = ap->detail_from_pack ? VIEW_PACK : VIEW_LIST; ap->detail_from_pack = false; return; }
+	if (ui_button(ap, ap->detail_from_pack ? "Back to pack" : "Back to list")) { ap->view = ap->detail_from_pack ? VIEW_PACK : VIEW_LIST; ap->detail_from_pack = false; return; }
 	if (busy) {
 		nk_label(ctx, "", NK_TEXT_LEFT); nk_label(ctx, "", NK_TEXT_LEFT); nk_label(ctx, "", NK_TEXT_LEFT);
-		if (nk_button_label(ctx, "Cancel")) sku_addon_cancel(it->a);
+		if (ui_button(ap, "Cancel")) sku_addon_cancel(it->a);
 	} else {
-		if (nk_button_label(ctx, "Reload config")) jobs_submit(ap->jobs, it, JOB_RELOAD);
-		if (nk_button_label(ctx, "Check updates")) jobs_submit(ap->jobs, it, JOB_CHECK);
-		if (nk_button_label(ctx, "Verify integrity")) jobs_submit(ap->jobs, it, JOB_CHECK_FULL);
-		if (nk_button_label(ctx, "Update / repair")) jobs_submit(ap->jobs, it, JOB_UPDATE);
+		if (ui_button(ap, "Reload config")) jobs_submit(ap->jobs, it, JOB_RELOAD);
+		if (ui_button(ap, "Check updates")) jobs_submit(ap->jobs, it, JOB_CHECK);
+		if (ui_button(ap, "Verify integrity")) jobs_submit(ap->jobs, it, JOB_CHECK_FULL);
+		if (ui_button(ap, "Update / repair")) jobs_submit(ap->jobs, it, JOB_UPDATE);
 	}
 
 	/* configuration */
-	form_row(ctx, row, "Name:", it->name, NULL);
+	form_row(ap, row, "Name:", it->name, NULL);
 	if (it->checked && strcmp(it->version, it->remote_version) != 0) sku_snprintf(buf, sizeof buf, "%s   (remote: %s)", it->version, it->remote_version);
 	else sku_strlcpy(buf, it->version, sizeof buf);
-	form_row(ctx, row, "Version:", buf, NULL);
+	form_row(ap, row, "Version:", buf, NULL);
 	ui_left_truncate(ap, it->dir, nk_window_get_width(ctx) - 210, buf, sizeof buf);
-	form_row(ctx, row, "Folder:", buf, NULL);
-	form_row(ctx, row, "Source:", it->source, NULL);
+	form_row(ap, row, "Folder:", buf, NULL);
+	form_row(ap, row, "Source:", it->source, NULL);
 	col = status_color(it->st, ap->dark);
-	form_row(ctx, row, "Status:", it->st_text, &col);
-	if (it->st_detail[0]) form_row(ctx, row, "Extra info:", it->st_detail, NULL);
+	form_row(ap, row, "Status:", it->st_text, &col);
+	if (it->st_detail[0]) form_row(ap, row, "Extra info:", it->st_detail, NULL);
 	if (busy && it->prog_total > 0) {
 		nk_size cur = (nk_size)it->prog_done, max = (nk_size)it->prog_total;
 		nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-		nk_layout_row_push(ctx, 170); nk_label(ctx, "Progress:", NK_TEXT_RIGHT);
+		nk_layout_row_push(ctx, UI_W(ap, 170)); nk_label(ctx, "Progress:", NK_TEXT_RIGHT);
 		nk_layout_row_push(ctx, nk_window_get_width(ctx) - 200); nk_progress(ctx, &cur, max, nk_false);
 		nk_layout_row_end(ctx);
 	}
 
 	/* settings: only touchable when idle */
 	nk_layout_row_begin(ctx, NK_STATIC, row, 3);
-	nk_layout_row_push(ctx, 170); nk_label(ctx, "", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 250);
+	nk_layout_row_push(ctx, UI_W(ap, 170)); nk_label(ctx, "", NK_TEXT_RIGHT);
+	nk_layout_row_push(ctx, UI_W(ap, 250));
 	{
 		nk_bool enabled = !it->disabled;
 		if (nk_checkbox_label(ctx, "Enable online updates", &enabled) && !busy) { sku_addon_set_disabled(it->a, !enabled, false); app_refresh_item(it); }
 	}
-	nk_layout_row_push(ctx, 250);
+	nk_layout_row_push(ctx, UI_W(ap, 250));
 	if (it->genre == SKU_GENRE_AIRCRAFT) {
 		nk_bool liv = it->liveries;
 		if (nk_checkbox_label(ctx, "Enable liveries updates", &liv) && !busy) { sku_addon_set_liveries(it->a, liv, false); app_refresh_item(it); }
@@ -211,10 +212,10 @@ void ui_detail(app *ap)
 		names[n++] = "stable";
 		for (int i = 0; i < it->nchannels; i++) { if (strcmp(it->channels[i], it->channel) == 0) sel = n; names[n++] = it->channels[i]; }
 		nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-		nk_layout_row_push(ctx, 170); nk_label(ctx, "Channel:", NK_TEXT_RIGHT);
-		nk_layout_row_push(ctx, 250);
+		nk_layout_row_push(ctx, UI_W(ap, 170)); nk_label(ctx, "Channel:", NK_TEXT_RIGHT);
+		nk_layout_row_push(ctx, UI_W(ap, 250));
 		{
-			int now = nk_combo(ctx, names, n, sel, (int)row, nk_vec2(250, 200));
+			int now = ui_combo(ap, names, n, sel, (int)row, 250, 200);
 			if (now != sel && !busy) { sku_addon_set_channel(it->a, names[now], false); app_refresh_item(it); }
 		}
 		nk_layout_row_end(ctx);
@@ -226,18 +227,18 @@ void ui_detail(app *ap)
 		sku_nice_size(nice, sizeof nice, it->bytes);
 		sku_snprintf(buf, sizeof buf, "%d missing, %d outdated, %d to delete, %d unchanged, %d ignored, %d error(s), %s to download",
 			it->n_new, it->n_changed, it->n_delete, it->n_unchanged, it->n_ignored, it->n_error, nice);
-		form_row(ctx, row, "Files:", buf, NULL);
+		form_row(ap, row, "Files:", buf, NULL);
 	}
 
 	/* sub tabs */
 	nk_layout_row_begin(ctx, NK_STATIC, row, 4);
-	nk_layout_row_push(ctx, 120);
+	nk_layout_row_push(ctx, UI_W(ap, 120));
 	if (nk_selectable_label(ctx, "Files", NK_TEXT_CENTERED, &(nk_bool){ ap->detail_tab == 0 })) ap->detail_tab = 0;
-	nk_layout_row_push(ctx, 120);
+	nk_layout_row_push(ctx, UI_W(ap, 120));
 	if (nk_selectable_label(ctx, "Report", NK_TEXT_CENTERED, &(nk_bool){ ap->detail_tab == 1 })) ap->detail_tab = 1;
-	nk_layout_row_push(ctx, 120);
+	nk_layout_row_push(ctx, UI_W(ap, 120));
 	if (nk_selectable_label(ctx, "Changelog", NK_TEXT_CENTERED, &(nk_bool){ ap->detail_tab == 2 })) ap->detail_tab = 2;
-	nk_layout_row_push(ctx, 120);
+	nk_layout_row_push(ctx, UI_W(ap, 120));
 	if (nk_selectable_label(ctx, "Readme", NK_TEXT_CENTERED, &(nk_bool){ ap->detail_tab == 3 })) ap->detail_tab = 3;
 	nk_layout_row_end(ctx);
 	{

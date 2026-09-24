@@ -28,78 +28,68 @@ void ui_options(app *ap)
 	float row = (float)ap->prefs.text_size + 10;
 	static const char *startup_items[] = { "Only show the list of managed addons", "Check all available updates", "Perform all available updates" };
 	static const char *theme_items[] = { "Follow the system", "Dark", "Light" };
+	static const float r2[] = { 0.30f, 0.70f }, r3[] = { 0.30f, 0.50f, 0.20f };
+	float avail = nk_window_get_content_region(ctx).w * 0.48f;
 	int v;
 	char buf[SKU_PATH_MAX + 64];
 	bool changed = false;
 
-	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-	nk_layout_row_push(ctx, 260); nk_label(ctx, "Automatic action on startup:", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 360);
-	v = nk_combo(ctx, startup_items, 3, p->startup, (int)row, nk_vec2(360, 160));
+	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
+	nk_label(ctx, "Automatic action on startup:", NK_TEXT_RIGHT);
+	v = ui_combo(ap, startup_items, 3, p->startup, (int)row, avail, 4 * row);
 	if (v != p->startup) { p->startup = v; changed = true; }
-	nk_layout_row_end(ctx);
 
-	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-	nk_layout_row_push(ctx, 260); nk_label(ctx, "Theme:", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 360);
-	v = nk_combo(ctx, theme_items, 3, (int)p->theme, (int)row, nk_vec2(360, 160));
+	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
+	nk_label(ctx, "Theme:", NK_TEXT_RIGHT);
+	v = ui_combo(ap, theme_items, 3, (int)p->theme, (int)row, avail, 4 * row);
 	if (v != (int)p->theme) { p->theme = (app_theme)v; app_apply_theme(ap); changed = true; }
-	nk_layout_row_end(ctx);
 
-	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-	nk_layout_row_push(ctx, 260); nk_label(ctx, "", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 360);
+	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
+	nk_label(ctx, "", NK_TEXT_RIGHT);
+	{
+		nk_bool relief = p->relief;
+		if (nk_checkbox_label(ctx, "Bevelled widgets (relief)", &relief)) { p->relief = relief; app_apply_theme(ap); changed = true; }
+	}
+
+	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
+	nk_label(ctx, "", NK_TEXT_RIGHT);
 	{
 		nk_bool verbose = p->verbose;
 		if (nk_checkbox_label(ctx, "Verbose logging (for support only)", &verbose)) { p->verbose = verbose; changed = true; }
 	}
-	nk_layout_row_end(ctx);
 
 	sku_snprintf(buf, sizeof buf, "Max concurrent downloads: %d", p->downloads);
-	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-	nk_layout_row_push(ctx, 260); nk_label(ctx, buf, NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 360);
+	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
+	nk_label(ctx, buf, NK_TEXT_RIGHT);
 	v = p->downloads; if (nk_slider_int(ctx, 1, &v, 32, 1) && v != p->downloads) { p->downloads = v; changed = true; }
-	nk_layout_row_end(ctx);
 
 	sku_snprintf(buf, sizeof buf, "Max concurrent CRC checks: %d", p->crc_threads);
-	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-	nk_layout_row_push(ctx, 260); nk_label(ctx, buf, NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 360);
+	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
+	nk_label(ctx, buf, NK_TEXT_RIGHT);
 	v = p->crc_threads; if (nk_slider_int(ctx, 1, &v, 64, 1) && v != p->crc_threads) { p->crc_threads = v; changed = true; }
-	nk_layout_row_end(ctx);
 
 	sku_snprintf(buf, sizeof buf, "Text size: %d", p->text_size);
-	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-	nk_layout_row_push(ctx, 260); nk_label(ctx, buf, NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 360);
+	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
+	nk_label(ctx, buf, NK_TEXT_RIGHT);
 	v = p->text_size; if (nk_slider_int(ctx, 10, &v, 32, 1) && v != p->text_size) { app_set_text_size(ap, v); changed = true; }
-	nk_layout_row_end(ctx);
 
 	nk_layout_row_dynamic(ctx, row / 2, 1); nk_label(ctx, "", NK_TEXT_LEFT);
 
-	nk_layout_row_begin(ctx, NK_STATIC, row, 3);
-	nk_layout_row_push(ctx, 260); nk_label(ctx, "X-Plane installation:", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 360);
-	if (ap->inst_open) { ui_left_truncate(ap, ap->inst.root, 350, buf, sizeof buf); nk_label(ctx, buf, NK_TEXT_LEFT); } else nk_label(ctx, "(none)", NK_TEXT_LEFT);
-	nk_layout_row_push(ctx, 160);
-	if (nk_button_label(ctx, "Change...") && !app_any_busy(ap)) ap->view = VIEW_INSTANCE;
-	nk_layout_row_end(ctx);
+	nk_layout_row(ctx, NK_DYNAMIC, row, 3, r3);
+	nk_label(ctx, "X-Plane installation:", NK_TEXT_RIGHT);
+	if (ap->inst_open) { ui_left_truncate(ap, ap->inst.root, avail, buf, sizeof buf); nk_label(ctx, buf, NK_TEXT_LEFT); } else nk_label(ctx, "(none)", NK_TEXT_LEFT);
+	if (ui_button(ap, "Change...") && !app_any_busy(ap)) ap->view = VIEW_INSTANCE;
 
-	nk_layout_row_begin(ctx, NK_STATIC, row, 3);
-	nk_layout_row_push(ctx, 260); nk_label(ctx, "Custom addon folders:", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 360); nk_label(ctx, "Any folder holding a skunkcrafts_updater.cfg", NK_TEXT_LEFT);
-	nk_layout_row_push(ctx, 160);
-	if (nk_button_label(ctx, "Add folder...") && ap->inst_open && !app_any_busy(ap)) app_browse_folder(ap, 2);
-	nk_layout_row_end(ctx);
+	nk_layout_row(ctx, NK_DYNAMIC, row, 3, r3);
+	nk_label(ctx, "Custom addon folders:", NK_TEXT_RIGHT);
+	nk_label(ctx, "Any folder holding a skunkcrafts_updater.cfg", NK_TEXT_LEFT);
+	if (ui_button(ap, "Add folder...") && ap->inst_open && !app_any_busy(ap)) app_browse_folder(ap, 2);
 
 	if (ap->inst_open) {
-		nk_layout_row_begin(ctx, NK_STATIC, row, 3);
-		nk_layout_row_push(ctx, 260); nk_label(ctx, "Log file:", NK_TEXT_RIGHT);
-		nk_layout_row_push(ctx, 360); ui_left_truncate(ap, ap->inst.log_path, 350, buf, sizeof buf); nk_label(ctx, buf, NK_TEXT_LEFT);
-		nk_layout_row_push(ctx, 160);
-		if (nk_button_label(ctx, "Open folder")) { sku_snprintf(buf, sizeof buf, "file://%s", ap->inst.data_dir); SDL_OpenURL(buf); }
-		nk_layout_row_end(ctx);
+		nk_layout_row(ctx, NK_DYNAMIC, row, 3, r3);
+		nk_label(ctx, "Log file:", NK_TEXT_RIGHT);
+		ui_left_truncate(ap, ap->inst.log_path, avail, buf, sizeof buf); nk_label(ctx, buf, NK_TEXT_LEFT);
+		if (ui_button(ap, "Open folder")) { sku_snprintf(buf, sizeof buf, "file://%s", ap->inst.data_dir); SDL_OpenURL(buf); }
 	}
 
 	nk_layout_row_dynamic(ctx, row / 2, 1); nk_label(ctx, "", NK_TEXT_LEFT);
@@ -139,13 +129,13 @@ void ui_about(app *ap)
 		SDL_VERSIONNUM_MAJOR(SDL_GetVersion()), SDL_VERSIONNUM_MINOR(SDL_GetVersion()), SDL_VERSIONNUM_MICRO(SDL_GetVersion()));
 	nk_label(ctx, buf, NK_TEXT_LEFT);
 	nk_layout_row_dynamic(ctx, row, news ? 4 : 3);
-	if (nk_button_label(ctx, "License")) ap->about_mode = 0;
-	if (nk_button_label(ctx, "Third-party notices")) ap->about_mode = 1;
+	if (ui_button(ap, "License")) ap->about_mode = 0;
+	if (ui_button(ap, "Third-party notices")) ap->about_mode = 1;
 	if (news) {
 		sku_snprintf(buf, sizeof buf, "What's new (%s)", ap->client.version);
-		if (nk_button_label(ctx, buf)) ap->about_mode = 2;
+		if (ui_button(ap, buf)) ap->about_mode = 2;
 	}
-	if (nk_button_label(ctx, "Open skunkcrafts.com")) SDL_OpenURL("https://www.skunkcrafts.com/");
+	if (ui_button(ap, "Open skunkcrafts.com")) SDL_OpenURL("https://www.skunkcrafts.com/");
 	if (ap->about_mode == 2 && !news) ap->about_mode = 0;
 
 	nk_layout_row_dynamic(ctx, nk_window_get_height(ctx) - 3 * row, 1);
@@ -194,10 +184,10 @@ void ui_instance(app *ap)
 		nk_group_end(ctx);
 	}
 	nk_layout_row_dynamic(ctx, row, 4);
-	if (nk_button_label(ctx, "Use selected") && selected >= 0 && selected < ap->known_instances.n) { loaded = false; app_open_instance(ap, ap->known_instances.v[selected]); }
-	if (nk_button_label(ctx, "Browse...")) { loaded = false; app_browse_folder(ap, 1); }
-	if (ap->inst_open && nk_button_label(ctx, "Cancel")) { loaded = false; ap->view = VIEW_LIST; }
-	if (!ap->inst_open && nk_button_label(ctx, "Quit")) ap->running = false;
+	if (ui_button(ap, "Use selected") && selected >= 0 && selected < ap->known_instances.n) { loaded = false; app_open_instance(ap, ap->known_instances.v[selected]); }
+	if (ui_button(ap, "Browse...")) { loaded = false; app_browse_folder(ap, 1); }
+	if (ap->inst_open && ui_button(ap, "Cancel")) { loaded = false; ap->view = VIEW_LIST; }
+	if (!ap->inst_open && ui_button(ap, "Quit")) ap->running = false;
 	if (ap->message[0]) { nk_layout_row_dynamic(ctx, row, 1); nk_label_colored(ctx, ap->message, NK_TEXT_LEFT, nk_rgb(255, 165, 0)); }
 }
 

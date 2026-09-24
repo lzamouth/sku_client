@@ -25,6 +25,8 @@ mkdir -p tools
 [ -f tools/runtime-x86_64 ] || curl -fL --retry 3 -o tools/runtime-x86_64 "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64"
 chmod +x tools/runtime-x86_64
 get "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2" "dejavu-fonts-ttf-2.37.tar.bz2"
+# Roboto (UI font, Apache 2.0); DejaVu stays for the monospace text and as a fallback for a few symbols
+get "https://github.com/googlefonts/roboto/releases/download/v2.138/roboto-unhinted.zip" "roboto-unhinted-2.138.zip"
 
 mkdir -p src
 [ -d "src/SDL3-$SDL_VER" ]       || tar xzf "dl/SDL3-$SDL_VER.tar.gz"       -C src
@@ -38,4 +40,5 @@ ln -sfn "zlib-$ZLIB_VER"      src/zlib
 mkdir -p src/nuklear && cp dl/nuklear.h dl/nuklear_sdl3_renderer.h src/nuklear/
 mkdir -p src/fonts && tar xjf dl/dejavu-fonts-ttf-2.37.tar.bz2 -C src/fonts --strip-components=1 \
     dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf dejavu-fonts-ttf-2.37/ttf/DejaVuSansMono.ttf dejavu-fonts-ttf-2.37/LICENSE
+mkdir -p src/fonts/roboto && unzip -qo dl/roboto-unhinted-2.138.zip Roboto-Regular.ttf LICENSE -d src/fonts/roboto
 ls -la dl src

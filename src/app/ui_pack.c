@@ -88,27 +88,27 @@ void ui_pack(app *ap)
 	app_pack_summary(ap, ap->selected_pack, version, sizeof version, &st, text, sizeof text);
 
 	nk_layout_row_dynamic(ctx, row, 4);
-	if (nk_button_label(ctx, "Back to list")) { ap->view = VIEW_LIST; confirm = false; return; }
+	if (ui_button(ap, "Back to list")) { ap->view = VIEW_LIST; confirm = false; return; }
 	if (busy) {
 		nk_label(ctx, "", NK_TEXT_LEFT); nk_label(ctx, "", NK_TEXT_LEFT);
-		if (nk_button_label(ctx, "Cancel")) for (int m = 0; m < p->nmembers; m++) sku_addon_cancel(ap->items[p->members[m]].a);
+		if (ui_button(ap, "Cancel")) for (int m = 0; m < p->nmembers; m++) sku_addon_cancel(ap->items[p->members[m]].a);
 	} else {
-		if (nk_button_label(ctx, "Check all members")) for (int m = 0; m < p->nmembers; m++) if (!ap->items[p->members[m]].disabled) jobs_submit(ap->jobs, &ap->items[p->members[m]], JOB_CHECK);
-		if (nk_button_label(ctx, "Verify integrity")) for (int m = 0; m < p->nmembers; m++) if (!ap->items[p->members[m]].disabled) jobs_submit(ap->jobs, &ap->items[p->members[m]], JOB_CHECK_FULL);
-		if (nk_button_label(ctx, "Update / repair all")) for (int m = 0; m < p->nmembers; m++) if (!ap->items[p->members[m]].disabled) jobs_submit(ap->jobs, &ap->items[p->members[m]], JOB_UPDATE);
+		if (ui_button(ap, "Check all members")) for (int m = 0; m < p->nmembers; m++) if (!ap->items[p->members[m]].disabled) jobs_submit(ap->jobs, &ap->items[p->members[m]], JOB_CHECK);
+		if (ui_button(ap, "Verify integrity")) for (int m = 0; m < p->nmembers; m++) if (!ap->items[p->members[m]].disabled) jobs_submit(ap->jobs, &ap->items[p->members[m]], JOB_CHECK_FULL);
+		if (ui_button(ap, "Update / repair all")) for (int m = 0; m < p->nmembers; m++) if (!ap->items[p->members[m]].disabled) jobs_submit(ap->jobs, &ap->items[p->members[m]], JOB_UPDATE);
 	}
 
 	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-	nk_layout_row_push(ctx, 170); nk_label(ctx, "Pack:", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 600); sku_snprintf(buf, sizeof buf, "%s   (id %s, %d member(s))", p->name, p->id, p->nmembers); nk_label(ctx, buf, NK_TEXT_LEFT);
+	nk_layout_row_push(ctx, UI_W(ap, 170)); nk_label(ctx, "Pack:", NK_TEXT_RIGHT);
+	nk_layout_row_push(ctx, UI_W(ap, 600)); sku_snprintf(buf, sizeof buf, "%s   (id %s, %d member(s))", p->name, p->id, p->nmembers); nk_label(ctx, buf, NK_TEXT_LEFT);
 	nk_layout_row_end(ctx);
 	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-	nk_layout_row_push(ctx, 170); nk_label(ctx, "Version:", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 600); nk_label(ctx, version, NK_TEXT_LEFT);
+	nk_layout_row_push(ctx, UI_W(ap, 170)); nk_label(ctx, "Version:", NK_TEXT_RIGHT);
+	nk_layout_row_push(ctx, UI_W(ap, 600)); nk_label(ctx, version, NK_TEXT_LEFT);
 	nk_layout_row_end(ctx);
 	nk_layout_row_begin(ctx, NK_STATIC, row, 2);
-	nk_layout_row_push(ctx, 170); nk_label(ctx, "Status:", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 600); nk_label_colored(ctx, text, NK_TEXT_LEFT, status_color(st, ap->dark));
+	nk_layout_row_push(ctx, UI_W(ap, 170)); nk_label(ctx, "Status:", NK_TEXT_RIGHT);
+	nk_layout_row_push(ctx, UI_W(ap, 600)); nk_label_colored(ctx, text, NK_TEXT_LEFT, status_color(st, ap->dark));
 	nk_layout_row_end(ctx);
 
 	/* declared but missing members */
@@ -124,10 +124,10 @@ void ui_pack(app *ap)
 		}
 		nk_layout_row_dynamic(ctx, row, 3);
 		if (!confirm) {
-			if (nk_button_label(ctx, "Create the missing folders...") && !busy) confirm = true;
+			if (ui_button(ap, "Create the missing folders...") && !busy) confirm = true;
 		} else {
 			nk_label_colored(ctx, "Create them now?", NK_TEXT_RIGHT, nk_rgb(255, 165, 0));
-			if (nk_button_label(ctx, "Yes, create")) {
+			if (ui_button(ap, "Yes, create")) {
 				int created = 0;
 				for (int k = 0; k < ap->nmissing; k++)
 					if (sku_pack_create_member(&ap->inst, p, &ap->missing[k], NULL, 0) == SKU_OK) created++;
@@ -136,7 +136,7 @@ void ui_pack(app *ap)
 				app_rescan(ap);
 				return;   /* items and packs were rebuilt */
 			}
-			if (nk_button_label(ctx, "No")) confirm = false;
+			if (ui_button(ap, "No")) confirm = false;
 		}
 	}
 

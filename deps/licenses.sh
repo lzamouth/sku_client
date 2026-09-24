@@ -35,7 +35,10 @@ cat deps/src/mbedtls/LICENSE >> "$OUT"
 sec "zlib - zlib license"
 sed -n '/Copyright notice:/,$p' deps/src/zlib/LICENSE >> "$OUT"
 
-sec "DejaVu fonts (DejaVu Sans, DejaVu Sans Mono) - Bitstream Vera license / public domain"
+sec "Roboto font (UI text) - Apache License 2.0"
+cat deps/src/fonts/roboto/LICENSE >> "$OUT"
+
+sec "DejaVu fonts (DejaVu Sans Mono for monospace text, DejaVu Sans for a few symbols) - Bitstream Vera license / public domain"
 cat deps/src/fonts/LICENSE >> "$OUT"
 
 sec "Mozilla CA certificate bundle (cacert.pem) - MPL 2.0"

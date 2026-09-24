@@ -25,6 +25,8 @@ right-click the application and choose "Open", or allow it under
 System Settings > Privacy & Security.
 
 Linux: an AppImage needs no installation; make it executable and run it.
+On GNOME under Wayland the window title bar is drawn by libdecor: install
+libdecor-0-plugin-1-gtk to get the normal GNOME bar instead of a thin one.
 The program only depends on the system C library (glibc 2.35 or newer, i.e.
 Ubuntu 22.04 or any distribution from 2022 onwards).
 If you use AppImageLauncher, you need version 3.0 or newer: the old 2.2

@@ -18,6 +18,12 @@ deps/         sources tierces figées et leurs builds (ignorés par git, voir de
 cmake/, docker/, macos/, tools/   toolchains, image de build Linux, bundle .app, scripts utilitaires
 ```
 
+## Apparence
+
+Police d'interface Roboto (Apache 2.0), DejaVu Sans Mono pour le texte à chasse fixe, DejaVu Sans fusionnée pour les deux symboles ▶ et ▫ que Roboto n'a pas. Deux rendus au choix dans Options : plat (liséré fin autour des boutons, onglets et menus, fond des menus distinct) ou relief (préférence `relief`, biseaux à deux tons dessinés par `widgets.c` par-dessus les widgets Nuklear, qui ne connaît ni dégradés ni ombres). Les largeurs fixes sont exprimées pour un texte de 16 px et suivent la taille de texte (`UI_W`), les colonnes de la liste et les lignes d'Options sont proportionnelles à la fenêtre. Dans la liste, la première colonne est un menu déroulant de canal, présent seulement quand l'addon en déclare un autre que stable. `SKU_FONT_FILE=<ttf>` essaie une autre police sans recompiler, `SKU_RELIEF=1` force le relief.
+
+Barre de titre sous GNOME Wayland : SDL délègue la décoration à libdecor ; sans le greffon GTK (`libdecor-0-plugin-1-gtk`), libdecor dessine sa barre minimale cairo, très fine. C'est un réglage de la machine, pas du client ; `SDL_VIDEO_DRIVER=x11` est l'autre contournement, au prix d'un rendu XWayland.
+
 ## Mise à jour du client lui-même
 
 Le client vérifie au plus une fois par jour (préférence `client_check`, case dans Options) un dépôt au même protocole que les addons, `SKU_CLIENT_DEPOT_URL` à la compilation, `client_url` dans les préférences ensuite : si le cfg distant annonce un autre `module`, le client le suit, ce qui permet de déménager le dépôt sans recompiler. Le dépôt publie les livrables sous des noms fixes (`SkunkcraftsUpdater-windows-setup.exe`, `-windows.zip`, `-macos.zip`, `-linux.zip`, `-x86_64.AppImage`, `sku-cli.zip`), `release.sh` les prépare dans `dist/<version>/depot/` avec le cfg et le changelog (`CHANGELOG.txt`, première ligne = version, comme un changelog d'avion). Quand une version plus récente existe, un bandeau dans la liste propose « What's new » (changelog dans About, nouveautés en couleur), « Download » (le paquet de la plateforme et du mode d'installation, CRC vérifié, déposé dans `<config utilisateur>/downloads`) et « Later ». L'installation reste manuelle pour l'instant (palier 2 : remplacement en place). `SKU_NO_CLIENT_CHECK=1` désactive la vérification au démarrage (tests).

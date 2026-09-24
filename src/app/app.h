@@ -23,6 +23,9 @@ struct nk_font;
 #define APP_NAME    "SkunkCrafts Updater"
 #define APP_MAX_CHANNELS 8
 
+/* Static widths are designed for a 16 px text: scale them with the text size. */
+#define UI_W(ap, px) ((float)(px) * (float)(ap)->prefs.text_size / 16.0f)
+
 typedef struct {
 	sku_addon *a;
 	atomic_int busy;                /* set by the submitter, cleared by the worker */
@@ -47,6 +50,7 @@ typedef enum { THEME_SYSTEM, THEME_DARK, THEME_LIGHT } app_theme;
 
 typedef struct {
 	app_theme theme;
+	bool relief;           /* bevelled widgets instead of flat ones */
 	int  text_size;        /* 10..32 */
 	int  downloads;        /* 1..32 */
 	int  crc_threads;      /* 1..64 */
@@ -71,6 +75,7 @@ typedef struct app {
 	float scale;
 	bool  running;
 	bool  dark;                       /* effective theme */
+	bool  relief;                     /* effective: prefs.relief, or SKU_RELIEF=1 for tests */
 
 	app_prefs prefs;
 	char prefs_path[SKU_PATH_MAX];
@@ -149,7 +154,7 @@ void app_browse_folder(app *ap, int what);
 struct nk_color;
 const struct nk_color *app_default_colors(void);   /* main.c: Nuklear's default table */
 struct nk_color status_color(sku_status s, bool dark);
-void theme_apply(struct nk_context *ctx, bool dark);
+void theme_apply(struct nk_context *ctx, bool dark, bool relief);
 
 /* ui_*.c: each draws inside the already opened main window */
 void ui_list(app *ap);
@@ -171,7 +176,12 @@ void ui_client_banner(app *ap);           /* top of the addon list */
 void ui_client_options(app *ap);          /* in the Options view */
 void ui_client_news(app *ap);             /* the published changelog, in About */
 
-/* widgets.c */
+/* widgets.c: the standard widgets, with a bevel when the relief theme is on */
+struct nk_rect;
 void ui_left_truncate(app *ap, const char *path, float width, char *out, size_t n);
+void ui_bevel(app *ap, const struct nk_rect *r, bool raised);
+bool ui_button(app *ap, const char *label);
+bool ui_tab(app *ap, const char *label, bool active);
+int  ui_combo(app *ap, const char **items, int n, int selected, int item_height, float w, float h);
 
 #endif

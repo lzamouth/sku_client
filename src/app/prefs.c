@@ -14,6 +14,7 @@ void prefs_defaults(app_prefs *p)
 {
 	memset(p, 0, sizeof *p);
 	p->theme = THEME_DARK;
+	p->relief = false;
 	p->text_size = 16;
 	p->downloads = 8;
 	p->crc_threads = sku_cpu_count();
@@ -40,6 +41,7 @@ int prefs_load(app *ap)
 
 	v = sku_cfg_get_or(&c, "theme", "dark");
 	p->theme = strcmp(v, "light") == 0 ? THEME_LIGHT : strcmp(v, "system") == 0 ? THEME_SYSTEM : THEME_DARK;
+	p->relief      = sku_cfg_get_bool(&c, "relief", false);
 	p->text_size   = clamp(atoi(sku_cfg_get_or(&c, "text_size", "16")), 10, 32);
 	p->downloads   = clamp(atoi(sku_cfg_get_or(&c, "downloads", "8")), 1, 32);
 	p->crc_threads = clamp(atoi(sku_cfg_get_or(&c, "crc_threads", "0")), 1, 64);
@@ -75,6 +77,7 @@ int prefs_save(app *ap)
 	sku_cfg_init(&c);
 	sku_cfg_add_raw(&c, "# SkunkCrafts Updater preferences");
 	sku_cfg_set(&c, "theme", p->theme == THEME_LIGHT ? "light" : p->theme == THEME_SYSTEM ? "system" : "dark");
+	sku_cfg_set_bool(&c, "relief", p->relief);
 	sku_snprintf(num, sizeof num, "%d", p->text_size);   sku_cfg_set(&c, "text_size", num);
 	sku_snprintf(num, sizeof num, "%d", p->downloads);   sku_cfg_set(&c, "downloads", num);
 	sku_snprintf(num, sizeof num, "%d", p->crc_threads); sku_cfg_set(&c, "crc_threads", num);

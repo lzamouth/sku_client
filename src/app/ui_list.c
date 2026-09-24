@@ -39,19 +39,20 @@ void ui_list(app *ap)
 	int nvisible = 0, *idx;
 	bool busy = app_any_busy(ap);
 	char buf[300];
+	static const float cols[] = { 0.12f, 0.32f, 0.10f, 0.46f };   /* channel, name, version, status */
 
 	ui_client_banner(ap);
 
 	/* row 1: filters + rescan */
 	nk_layout_row_begin(ctx, NK_STATIC, row, 6);
-	nk_layout_row_push(ctx, 60);  nk_label(ctx, "Filters:", NK_TEXT_RIGHT);
-	nk_layout_row_push(ctx, 100); nk_checkbox_label(ctx, "Aircraft", &(nk_bool){ ap->filter_aircraft }) ? (ap->filter_aircraft = !ap->filter_aircraft) : 0;
-	nk_layout_row_push(ctx, 100); nk_checkbox_label(ctx, "Sceneries", &(nk_bool){ ap->filter_scenery }) ? (ap->filter_scenery = !ap->filter_scenery) : 0;
-	nk_layout_row_push(ctx, 100); nk_checkbox_label(ctx, "Plugins", &(nk_bool){ ap->filter_plugins }) ? (ap->filter_plugins = !ap->filter_plugins) : 0;
-	nk_layout_row_push(ctx, 100); nk_checkbox_label(ctx, "Other", &(nk_bool){ ap->filter_other }) ? (ap->filter_other = !ap->filter_other) : 0;
-	nk_layout_row_push(ctx, 200);
+	nk_layout_row_push(ctx, UI_W(ap, 64));  nk_label(ctx, "Filters:", NK_TEXT_RIGHT);
+	nk_layout_row_push(ctx, UI_W(ap, 124)); nk_checkbox_label(ctx, "Aircraft", &(nk_bool){ ap->filter_aircraft }) ? (ap->filter_aircraft = !ap->filter_aircraft) : 0;
+	nk_layout_row_push(ctx, UI_W(ap, 124)); nk_checkbox_label(ctx, "Sceneries", &(nk_bool){ ap->filter_scenery }) ? (ap->filter_scenery = !ap->filter_scenery) : 0;
+	nk_layout_row_push(ctx, UI_W(ap, 124)); nk_checkbox_label(ctx, "Plugins", &(nk_bool){ ap->filter_plugins }) ? (ap->filter_plugins = !ap->filter_plugins) : 0;
+	nk_layout_row_push(ctx, UI_W(ap, 124)); nk_checkbox_label(ctx, "Other", &(nk_bool){ ap->filter_other }) ? (ap->filter_other = !ap->filter_other) : 0;
+	nk_layout_row_push(ctx, UI_W(ap, 220));
 	if (busy) nk_label(ctx, "", NK_TEXT_LEFT);
-	else if (nk_button_label(ctx, "Check for new addons")) app_rescan(ap);
+	else if (ui_button(ap, "Check for new addons")) app_rescan(ap);
 	nk_layout_row_end(ctx);
 
 	/* row 2: counts + global actions */
@@ -59,10 +60,10 @@ void ui_list(app *ap)
 	nk_layout_row_dynamic(ctx, row, 4);
 	sku_snprintf(buf, sizeof buf, "Managed addons: %d", nvisible);
 	nk_label(ctx, buf, NK_TEXT_LEFT);
-	if (nk_button_label(ctx, "Reload all configs")) submit_all(ap, JOB_RELOAD);
-	if (nk_button_label(ctx, "Check all updates")) submit_all(ap, JOB_CHECK);
-	if (busy) { if (nk_button_label(ctx, "Cancel all")) jobs_cancel_all(ap); }
-	else if (nk_button_label(ctx, "Update / repair all")) submit_all(ap, JOB_UPDATE);
+	if (ui_button(ap, "Reload all configs")) submit_all(ap, JOB_RELOAD);
+	if (ui_button(ap, "Check all updates")) submit_all(ap, JOB_CHECK);
+	if (busy) { if (ui_button(ap, "Cancel all")) jobs_cancel_all(ap); }
+	else if (ui_button(ap, "Update / repair all")) submit_all(ap, JOB_UPDATE);
 
 	/* the list: standalone addons, then one row per pack (index >= nitems) */
 	idx = alloca((size_t)(ap->nitems + ap->packs.n + 1) * sizeof *idx);
@@ -77,6 +78,7 @@ void ui_list(app *ap)
 	nk_layout_row_dynamic(ctx, nk_window_get_height(ctx) - 3 * row - 40, 1);
 	{
 		struct nk_list_view view;
+		struct nk_rect list_bounds = nk_widget_bounds(ctx);
 		if (nk_list_view_begin(ctx, &view, "addons", NK_WINDOW_BORDER, (int)row, nvisible)) {
 			for (int k = view.begin; k < view.end && k < nvisible; k++) {
 				app_item *it;
@@ -89,12 +91,7 @@ void ui_list(app *ap)
 					sku_status st;
 					app_pack_summary(ap, pi, version, sizeof version, &st, text, sizeof text);
 					sel = ap->selected_pack == pi;
-					nk_layout_row_template_begin(ctx, row - 4);
-					nk_layout_row_template_push_static(ctx, 56);
-					nk_layout_row_template_push_static(ctx, 250);
-					nk_layout_row_template_push_static(ctx, 100);
-					nk_layout_row_template_push_dynamic(ctx);
-					nk_layout_row_template_end(ctx);
+					nk_layout_row(ctx, NK_DYNAMIC, row - 4, 4, cols);
 					clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
 					nk_label_colored(ctx, "pack", NK_TEXT_CENTERED, nk_rgb(255, 200, 80));
 					clicked |= nk_selectable_label(ctx, ap->packs.v[pi].name, NK_TEXT_LEFT, &sel) != 0;
@@ -107,18 +104,22 @@ void ui_list(app *ap)
 				}
 				it = &ap->items[idx[k]];
 				sel = ap->selected == idx[k];
-				nk_layout_row_template_begin(ctx, row - 4);
-				nk_layout_row_template_push_static(ctx, 56);
-				nk_layout_row_template_push_static(ctx, 250);
-				nk_layout_row_template_push_static(ctx, 100);
-				nk_layout_row_template_push_dynamic(ctx);
-				nk_layout_row_template_end(ctx);
+				nk_layout_row(ctx, NK_DYNAMIC, row - 4, 4, cols);
 
-				/* a press anywhere on the row opens the addon (Nuklear widgets trigger on press) */
-				clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
-				if (strcmp(it->channel, "stable") != 0) nk_label_colored(ctx, it->channel, NK_TEXT_CENTERED, nk_rgb(255, 120, 60));
-				else if (it->nchannels) nk_label_colored(ctx, "beta?", NK_TEXT_CENTERED, ap->dark ? nk_rgb(110, 110, 110) : nk_rgb(160, 160, 160));
-				else nk_label(ctx, "", NK_TEXT_CENTERED);
+				/* column 1: the channel, as a drop-down when there is a choice; a press
+				 * anywhere else on the row opens the addon (Nuklear widgets trigger on press) */
+				if (it->nchannels && !atomic_load(&it->busy)) {
+					const char *names[APP_MAX_CHANNELS + 1];
+					int n = 0, cur = 0, now;
+					names[n++] = "stable";
+					for (int c = 0; c < it->nchannels; c++) { if (strcmp(it->channels[c], it->channel) == 0) cur = n; names[n++] = it->channels[c]; }
+					now = ui_combo(ap, names, n, cur, (int)row, UI_W(ap, 160), (float)(n + 1) * row);
+					if (now != cur) { sku_addon_set_channel(it->a, names[now], false); app_refresh_item(it); }
+				} else {
+					clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
+					if (strcmp(it->channel, "stable") != 0) nk_label_colored(ctx, it->channel, NK_TEXT_CENTERED, nk_rgb(255, 120, 60));
+					else nk_label(ctx, "", NK_TEXT_CENTERED);
+				}
 
 				clicked |= nk_selectable_label(ctx, it->name, NK_TEXT_LEFT, &sel) != 0;
 				clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
@@ -135,5 +136,6 @@ void ui_list(app *ap)
 			}
 			nk_list_view_end(&view);
 		}
+		ui_bevel(ap, &list_bounds, false);   /* the list is a sunken well */
 	}
 }

@@ -18,6 +18,8 @@
 #include "http.h"
 #include "report.h"
 
+extern const unsigned char sku_font_ui[];
+extern const size_t sku_font_ui_len;
 extern const unsigned char sku_font_sans[];
 extern const size_t sku_font_sans_len;
 extern const unsigned char sku_font_mono[];
@@ -193,11 +195,24 @@ static void load_fonts(app *ap)
 	struct nk_font_atlas *atlas = nk_sdl_font_stash_begin(ap->ctx);
 	struct nk_font_config cfg = nk_font_config(0);
 	float px = (float)ap->prefs.text_size * ap->scale;
-	/* Latin-1 plus the few symbols the UI uses: ellipsis, black right-pointing triangle, small square */
-	static const nk_rune ranges[] = { 0x0020, 0x00FF, 0x2026, 0x2026, 0x25AB, 0x25AB, 0x25B6, 0x25B6, 0 };
+	/* UI text: Roboto over Latin-1 + ellipsis; the two symbols the UI uses (black
+	 * right-pointing triangle, small square) come from DejaVu Sans, merged in */
+	static const nk_rune ranges[] = { 0x0020, 0x00FF, 0x2026, 0x2026, 0 };
+	static const nk_rune symbols[] = { 0x25AB, 0x25AB, 0x25B6, 0x25B6, 0 };
+	static const nk_rune mono_ranges[] = { 0x0020, 0x00FF, 0x2026, 0x2026, 0x25AB, 0x25AB, 0x25B6, 0x25B6, 0 };
+	struct nk_font_config merge = nk_font_config(0);
+	/* SKU_FONT_FILE=<ttf>: try another UI font without rebuilding (test hook) */
+	static char *alt_font; static size_t alt_len;
 	cfg.oversample_h = 2; cfg.oversample_v = 2;
 	cfg.range = ranges;
-	ap->font = nk_font_atlas_add_from_memory(atlas, (void *)sku_font_sans, sku_font_sans_len, px, &cfg);
+	if (!alt_font && getenv("SKU_FONT_FILE") && sku_read_file(getenv("SKU_FONT_FILE"), &alt_font, &alt_len) != SKU_OK) alt_font = NULL;
+	if (alt_font) ap->font = nk_font_atlas_add_from_memory(atlas, alt_font, alt_len, px, &cfg);
+	else ap->font = nk_font_atlas_add_from_memory(atlas, (void *)sku_font_ui, sku_font_ui_len, px, &cfg);
+	merge.oversample_h = 2; merge.oversample_v = 2;
+	merge.range = symbols;
+	merge.merge_mode = 1;
+	nk_font_atlas_add_from_memory(atlas, (void *)sku_font_sans, sku_font_sans_len, px, &merge);
+	cfg.range = mono_ranges;
 	ap->mono = nk_font_atlas_add_from_memory(atlas, (void *)sku_font_mono, sku_font_mono_len, px, &cfg);
 	nk_sdl_font_stash_end(ap->ctx);
 	ap->font->handle.height /= ap->scale;
@@ -218,7 +233,8 @@ void app_set_text_size(app *ap, int size)
 void app_apply_theme(app *ap)
 {
 	ap->dark = ap->prefs.theme == THEME_DARK || (ap->prefs.theme == THEME_SYSTEM && SDL_GetSystemTheme() != SDL_SYSTEM_THEME_LIGHT);
-	theme_apply(ap->ctx, ap->dark);
+	ap->relief = ap->prefs.relief || getenv("SKU_RELIEF") != NULL;
+	theme_apply(ap->ctx, ap->dark, ap->relief);
 	nk_style_set_font(ap->ctx, &ap->font->handle);
 }
 
@@ -280,12 +296,12 @@ static void draw(app *ap)
 			/* tab bar, like the 3.x client: Addons / Options / About */
 			bool in_addons = ap->view == VIEW_LIST || ap->view == VIEW_DETAIL || ap->view == VIEW_PACK;
 			nk_layout_row_begin(ctx, NK_STATIC, row, 4);
-			nk_layout_row_push(ctx, 110);
-			if (nk_selectable_label(ctx, "Addons", NK_TEXT_CENTERED, &(nk_bool){ in_addons }) && !in_addons) ap->view = VIEW_LIST;
-			nk_layout_row_push(ctx, 110);
-			if (nk_selectable_label(ctx, "Options", NK_TEXT_CENTERED, &(nk_bool){ ap->view == VIEW_OPTIONS })) ap->view = VIEW_OPTIONS;
-			nk_layout_row_push(ctx, 110);
-			if (nk_selectable_label(ctx, "About", NK_TEXT_CENTERED, &(nk_bool){ ap->view == VIEW_ABOUT })) ap->view = VIEW_ABOUT;
+			nk_layout_row_push(ctx, UI_W(ap, 110));
+			if (ui_tab(ap, "Addons", in_addons) && !in_addons) ap->view = VIEW_LIST;
+			nk_layout_row_push(ctx, UI_W(ap, 110));
+			if (ui_tab(ap, "Options", ap->view == VIEW_OPTIONS)) ap->view = VIEW_OPTIONS;
+			nk_layout_row_push(ctx, UI_W(ap, 110));
+			if (ui_tab(ap, "About", ap->view == VIEW_ABOUT)) ap->view = VIEW_ABOUT;
 			nk_layout_row_end(ctx);
 		}
 		/* content area: everything but the status bar */
@@ -349,6 +365,7 @@ int main(int argc, char **argv)
 	ap.selected = -1; ap.report_for = -1; ap.selected_pack = -1; ap.missing_for = -1; ap.doc_for = -1;
 	ap.filter_aircraft = ap.filter_scenery = ap.filter_plugins = ap.filter_other = true;
 	prefs_load(&ap);
+	ap.relief = ap.prefs.relief || getenv("SKU_RELIEF") != NULL;
 	sku_log_set_level(ap.prefs.verbose ? SKU_LOG_DEBUG : SKU_LOG_INFO);
 	sku_http_global_init_default(NULL);
 
