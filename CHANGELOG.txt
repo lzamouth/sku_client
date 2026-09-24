@@ -1,3 +1,6 @@
+4.0.0-beta5
+- The check for a new version of the updater runs at every start (at most once an hour) and its banner shows on every page
+
 4.0.0-beta4
 - New look: Roboto font, optional bevelled (relief) theme, outlined buttons and tabs, distinct menu backgrounds
 - Addon list: column titles, columns resizable from the header, channel drop-down per addon (stable in blue, others in yellow)
