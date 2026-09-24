@@ -54,6 +54,28 @@ bool ui_button(app *ap, const char *label)
 	return hit;
 }
 
+bool ui_needs_update(sku_status st)
+{
+	return st == SKU_ST_UPDATE || st == SKU_ST_REPAIR || st == SKU_ST_VERSION_MISMATCH;
+}
+
+bool ui_button_hl(app *ap, const char *label, bool highlight)
+{
+	struct nk_context *ctx = ap->ctx;
+	struct nk_color bg = ap->dark ? nk_rgb(0, 120, 190) : nk_rgb(0, 110, 190);
+	struct nk_color hover = ap->dark ? nk_rgb(0, 150, 225) : nk_rgb(0, 130, 215);
+	bool hit;
+	if (!highlight) return ui_button(ap, label);
+	nk_style_push_style_item(ctx, &ctx->style.button.normal, nk_style_item_color(bg));
+	nk_style_push_style_item(ctx, &ctx->style.button.hover, nk_style_item_color(hover));
+	nk_style_push_color(ctx, &ctx->style.button.text_normal, nk_rgb(255, 255, 255));
+	nk_style_push_color(ctx, &ctx->style.button.text_hover, nk_rgb(255, 255, 255));
+	hit = ui_button(ap, label);
+	nk_style_pop_color(ctx); nk_style_pop_color(ctx);
+	nk_style_pop_style_item(ctx); nk_style_pop_style_item(ctx);
+	return hit;
+}
+
 /* A tab: raised when inactive, sunken when it is the current one. */
 bool ui_tab(app *ap, const char *label, bool active)
 {

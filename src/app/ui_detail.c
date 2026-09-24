@@ -169,7 +169,7 @@ void ui_detail(app *ap)
 		if (ui_button(ap, "Reload config")) jobs_submit(ap->jobs, it, JOB_RELOAD);
 		if (ui_button(ap, "Check updates")) jobs_submit(ap->jobs, it, JOB_CHECK);
 		if (ui_button(ap, "Verify integrity")) jobs_submit(ap->jobs, it, JOB_CHECK_FULL);
-		if (ui_button(ap, "Update / repair")) jobs_submit(ap->jobs, it, JOB_UPDATE);
+		if (ui_button_hl(ap, "Update / repair", ui_needs_update(it->st))) jobs_submit(ap->jobs, it, JOB_UPDATE);
 	}
 
 	/* configuration */

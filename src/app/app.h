@@ -182,6 +182,8 @@ struct nk_rect;
 void ui_left_truncate(app *ap, const char *path, float width, char *out, size_t n);
 void ui_bevel(app *ap, const struct nk_rect *r, bool raised);
 bool ui_button(app *ap, const char *label);
+bool ui_button_hl(app *ap, const char *label, bool highlight);   /* accent colours when highlight: "this is what to do next" */
+bool ui_needs_update(sku_status st);                             /* update, repair or version mismatch */
 bool ui_tab(app *ap, const char *label, bool active);
 int  ui_combo(app *ap, const char **items, int n, int selected, int item_height, float w, float h);
 struct nk_color;

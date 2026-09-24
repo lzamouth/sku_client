@@ -95,7 +95,11 @@ void ui_pack(app *ap)
 	} else {
 		if (ui_button(ap, "Check all members")) for (int m = 0; m < p->nmembers; m++) if (!ap->items[p->members[m]].disabled) jobs_submit(ap->jobs, &ap->items[p->members[m]], JOB_CHECK);
 		if (ui_button(ap, "Verify integrity")) for (int m = 0; m < p->nmembers; m++) if (!ap->items[p->members[m]].disabled) jobs_submit(ap->jobs, &ap->items[p->members[m]], JOB_CHECK_FULL);
-		if (ui_button(ap, "Update / repair all")) for (int m = 0; m < p->nmembers; m++) if (!ap->items[p->members[m]].disabled) jobs_submit(ap->jobs, &ap->items[p->members[m]], JOB_UPDATE);
+		{
+			bool any = false;
+			for (int m = 0; m < p->nmembers && !any; m++) any = !ap->items[p->members[m]].disabled && ui_needs_update(ap->items[p->members[m]].st);
+			if (ui_button_hl(ap, "Update / repair all", any)) for (int m = 0; m < p->nmembers; m++) if (!ap->items[p->members[m]].disabled) jobs_submit(ap->jobs, &ap->items[p->members[m]], JOB_UPDATE);
+		}
 	}
 
 	nk_layout_row_begin(ctx, NK_STATIC, row, 2);

@@ -62,7 +62,11 @@ void ui_list(app *ap)
 	if (ui_button(ap, "Reload all configs")) submit_all(ap, JOB_RELOAD);
 	if (ui_button(ap, "Check all updates")) submit_all(ap, JOB_CHECK);
 	if (busy) { if (ui_button(ap, "Cancel all")) jobs_cancel_all(ap); }
-	else if (ui_button(ap, "Update / repair all")) submit_all(ap, JOB_UPDATE);
+	else {
+		bool any = false;
+		for (int i = 0; i < ap->nitems && !any; i++) any = visible(ap, &ap->items[i]) && !ap->items[i].disabled && ui_needs_update(ap->items[i].st);
+		if (ui_button_hl(ap, "Update / repair all", any)) submit_all(ap, JOB_UPDATE);
+	}
 
 	/* the list: standalone addons, then one row per pack (index >= nitems) */
 	idx = alloca((size_t)(ap->nitems + ap->packs.n + 1) * sizeof *idx);
