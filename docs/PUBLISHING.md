@@ -38,7 +38,7 @@ zone|custom
 | `module`  | the URL of the depot, the folder that holds the files below |
 | `version` | the version installed (locally) or published (on the server). Any string; the client only compares for equality |
 | `locked`  | `true` while you upload: clients then refuse to download from the depot. Optional, absent means unlocked |
-| `zone`    | keep `custom`: it means `module` is a full URL. The other values are legacy CDN aliases |
+| `zone`    | keep `custom`: it means `module` is a full URL. Other values are historical SkunkCrafts aliases |
 
 Ship this file inside your download package, so that a fresh install is
 recognised by the updater. The 4.0 client converts it to
@@ -321,8 +321,9 @@ the depot is locked. It never creates a folder without asking (packs, 5.5).
     enabled: keep folder trees shallow.
 11. **Removing a file**: forgetting the blacklist leaves it on every disk
     forever. Renaming a file is a removal plus an addition.
-12. **Legacy zones**: `zone|aerobask` and the like are aliases of a CDN that
-    is being retired. Use `zone|custom` with the full URL in `module`.
+12. **Zones**: any value other than `custom` is a historical alias for
+    SkunkCrafts' own hosting and means nothing to anyone else. Use
+    `zone|custom` with the full URL in `module`.
 
 ## Part 5 - Packs: a product made of several folders
 
