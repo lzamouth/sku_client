@@ -19,6 +19,17 @@ bool sku_instance_is_root(const char *dir)
 	return true;
 }
 
+/* Betas up to 4.0.0-beta5 kept the CRC caches here: drop them. */
+static int drop_legacy_cb(const char *name, bool is_dir, bool is_symlink, void *user)
+{
+	char p[SKU_PATH_MAX];
+	(void)is_symlink;
+	if (is_dir || !sku_str_ends(name, ".crc")) return 0;
+	sku_path_join(p, sizeof p, (const char *)user, name);
+	sku_remove_file(p);
+	return 0;
+}
+
 int sku_instance_open(sku_instance *in, const char *dir, bool read_only)
 {
 	char sub[SKU_PATH_MAX];
@@ -31,7 +42,7 @@ int sku_instance_open(sku_instance *in, const char *dir, bool read_only)
 	sku_path_join(in->log_path, sizeof in->log_path, in->data_dir, "updater_log.txt");
 	if (!read_only) {
 		if (sku_mkdir_p(in->data_dir) != SKU_OK) return SKU_ERR_IO;
-		sku_path_join(sub, sizeof sub, in->data_dir, "cache");   sku_mkdir_p(sub);
+		sku_path_join(sub, sizeof sub, in->data_dir, "cache");   sku_mkdir_p(sub); sku_list_dir(sub, drop_legacy_cb, sub);
 		sku_path_join(sub, sizeof sub, in->data_dir, "reports"); sku_mkdir_p(sub);
 		if (sku_log_open(in->log_path, LOG_ROTATE_BYTES) != SKU_OK) return SKU_ERR_IO;
 	}
@@ -121,7 +132,7 @@ void sku_instance_cache_path(const sku_instance *in, const char *addon_dir, char
 {
 	char key[64];
 	addon_key(addon_dir, key, sizeof key);
-	sku_snprintf(out, n, "%s/cache/%s.crc", in->data_dir, key);
+	sku_snprintf(out, n, "%s/cache/%s.lists", in->data_dir, key);
 }
 
 void sku_instance_report_path(const sku_instance *in, const char *addon_dir, char *out, size_t n)

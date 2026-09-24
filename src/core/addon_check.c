@@ -41,8 +41,8 @@ static int fetch_text(sku_addon *a, sku_http *h, const char *file, bool required
 static void list_cache_paths(const sku_addon *a, const char *file, char *body, char *meta, size_t n)
 {
 	char base[SKU_PATH_MAX];
-	sku_instance_cache_path(a->inst, a->dir, base, sizeof base);   /* .../cache/<key>.crc */
-	base[strlen(base) - 4] = 0;
+	sku_instance_cache_path(a->inst, a->dir, base, sizeof base);   /* .../cache/<key>.lists */
+	base[strlen(base) - 6] = 0;
 	sku_snprintf(body, n, "%s.%s", base, file);
 	sku_snprintf(meta, n, "%s.%s.meta", base, file);
 }
@@ -164,7 +164,7 @@ static int build_plan(sku_addon *a, const sku_check_opts *opts)
 	sku_strmap_init(&ignore, (size_t)a->ignore.n);
 	for (int i = 0; i < a->ignore.n; i++) sku_strmap_put(&ignore, a->ignore.v[i]);
 
-	sku_instance_cache_path(a->inst, a->dir, cache_path, sizeof cache_path);
+	sku_addon_crc_cache_path(a, opts->dry_run, cache_path, sizeof cache_path);
 	ctx.cache = sku_crc_cache_open(cache_path);
 	ctx.jobs = sku_xcalloc((size_t)a->files.n + 1, sizeof *ctx.jobs);
 

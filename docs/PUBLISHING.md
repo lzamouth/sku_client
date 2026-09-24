@@ -240,7 +240,13 @@ anything for that product (a setting changed, or the end of an update):
 ```
 skunkcrafts/updater.cfg              the same keys, plus the channel settings
 skunkcrafts/ignore.txt               the user's ignore list
+skunkcrafts/crc_cache.txt            the CRC cache that makes checks fast
 ```
+
+The `skunkcrafts/` sub-folder is the client's own. A depot cannot publish
+into it nor delete from it (such lines are ignored), and `xp_depot` never
+uploads it. If you run the updater on your own working copy, the folder
+appears there too; leave it out of anything you package by hand.
 
 At that moment the three 3.x files are **merged into the new layout and
 removed**: the configuration is copied, the beta file becomes the channel

@@ -66,8 +66,8 @@ int sku_changelog_sections(const char *text, const char *installed_version, sku_
 void sku_addon_doc_cache_path(const sku_addon *a, const char *kind, char *out, size_t n)
 {
 	char cache[SKU_PATH_MAX];
-	sku_instance_cache_path(a->inst, a->dir, cache, sizeof cache);   /* .../cache/<key>.crc */
-	cache[strlen(cache) - 4] = 0;
+	sku_instance_cache_path(a->inst, a->dir, cache, sizeof cache);   /* .../cache/<key>.lists */
+	cache[strlen(cache) - 6] = 0;
 	sku_snprintf(out, n, "%s.%s.txt", cache, kind);
 }
 

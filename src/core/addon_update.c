@@ -132,7 +132,7 @@ int sku_addon_update(sku_addon *a, const sku_update_opts *opts)
 	}
 
 	/* downloads */
-	sku_instance_cache_path(a->inst, a->dir, cache_path, sizeof cache_path);
+	sku_addon_crc_cache_path(a, false, cache_path, sizeof cache_path);
 	c.cache = sku_crc_cache_open(cache_path);
 	if (ndl) {
 		if (nthreads > ndl) nthreads = ndl;

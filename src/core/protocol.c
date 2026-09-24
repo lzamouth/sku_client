@@ -6,6 +6,13 @@
 #include <string.h>
 #include <errno.h>
 
+/* "skunkcrafts/..." belongs to the client (config, CRC cache): a depot may not publish or delete it. */
+static bool private_path(const char *rel)
+{
+	return sku_str_istarts(rel, SKU_DIR_V4 "/");
+}
+
+
 void sku_remote_files_free(sku_remote_files *f)
 {
 	for (int i = 0; i < f->n; i++) free(f->v[i].path);
@@ -91,7 +98,7 @@ static int whitelist_line(char **f, int nf, void *user)
 	struct list_ctx *c = user;
 	sku_remote_file *rf;
 	uint32_t crc; bool check;
-	if (nf != 2 || sku_path_check_relative(f[0]) != SKU_OK || !parse_crc(f[1], &crc, &check)) {
+	if (nf != 2 || sku_path_check_relative(f[0]) != SKU_OK || private_path(f[0]) || !parse_crc(f[1], &crc, &check)) {
 		c->rejected++;
 		sku_warn("whitelist: rejected line \"%s\"", f[0]);
 		return SKU_ERR_FORMAT;
@@ -116,7 +123,7 @@ static int manifest_line(char **f, int nf, void *user)
 	sku_remote_file *rf;
 	uint32_t crc; bool check; int64_t size;
 	/* extra fields after size are reserved for later protocol levels and ignored */
-	if (nf < 3 || sku_path_check_relative(f[0]) != SKU_OK || !parse_crc(f[1], &crc, &check) || !parse_size(f[2], &size)) {
+	if (nf < 3 || sku_path_check_relative(f[0]) != SKU_OK || private_path(f[0]) || !parse_crc(f[1], &crc, &check) || !parse_size(f[2], &size)) {
 		c->rejected++;
 		sku_warn("manifest: rejected line \"%s\"", f[0]);
 		return SKU_ERR_FORMAT;
@@ -167,7 +174,7 @@ static int path_line(char **f, int nf, void *user)
 {
 	struct paths_ctx *c = user;
 	(void)nf;
-	if (sku_path_check_relative(f[0]) != SKU_OK) {
+	if (sku_path_check_relative(f[0]) != SKU_OK || private_path(f[0])) {
 		c->rejected++;
 		sku_warn("path list: rejected line \"%s\"", f[0]);
 		return SKU_ERR_FORMAT;

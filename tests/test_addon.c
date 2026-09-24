@@ -209,6 +209,9 @@ static void test_level(const char *level, bool second_run_uses_cache)
 		free(sec); free(text);
 	}
 
+	/* the CRC cache lives in the addon, next to the v4 config */
+	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/crc_cache.txt"); CHECK(sku_is_file(p));
+
 	/* v4 layout after the first save */
 	CHECK(a->v4);
 	CHECK_EQ_STR(a->version, "2.0");

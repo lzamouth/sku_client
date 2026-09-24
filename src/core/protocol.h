@@ -20,6 +20,7 @@
 #define SKU_DIR_V4       "skunkcrafts"
 #define SKU_F_V4_CFG     "skunkcrafts/updater.cfg"
 #define SKU_F_V4_IGNORE  "skunkcrafts/ignore.txt"
+#define SKU_F_V4_CRC     "skunkcrafts/crc_cache.txt"   /* CRC cache: moves and dies with the addon */
 
 typedef struct {
 	char    *path;        /* relative, normalized, validated */

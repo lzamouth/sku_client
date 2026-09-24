@@ -83,6 +83,20 @@ static void test_parsers(void)
 	}
 }
 
+static void test_private_paths(void)
+{
+	sku_remote_files f = {0};
+	sku_strlist l = {0};
+	int rejected = 0;
+	sku_protocol_parse_whitelist("ok.txt|1\nskunkcrafts/updater.cfg|2\nSkunkcrafts/crc_cache.txt|3\n", &f, &rejected);
+	CHECK_EQ_INT(f.n, 1); CHECK_EQ_INT(rejected, 2);
+	sku_remote_files_free(&f);
+	rejected = 0;
+	sku_protocol_parse_pathlist("skunkcrafts/ignore.txt\nold.obj\n", &l, &rejected);
+	CHECK_EQ_INT(l.n, 1); CHECK_EQ_INT(rejected, 1);
+	sku_strlist_free(&l);
+}
+
 static void test_crc_cache(void)
 {
 	char path[SKU_PATH_MAX];
@@ -159,6 +173,7 @@ int main(void)
 	test_strmap();
 	test_parsers();
 	test_crc_cache();
+	test_private_paths();
 	test_pool();
 	TEST_MAIN_END();
 }

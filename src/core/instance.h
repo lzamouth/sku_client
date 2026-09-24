@@ -29,7 +29,7 @@ int  sku_instance_detect(char *out, size_t n);
 int  sku_instance_known(sku_strlist *out);
 
 /* Paths inside data_dir for a given addon folder (a hash of the folder path). */
-void sku_instance_cache_path(const sku_instance *in, const char *addon_dir, char *out, size_t n);
+void sku_instance_cache_path(const sku_instance *in, const char *addon_dir, char *out, size_t n);   /* base name for the cached remote lists and docs */
 void sku_instance_report_path(const sku_instance *in, const char *addon_dir, char *out, size_t n);
 
 #endif

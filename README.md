@@ -30,7 +30,7 @@ Guide de publication pour les développeurs dont le produit occupe plusieurs dos
 
 ## Données par instance
 
-`Output/skunkcrafts/updater/` dans le dossier X-Plane : `updater_log.txt` (rotation à 2 Mo), `cache/<dossier de l'addon>-<empreinte>.crc` (cache CRC : `chemin|taille|mtime|crc32`, une ligne par fichier, invalidé par taille ou date), `cache/<…>.<liste>` et `.meta` (copies des listes distantes avec leurs validateurs HTTP), `cache/<…>.changelog.txt` / `.readme.txt`, `reports/<…>.txt` (dernier rapport), `custom_addons.txt`. L'empreinte est celle du chemin complet, deux addons de même nom ne se confondent donc pas.
+Dans chaque addon : `skunkcrafts/updater.cfg` (configuration 4.0), `skunkcrafts/ignore.txt`, `skunkcrafts/crc_cache.txt` (cache CRC : `chemin|taille|mtime|crc32`, une ligne par fichier, invalidé par taille ou date ; il suit l'addon). Le dossier `skunkcrafts/` est privé au client, jamais publié ni supprimé par un dépôt. `Output/skunkcrafts/updater/` dans le dossier X-Plane : `updater_log.txt` (rotation à 2 Mo), `cache/<dossier de l'addon>-<empreinte>.<liste>` et `.meta` (copies des listes distantes avec leurs validateurs HTTP), `cache/<…>.changelog.txt` / `.readme.txt`, `reports/<…>.txt` (dernier rapport), `custom_addons.txt`. L'empreinte est celle du chemin complet, deux addons de même nom ne se confondent donc pas.
 
 ## Mise à jour du client lui-même
 

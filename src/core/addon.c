@@ -88,6 +88,14 @@ void sku_addon_encode_url(char *out, size_t n, const char *base_url, const char 
 	}
 }
 
+void sku_addon_crc_cache_path(const sku_addon *a, bool dry_run, char *out, size_t n)
+{
+	char dir[SKU_PATH_MAX];
+	sku_path_join(dir, sizeof dir, a->dir, SKU_DIR_V4);
+	if (!dry_run) sku_mkdir_p(dir);
+	sku_path_join(out, n, a->dir, SKU_F_V4_CRC);
+}
+
 /* ------------------------------------------------------------ channels */
 
 static void channels_clear(sku_addon *a)
