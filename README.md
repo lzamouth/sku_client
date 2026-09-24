@@ -68,7 +68,7 @@ Aides de test : `--screenshot DIR` (une capture BMP par seconde) et `SKU_AUTOPIL
 ./release.sh 4.0.0            # ou 4.0.0-beta1 : version estampillée dans les trois binaires
 ```
 
-Produit dans `dist/<version>/` : `SkunkcraftsUpdater-<v>.zip` (les trois clients graphiques, mode « posé dans X-Plane »), `SkunkcraftsUpdater-<v>-windows-setup.exe` (NSIS, `makensis` requis), `SkunkcraftsUpdater-<v>-macos.zip` (`.app` universel, arm64 signé ad hoc — jamais de `strip` après l'édition de liens, les symboles sont retirés par le linker), `SkunkcraftsUpdater-<v>-x86_64.AppImage` (runtime statique officiel + squashfs gzip fabriqué dans le conteneur, pas d'`appimagetool` ; gzip parce que libappimage, donc l'intégration AppImageLauncher, ne lit pas zstd), `sku-cli-<v>.zip`.
+Produit dans `dist/<version>/`, un téléchargement par plateforme et mode d'installation : `SkunkcraftsUpdater-<v>-windows.zip` et `-linux.zip` (le programme seul, à poser dans X-Plane ou ailleurs), `SkunkcraftsUpdater-<v>-windows-setup.exe` (NSIS, `makensis` requis), `SkunkcraftsUpdater-<v>-macos.zip` (`.app` universel, arm64 signé ad hoc — jamais de `strip` après l'édition de liens, les symboles sont retirés par le linker), `SkunkcraftsUpdater-<v>-x86_64.AppImage` (runtime statique officiel + squashfs gzip fabriqué dans le conteneur, pas d'`appimagetool` ; gzip parce que libappimage, donc l'intégration AppImageLauncher, ne lit pas zstd), `sku-cli-<v>.zip`.
 
 Icônes : `packaging/icons/icon.png` → `.ico` (ImageMagick) et `.icns` (`tools/make_icns.py`). Ressource Windows (icône, infos de version) : `packaging/windows/app.rc.in`.
 

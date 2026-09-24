@@ -1,9 +1,11 @@
 #!/bin/bash
-# Builds the three targets with a version number and assembles the deliverables in dist/<version>/:
-#   SkunkcraftsUpdater-<v>.zip               the three GUI clients (drop-in-X-Plane mode) + README + notices
+# Builds the three targets with a version number and assembles the deliverables in dist/<version>/,
+# one download per platform and install mode (plus the CLI):
+#   SkunkcraftsUpdater-<v>-windows.zip       SkunkcraftsUpdater.exe, to drop anywhere (X-Plane folder or not)
 #   SkunkcraftsUpdater-<v>-windows-setup.exe NSIS installer
-#   SkunkcraftsUpdater-<v>-macos.zip         SkunkcraftsUpdater.app
-#   SkunkcraftsUpdater-<v>-x86_64.AppImage   Linux
+#   SkunkcraftsUpdater-<v>-macos.zip         SkunkcraftsUpdater.app, to drop anywhere
+#   SkunkcraftsUpdater-<v>-linux.zip         SkunkcraftsUpdater_lin, to drop anywhere
+#   SkunkcraftsUpdater-<v>-x86_64.AppImage   Linux, integrates with the desktop menu
 #   sku-cli-<v>.zip                          command-line client for the three OS
 #   depot/                                   the same packages under fixed names + config + changelog: the
 #                                            client's own update depot, to push with xp_depot (CHANGELOG.txt
@@ -43,8 +45,9 @@ mv "$STAGE/SkunkcraftsUpdater-macos.zip" "$DIST/SkunkcraftsUpdater-$VER-macos.zi
 # safety net: the arm64 slice must carry its ad-hoc signature
 [ "$($OTOOL -arch arm64 -l "$STAGE/SkunkcraftsUpdater.app/Contents/MacOS/SkunkcraftsUpdater" | grep -c LC_CODE_SIGNATURE)" = 1 ] || { echo "arm64 slice is not signed" >&2; exit 1; }
 
-echo "=== zip (drop-in-X-Plane mode, three OS)"
-( cd "$STAGE" && zip -qry "$DIST/SkunkcraftsUpdater-$VER.zip" SkunkcraftsUpdater_lin SkunkcraftsUpdater.exe SkunkcraftsUpdater.app README.txt THIRD_PARTY_NOTICES.txt )
+echo "=== standalone zips (Windows, Linux; the macOS one comes from make_app.sh)"
+( cd "$STAGE" && zip -qr "$DIST/SkunkcraftsUpdater-$VER-windows.zip" SkunkcraftsUpdater.exe README.txt THIRD_PARTY_NOTICES.txt )
+( cd "$STAGE" && zip -qr "$DIST/SkunkcraftsUpdater-$VER-linux.zip" SkunkcraftsUpdater_lin README.txt THIRD_PARTY_NOTICES.txt )
 
 echo "=== Windows installer"
 makensis -V2 -DVERSION="$VER" -DSTAGE="$STAGE" -DOUT="$DIST/SkunkcraftsUpdater-$VER-windows-setup.exe" "$ROOT/packaging/windows/installer.nsi"
@@ -82,9 +85,9 @@ echo "=== client depot: dist/$VER/depot, to copy into the depot folder and push 
 DEPOT="$DIST/depot"
 mkdir -p "$DEPOT"
 cp "$DIST/SkunkcraftsUpdater-$VER-windows-setup.exe" "$DEPOT/SkunkcraftsUpdater-windows-setup.exe"
-( cd "$STAGE" && zip -qr "$DEPOT/SkunkcraftsUpdater-windows.zip" SkunkcraftsUpdater.exe README.txt THIRD_PARTY_NOTICES.txt )
+cp "$DIST/SkunkcraftsUpdater-$VER-windows.zip" "$DEPOT/SkunkcraftsUpdater-windows.zip"
 cp "$DIST/SkunkcraftsUpdater-$VER-macos.zip" "$DEPOT/SkunkcraftsUpdater-macos.zip"
-( cd "$STAGE" && zip -qr "$DEPOT/SkunkcraftsUpdater-linux.zip" SkunkcraftsUpdater_lin README.txt THIRD_PARTY_NOTICES.txt )
+cp "$DIST/SkunkcraftsUpdater-$VER-linux.zip" "$DEPOT/SkunkcraftsUpdater-linux.zip"
 cp "$DIST/SkunkcraftsUpdater-$VER-x86_64.AppImage" "$DEPOT/SkunkcraftsUpdater-x86_64.AppImage"
 cp "$DIST/sku-cli-$VER.zip" "$DEPOT/sku-cli.zip"
 tr -d '\r' < "$ROOT/CHANGELOG.txt" > "$DEPOT/changelog.txt"

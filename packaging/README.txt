@@ -4,21 +4,23 @@ SkunkCrafts Updater @VERSION@
 Keeps your X-Plane 11/12 add-ons (aircraft, sceneries, plugins) up to date
 against their developers' update servers.
 
-Two ways to use it
-------------------
+Which download
+--------------
 
-1. Inside X-Plane (the classic way): copy the program for your operating
-   system into your main X-Plane folder and run it from there. One copy per
-   X-Plane installation.
+One program, five downloads; pick the one matching your system and the way
+you like to install things:
 
-     Windows   SkunkcraftsUpdater.exe
-     macOS     SkunkcraftsUpdater.app
-     Linux     SkunkcraftsUpdater_lin
+     Windows   SkunkcraftsUpdater-<version>-windows.zip        the program alone
+               SkunkcraftsUpdater-<version>-windows-setup.exe  installer (Start menu, uninstaller)
+     macOS     SkunkcraftsUpdater-<version>-macos.zip          the application bundle
+     Linux     SkunkcraftsUpdater-<version>-linux.zip          the program alone
+               SkunkcraftsUpdater-<version>-x86_64.AppImage    single file, desktop menu integration
 
-2. Installed once: use the installer for your operating system instead
-   (Windows setup, macOS zip to drop in Applications, Linux AppImage). The
-   program finds the X-Plane installations declared by X-Plane itself and
-   lets you pick one, or browse to any X-Plane folder.
+The program alone can be dropped into your main X-Plane folder (the classic
+way: it then manages that installation) or anywhere else: it finds the
+X-Plane installations declared by X-Plane itself and lets you pick one, or
+browse to any X-Plane folder. The installer, the macOS bundle in Applications
+and the AppImage work the same way from outside X-Plane.
 
 macOS: the application is not notarized. If macOS refuses to open it,
 right-click the application and choose "Open", or allow it under
