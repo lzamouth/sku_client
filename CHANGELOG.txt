@@ -1,3 +1,11 @@
+4.0.0-beta6
+- The Update / repair buttons light up when an update or a repair is available
+- Column titles above the addon list, columns resizable from the header
+- The CRC cache moves into the addon folder (skunkcrafts/crc_cache.txt) and follows the addon
+- Per-addon files under Output/skunkcrafts/updater are named after the addon folder
+- One download per platform: windows.zip, windows-setup.exe, macos.zip, linux.zip, AppImage
+- The command-line client fetches its own package (sku-cli.zip)
+
 4.0.0-beta5
 - The check for a new version of the updater runs at every start (at most once an hour) and its banner shows on every page
 
