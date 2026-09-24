@@ -62,11 +62,11 @@ static int cmd_client(char **args, int nargs)
 	char err[256], nice[32], dest[SKU_PATH_MAX];
 	int rc;
 	if (!url || !*url) url = SKU_CLIENT_DEPOT_URL;
-	rc = sku_client_check(url, NULL, &info, err, sizeof err);
+	rc = sku_client_check(url, SKU_PKG_CLI_ZIP, &info, err, sizeof err);   /* the CLI fetches the CLI package */
 	if (rc != SKU_OK) { fprintf(stderr, "cannot check %s: %s\n", url, err); return 1; }
 	printf("installed : %s\npublished : %s (%s)\ndepot     : %s%s\n", SKU_VERSION, info.version, info.newer ? "newer" : "not newer", url, info.locked ? "  [locked]" : "");
 	if (info.package[0]) { sku_nice_size(nice, sizeof nice, info.size); printf("package   : %s (%s)\n", info.package, info.size >= 0 ? nice : "size unknown"); }
-	else printf("package   : none for this platform (%s)\n", sku_client_package());
+	else printf("package   : none (%s)\n", SKU_PKG_CLI_ZIP);
 	if (nargs >= 1 && strcmp(args[0], "download") == 0) {
 		const char *dir = nargs >= 2 ? args[1] : ".";
 		rc = sku_client_download(url, &info, dir, NULL, NULL, NULL, dest, sizeof dest, err, sizeof err);
