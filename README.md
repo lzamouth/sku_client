@@ -24,6 +24,10 @@ Police d'interface Roboto (Apache 2.0), DejaVu Sans Mono pour le texte à chasse
 
 Barre de titre sous GNOME Wayland : SDL délègue la décoration à libdecor ; sans le greffon GTK (`libdecor-0-plugin-1-gtk`), libdecor dessine sa barre minimale cairo, très fine. C'est un réglage de la machine, pas du client ; `SDL_VIDEO_DRIVER=x11` est l'autre contournement, au prix d'un rendu XWayland.
 
+## Packs
+
+Guide de publication pour les développeurs dont le produit occupe plusieurs dossiers : [docs/PACKS.md](docs/PACKS.md) (anglais). Les clés de pack du cfg distant sont adoptées à la vérification, comme l'identité du dépôt.
+
 ## Mise à jour du client lui-même
 
 Le client vérifie au plus une fois par jour (préférence `client_check`, case dans Options) un dépôt au même protocole que les addons, `SKU_CLIENT_DEPOT_URL` à la compilation, `client_url` dans les préférences ensuite : si le cfg distant annonce un autre `module`, le client le suit, ce qui permet de déménager le dépôt sans recompiler. Le dépôt publie les livrables sous des noms fixes (`SkunkcraftsUpdater-windows-setup.exe`, `-windows.zip`, `-macos.zip`, `-linux.zip`, `-x86_64.AppImage`, `sku-cli.zip`), `release.sh` les prépare dans `dist/<version>/depot/` avec le cfg et le changelog (`CHANGELOG.txt`, première ligne = version, comme un changelog d'avion). Quand une version plus récente existe, un bandeau dans la liste propose « What's new » (changelog dans About, nouveautés en couleur), « Download » (le paquet de la plateforme et du mode d'installation, CRC vérifié, déposé dans `<config utilisateur>/downloads`) et « Later ». L'installation reste manuelle pour l'instant (palier 2 : remplacement en place). `SKU_NO_CLIENT_CHECK=1` désactive la vérification au démarrage (tests).

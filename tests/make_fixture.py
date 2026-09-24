@@ -53,7 +53,8 @@ for m in ("a", "b", "c"):
 	base = os.path.join(depot, "pack" + m)
 	for rel, data in pack_files[m].items():
 		write(os.path.join(base, rel), data)
-	write(os.path.join(base, "skunkcrafts_updater.cfg"), "name|Pack member %s\nmodule|http://127.0.0.1:%s/pack%s\nversion|2.0\nlocked|false\n" % (m, port, m))
+	# the depot cfg carries the pack identity too: an installed member adopts it at the first check
+	write(os.path.join(base, "skunkcrafts_updater.cfg"), "name|Pack member %s\nmodule|http://127.0.0.1:%s/pack%s\nversion|2.0\nlocked|false\npack|simpack\nmember|%s\npack_name|Sim Pack\npack_members|%s\n" % (m, port, m, m, members_decl))
 	write(os.path.join(base, "skunkcrafts_updater_whitelist.txt"), "".join("%s|%d\n" % (rel, crc(data)) for rel, data in pack_files[m].items()))
 
 # a second folder that must not be scanned as an addon (a .acf stops the walk)

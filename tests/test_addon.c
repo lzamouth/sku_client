@@ -357,7 +357,15 @@ static void test_pack(void)
 	CHECK_EQ_STR(packs.v[0].name, "Sim Pack");
 	CHECK_EQ_INT(packs.v[0].nmembers, 2);
 
-	/* member c is declared by a's local cfg but absent */
+	/* member b's local cfg declares no members; its depot does, and a check adopts the declaration */
+	for (int i = 0; i < n; i++) if (strcmp(addons[i]->member_id, "b") == 0) {
+		CHECK(sku_cfg_get(&addons[i]->local, "pack_members") == NULL);
+		CHECK_EQ_INT(sku_addon_check(addons[i], &co), SKU_OK);
+		CHECK(sku_cfg_get(&addons[i]->local, "pack_members") != NULL && strstr(sku_cfg_get(&addons[i]->local, "pack_members"), "c=Custom Scenery/Pack C="));
+		CHECK_EQ_STR(addons[i]->pack_name, "Sim Pack");
+	}
+
+	/* member c is declared by a's local cfg (and now b's) but absent */
 	CHECK_EQ_INT(sku_pack_missing(&packs.v[0], addons, &missing), 1);
 	CHECK_EQ_STR(missing[0].member_id, "c");
 	CHECK_EQ_STR(missing[0].path, "Custom Scenery/Pack C");

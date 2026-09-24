@@ -270,11 +270,18 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	if (*a->changelog && sku_path_check_relative(a->changelog) != SKU_OK) a->changelog[0] = 0;
 	sku_strlcpy(a->readme, sku_cfg_get_or(&a->remote, "readme", ""), sizeof a->readme);
 	if (*a->readme && sku_path_check_relative(a->readme) != SKU_OK) a->readme[0] = 0;
-	/* the depot may move: name/zone/module follow the remote (stable channel only) */
+	/* the depot may move: name/zone/module follow the remote (stable channel only);
+	 * so do the pack keys, which let a depot join a pack or declare new members later */
 	if (strcmp(a->channel, "stable") == 0) {
+		static const char *pack_keys[] = { "pack", "member", "pack_name", "pack_members" };
 		const char *rn = sku_cfg_get(&a->remote, "name"), *rz = sku_cfg_get(&a->remote, "zone"), *rm = sku_cfg_get(&a->remote, "module");
-		if (strcmp(a->name, rn) != 0 || strcmp(a->zone, rz) != 0 || strcmp(a->module, rm) != 0) {
-			sku_info("%s: remote identity changed (name/zone/module), following it", a->name);
+		bool changed = strcmp(a->name, rn) != 0 || strcmp(a->zone, rz) != 0 || strcmp(a->module, rm) != 0;
+		for (size_t k = 0; k < sizeof pack_keys / sizeof *pack_keys; k++) {
+			const char *rv = sku_cfg_get(&a->remote, pack_keys[k]);
+			if (rv && *rv && strcmp(rv, sku_cfg_get_or(&a->local, pack_keys[k], "")) != 0) { sku_cfg_set(&a->local, pack_keys[k], rv); changed = true; }
+		}
+		if (changed) {
+			sku_info("%s: remote identity changed (name/zone/module/pack), following it", a->name);
 			sku_cfg_set(&a->local, "name", rn);
 			sku_cfg_set(&a->local, "zone", rz);
 			sku_cfg_set(&a->local, "module", rm);
