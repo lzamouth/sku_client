@@ -50,13 +50,16 @@ cp "$STAGE/SkunkcraftsUpdater_lin" "$APPDIR/usr/bin/"
 cp "$ROOT/build/linux/src/cli/sku" "$APPDIR/usr/bin/" && strip "$APPDIR/usr/bin/sku"
 cp "$ROOT/packaging/linux/SkunkcraftsUpdater.desktop" "$APPDIR/"
 cp "$ROOT/packaging/icons/icon.png" "$APPDIR/skunkcrafts-updater.png"
+cp "$ROOT/packaging/icons/icon.png" "$APPDIR/.DirIcon"   # required by libappimage (AppImageLauncher integration)
 cp "$ROOT/packaging/icons/icon.png" "$APPDIR/usr/share/icons/hicolor/128x128/apps/skunkcrafts-updater.png"
 cp "$STAGE/README.txt" "$STAGE/THIRD_PARTY_NOTICES.txt" "$APPDIR/"
 printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/bin/SkunkcraftsUpdater_lin" "$@"\n' > "$APPDIR/AppRun"
 chmod +x "$APPDIR/AppRun"
+# gzip squashfs: read by our static runtime (zlib/zstd) AND by libappimage / AppImageLauncher (gzip/xz), which
+# zstd is not; -comp zstd would make "integrate and run" fail on users' desktops.
 # mksquashfs lives in the build container; paths are the same inside (/work = repo root)
 REL_APPDIR="${APPDIR#$ROOT/}"
-"$ROOT/docker/run.sh" mksquashfs "$REL_APPDIR" "$REL_APPDIR.squashfs" -root-owned -noappend -comp zstd -Xcompression-level 19 -b 1M -quiet
+"$ROOT/docker/run.sh" mksquashfs "$REL_APPDIR" "$REL_APPDIR.squashfs" -root-owned -noappend -comp gzip -Xcompression-level 9 -b 1M -quiet
 cat "$ROOT/deps/tools/runtime-x86_64" "$APPDIR.squashfs" > "$DIST/SkunkcraftsUpdater-$VER-x86_64.AppImage"
 chmod +x "$DIST/SkunkcraftsUpdater-$VER-x86_64.AppImage"
 rm -rf "$APPDIR" "$APPDIR.squashfs"
