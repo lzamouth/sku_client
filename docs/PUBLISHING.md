@@ -222,13 +222,115 @@ following the beta depot: either publish the release there too, or tell them
 to switch back to stable. Do not delete a beta depot while testers are on it:
 an unreachable depot shows as an error in their list.
 
-## Part 3 - Packs: a product made of several folders
+## Part 3 - On the user's side: local files and the 4.0 migration
+
+### 3.1 What the client writes
+
+Inside the product folder, the 3.x client keeps:
+
+```
+skunkcrafts_updater.cfg              the configuration (yours, then maintained by the client)
+skunkcrafts_updater_beta.cfg         the tester's beta file, if any
+skunkcrafts_updater_ignore.txt       the user's own list of paths the updater must never touch
+```
+
+The 4.0 client uses a sub-folder instead, created the first time it saves
+anything for that product (a setting changed, or the end of an update):
+
+```
+skunkcrafts/updater.cfg              the same keys, plus the channel settings
+skunkcrafts/ignore.txt               the user's ignore list
+```
+
+At that moment the three 3.x files are **merged into the new layout and
+removed**: the configuration is copied, the beta file becomes the channel
+`beta` (`channel.beta.module|...`), any `skunkcrafts_updater_beta_<x>.cfg`
+becomes the channel `<x>`, the ignore list is moved. From then on a 3.x
+client no longer sees the folder as managed; this is deliberate, a folder
+maintained by 4.0 is not to be touched by 3.x.
+
+If a 3.x file reappears later next to the `skunkcrafts/` folder (the user
+reinstalled your package over the folder, or restored a file), the 4.0
+client keeps its own file, ignores the old configuration, merges an old
+ignore list or beta file, and removes them at its next save. The files on
+disk are decided by CRC anyway, so a reinstall over an existing folder ends
+in a "repair", never in a mess.
+
+Consequences for you:
+
+- Keep shipping `skunkcrafts_updater.cfg` in your package: it is what makes
+  a fresh install recognised, by both clients.
+- When a user reports a problem, the configuration to ask for is
+  `skunkcrafts/updater.cfg` on 4.0, `skunkcrafts_updater.cfg` on 3.x, and
+  the log is `Output/skunkcrafts/updater/updater_log.txt` in the X-Plane
+  folder (4.0) or `skunkcrafts_updater_log.txt` at the X-Plane root (3.x).
+- The configuration file is never part of the whitelist, so an update never
+  overwrites the user's settings; only `name`, `zone`, `module` and
+  `version` are rewritten by the client, from your remote configuration.
+
+### 3.2 What the client never does
+
+It never deletes a file that is not in the blacklist: files the user added
+(liveries, custom profiles) survive updates. It never writes outside the
+product folder and `Output/skunkcrafts/updater/`. It never downloads while
+the depot is locked. It never creates a folder without asking (packs, 5.5).
+
+## Part 4 - Pitfalls, in order of how often they bite
+
+1. **The beta URL in the configuration** (1.6). The remote `module` is
+   copied to every user. Production URL always; the beta URL only in the
+   tester's beta file. And never ship a `skunkcrafts_updater_beta.cfg` in a
+   package or a depot: every user would be a tester.
+2. **Files the product modifies at run time**: preferences, persisted state,
+   logs written inside the product folder. If they are in the whitelist with
+   a real CRC, every check says "repair" and every update erases the user's
+   settings. Put them in the oncelist (CRC `-1`) or leave them out of the
+   depot entirely.
+3. **Stale CDN cache**. After an upload, the lists and the configuration
+   must be fresh, or clients compare new files against old lists and loop on
+   "repair". `xp_depot` purges the Bunny cache itself; on another CDN, purge
+   or keep the TTL of the `.cfg` and `.txt` files short. The 4.0 client asks
+   the server whether a list changed (`ETag` / `Last-Modified`), which a
+   proper static host answers for free.
+4. **Case and spelling of paths**. `Objects/Wing.obj` and `objects/wing.obj`
+   are two different files on Linux and macOS. Generate the lists from the
+   real files (xp_depot does), never type them.
+5. **Uploading in the wrong order by hand**: configuration first, files
+   after. Users who check in between download a mix. Lock, files, lists,
+   configuration with `locked|false`. An interrupted upload leaves the depot
+   locked: run `xp_depot ... unlock` or simply upload again.
+6. **A depot that serves a web page**. A wrong URL, a hotlink protection or
+   a login page answer HTML with status 200. The client refuses it ("server
+   returned a web page instead of ...") and shows an error; check the URL in
+   a browser, it must display the raw configuration text. The certificate
+   must be valid for HTTPS: the client trusts the system store on Windows,
+   the Mozilla bundle elsewhere.
+7. **Changing `module` in the remote configuration** moves every user at
+   their next check, one way. A typo there breaks everyone until you fix it
+   at the old URL. Test with `xp_depot ... check` and a copy of the product
+   before publishing a moved depot.
+8. **Version strings**: compared as text, so `12.0` and `12.0.0` differ, and
+   so do `12.0r1` and `12.0R1`. Keep one convention. `xp_ship` copies the
+   changelog's first line into the configuration, which keeps both aligned.
+9. **Text file hygiene**: `|` cannot appear in a path or a name (it is the
+   separator); no byte order mark; LF or CRLF both work but keep one; no
+   trailing spaces in paths.
+10. **Exotic file names**: the client URL-encodes paths, so spaces and
+    accents work when the server decodes them, which static hosts do. Very
+    long paths hit the Windows limit at 260 characters unless long paths are
+    enabled: keep folder trees shallow.
+11. **Removing a file**: forgetting the blacklist leaves it on every disk
+    forever. Renaming a file is a removal plus an addition.
+12. **Legacy zones**: `zone|aerobask` and the like are aliases of a CDN that
+    is being retired. Use `zone|custom` with the full URL in `module`.
+
+## Part 5 - Packs: a product made of several folders
 
 SkunkCrafts Updater 4.0 - guide for developers whose product is installed as
 several folders (for example a scenery library plus several regional scenery
 folders). Applies to any developer whose product installs as several folders.
 
-### 3.1 What a pack is
+### 5.1 What a pack is
 
 Users see one entry in the updater instead of one per folder: the pack name,
 one version, one status, and one "Update" button that updates every folder.
@@ -244,7 +346,7 @@ Users rename scenery folders (to sort `scenery_packs.ini`) and move things
 around. The client therefore never relies on folder names: members are
 recognised by an identity written in their cfg, wherever the folder is.
 
-### 3.2 One depot per member
+### 5.2 One depot per member
 
 Publish each folder as a normal depot, with `xp_depot` or by hand, at any URL,
 in any zone. Per member folder, on the server:
@@ -254,7 +356,7 @@ skunkcrafts_updater.cfg               (uploaded from skunkcrafts_updater_config.
 skunkcrafts_updater_whitelist.txt     path|crc32        (generated)
 skunkcrafts_updater_sizeslist.txt     path|bytes        (generated)
 skunkcrafts_updater_blacklist.txt     files to delete   (optional)
-changelog.txt                         optional, see 3.6
+changelog.txt                         optional, see 5.6
 ... the files of that folder
 ```
 
@@ -262,7 +364,7 @@ The file lists and the lock work per member. Uploading member A does not lock
 member B; a user who checks for updates while you upload A sees A locked and B
 up to date, which is harmless.
 
-### 3.3 The cfg of a member
+### 5.3 The cfg of a member
 
 A member's `skunkcrafts_updater.cfg` is the usual one plus three keys:
 
@@ -302,7 +404,7 @@ as it already follows a changed `name` or `module`. So existing users are
 grouped into the pack as soon as your depots carry the keys, without
 reinstalling.
 
-### 3.4 Declaring the members: `pack_members`
+### 5.4 Declaring the members: `pack_members`
 
 One member, the "main" one, lists every member of the pack with a default
 folder and the URL of its depot:
@@ -314,7 +416,7 @@ pack_members|<member>=<default folder>=<depot URL>;<member>=<default folder>=<de
 - `<member>` is the member identifier (the `member` key of that folder).
 - `<default folder>` is a path relative to the X-Plane folder, with `/`
   separators: `Custom Scenery/simHeaven_X-World_Europe-1-vfr`. It is used only
-  when that member is not installed anywhere (see 3.5). It may contain
+  when that member is not installed anywhere (see 5.5). It may contain
   spaces. It must stay inside the X-Plane folder (`..` and absolute paths are
   rejected) and outside X-Plane's own folders (`Resources/default *`,
   `Global Scenery`, `Custom Data`, `Output`, ...): a member is a folder inside
@@ -334,7 +436,7 @@ pack_members|europe-library=Custom Scenery/simHeaven_X-World_Europe-0-library=ht
 Every member may carry the line; the client merges them. Keeping it on one
 member only is simpler to maintain.
 
-### 3.5 What the client does
+### 5.5 What the client does
 
 **Grouping.** After scanning the X-Plane folder, every folder whose cfg has
 the same `pack` value becomes one entry named after `pack_name` (or the pack
@@ -364,7 +466,7 @@ from their own depot as long as it exists. Publishing an empty depot for it
 even when a member's files did not change: the pack then shows one version
 instead of "mixed", and users understand what they have.
 
-### 3.6 Changelog
+### 5.6 Changelog
 
 Each member may publish a `changelog.txt` next to its cfg (the same file you
 ship in the folder): the newest version first as a bare line, e.g. `4.3.0`,
@@ -373,7 +475,7 @@ client shows it in the member's details and highlights the versions newer
 than the installed one. For a pack, the simplest is one changelog, on the
 main member, covering the whole product.
 
-### 3.7 Checklist for a first publication
+### 5.7 Checklist for a first publication
 
 1. Choose the pack identifier and one member identifier per folder. They are
    permanent.
@@ -386,7 +488,7 @@ main member, covering the whole product.
    updater, accept the creation of the missing members, let it download.
 6. Test with a renamed member folder: it must still appear inside the pack.
 
-### 3.8 Reference
+### 5.8 Reference
 
 ```
 pack|<pack id>                                   every member
