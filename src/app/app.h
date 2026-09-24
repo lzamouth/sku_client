@@ -183,5 +183,8 @@ void ui_bevel(app *ap, const struct nk_rect *r, bool raised);
 bool ui_button(app *ap, const char *label);
 bool ui_tab(app *ap, const char *label, bool active);
 int  ui_combo(app *ap, const char **items, int n, int selected, int item_height, float w, float h);
+struct nk_color;
+int  ui_combo_ex(app *ap, const char **items, const struct nk_color *colors, int n, int selected, int item_height, float w, float h);
+struct nk_color ui_channel_color(app *ap, const char *channel);   /* stable blue, the others yellow */
 
 #endif

@@ -65,23 +65,52 @@ bool ui_tab(app *ap, const char *label, bool active)
 	return hit;
 }
 
-/* A combo box whose popup stands out from the window background. */
-int ui_combo(app *ap, const char **items, int n, int selected, int item_height, float w, float h)
+/* A combo box whose popup stands out from the window background, with a thin
+ * separator between entries. colors (optional) gives one text color per item. */
+int ui_combo_ex(app *ap, const char **items, const struct nk_color *colors, int n, int selected, int item_height, float w, float h)
 {
 	struct nk_context *ctx = ap->ctx;
 	struct nk_rect r = nk_widget_bounds(ctx);
 	struct nk_color popup = ap->dark ? (ap->relief ? nk_rgb(64, 64, 64) : nk_rgb(52, 52, 52)) : (ap->relief ? nk_rgb(212, 212, 212) : nk_rgb(255, 255, 255));
-	int now;
+	struct nk_color line = ap->dark ? nk_rgb(100, 100, 100) : nk_rgb(170, 170, 170);
+	int now = selected;
+
+	if (colors) {
+		nk_style_push_color(ctx, &ctx->style.combo.label_normal, colors[selected]);
+		nk_style_push_color(ctx, &ctx->style.combo.label_hover, colors[selected]);
+		nk_style_push_color(ctx, &ctx->style.combo.label_active, colors[selected]);
+	}
 	/* a combo popup is a "dynamic" panel: Nuklear paints it row by row with window.background */
 	nk_style_push_color(ctx, &ctx->style.window.background, popup);
 	nk_style_push_style_item(ctx, &ctx->style.contextual_button.normal, nk_style_item_color(popup));
 	nk_style_push_float(ctx, &ctx->style.window.combo_border, 1);
-	nk_style_push_color(ctx, &ctx->style.window.combo_border_color, ap->dark ? nk_rgb(120, 120, 120) : nk_rgb(120, 120, 120));
-	now = nk_combo(ctx, items, n, selected, item_height, nk_vec2(w, h));
+	nk_style_push_color(ctx, &ctx->style.window.combo_border_color, line);
+	if (nk_combo_begin_label(ctx, items[selected], nk_vec2(w, h))) {
+		float spacing = ctx->style.window.spacing.y;
+		nk_layout_row_dynamic(ctx, (float)item_height, 1);
+		for (int i = 0; i < n; i++) {
+			struct nk_rect ib = nk_widget_bounds(ctx);
+			if (colors) {
+				nk_style_push_color(ctx, &ctx->style.contextual_button.text_normal, colors[i]);
+				nk_style_push_color(ctx, &ctx->style.contextual_button.text_hover, colors[i]);
+				nk_style_push_color(ctx, &ctx->style.contextual_button.text_active, colors[i]);
+			}
+			if (nk_combo_item_label(ctx, items[i], NK_TEXT_LEFT)) now = i;
+			if (colors) { nk_style_pop_color(ctx); nk_style_pop_color(ctx); nk_style_pop_color(ctx); }
+			if (i < n - 1) nk_stroke_line(nk_window_get_canvas(ctx), ib.x, ib.y + ib.h + spacing / 2, ib.x + ib.w, ib.y + ib.h + spacing / 2, 1, line);
+		}
+		nk_combo_end(ctx);
+	}
 	nk_style_pop_color(ctx);
 	nk_style_pop_float(ctx);
 	nk_style_pop_style_item(ctx);
 	nk_style_pop_color(ctx);
+	if (colors) { nk_style_pop_color(ctx); nk_style_pop_color(ctx); nk_style_pop_color(ctx); }
 	ui_bevel(ap, &r, true);
 	return now;
+}
+
+int ui_combo(app *ap, const char **items, int n, int selected, int item_height, float w, float h)
+{
+	return ui_combo_ex(ap, items, NULL, n, selected, item_height, w, h);
 }

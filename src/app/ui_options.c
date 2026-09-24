@@ -59,19 +59,22 @@ void ui_options(app *ap)
 	}
 
 	sku_snprintf(buf, sizeof buf, "Max concurrent downloads: %d", p->downloads);
-	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
+	nk_layout_row(ctx, NK_DYNAMIC, row, 3, r3);
 	nk_label(ctx, buf, NK_TEXT_RIGHT);
 	v = p->downloads; if (nk_slider_int(ctx, 1, &v, 32, 1) && v != p->downloads) { p->downloads = v; changed = true; }
+	nk_label(ctx, "", NK_TEXT_LEFT);
 
 	sku_snprintf(buf, sizeof buf, "Max concurrent CRC checks: %d", p->crc_threads);
-	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
+	nk_layout_row(ctx, NK_DYNAMIC, row, 3, r3);
 	nk_label(ctx, buf, NK_TEXT_RIGHT);
 	v = p->crc_threads; if (nk_slider_int(ctx, 1, &v, 64, 1) && v != p->crc_threads) { p->crc_threads = v; changed = true; }
+	nk_label(ctx, "", NK_TEXT_LEFT);
 
 	sku_snprintf(buf, sizeof buf, "Text size: %d", p->text_size);
-	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
+	nk_layout_row(ctx, NK_DYNAMIC, row, 3, r3);
 	nk_label(ctx, buf, NK_TEXT_RIGHT);
 	v = p->text_size; if (nk_slider_int(ctx, 10, &v, 32, 1) && v != p->text_size) { app_set_text_size(ap, v); changed = true; }
+	nk_label(ctx, "", NK_TEXT_LEFT);
 
 	nk_layout_row_dynamic(ctx, row / 2, 1); nk_label(ctx, "", NK_TEXT_LEFT);
 

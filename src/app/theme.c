@@ -4,6 +4,12 @@
 #include "nuklear_config.h"
 #include <string.h>
 
+struct nk_color ui_channel_color(app *ap, const char *channel)
+{
+	if (strcmp(channel, "stable") == 0) return ap->dark ? nk_rgb(100, 180, 255) : nk_rgb(0, 110, 190);
+	return ap->dark ? nk_rgb(255, 210, 60) : nk_rgb(170, 120, 0);
+}
+
 struct nk_color status_color(sku_status s, bool dark)
 {
 	switch (s) {
@@ -134,7 +140,7 @@ void theme_apply(struct nk_context *ctx, bool dark, bool relief)
 		struct nk_color line = dark ? nk_rgba(100, 100, 100, 255) : nk_rgba(150, 150, 150, 255);
 		ctx->style.button.border = 1;            ctx->style.button.border_color = line;
 		ctx->style.combo.border = 1;             ctx->style.combo.border_color = line;
-		ctx->style.contextual_button.border = 1; ctx->style.contextual_button.border_color = line;
+		ctx->style.contextual_button.border = 0;   /* entries are separated by a line (widgets.c) */
 		ctx->style.contextual_button.rounding = 0;
 		ctx->style.window.combo_border = 1;      ctx->style.window.combo_border_color = line;
 	}
