@@ -53,11 +53,13 @@ Aides de test : `--screenshot DIR` (une capture BMP par seconde) et `SKU_AUTOPIL
 ./release.sh 4.0.0            # ou 4.0.0-beta1 : version estampillée dans les trois binaires
 ```
 
-Produit dans `dist/<version>/` : `SkunkcraftsUpdater-<v>.zip` (les trois clients graphiques, mode « posé dans X-Plane »), `SkunkcraftsUpdater-<v>-windows-setup.exe` (NSIS, `makensis` requis), `SkunkcraftsUpdater-<v>-macos.zip` (`.app` universel, arm64 signé ad hoc — jamais de `strip` après l'édition de liens, les symboles sont retirés par le linker), `SkunkcraftsUpdater-<v>-x86_64.AppImage` (runtime statique officiel + squashfs zstd fabriqué dans le conteneur, pas d'`appimagetool`), `sku-cli-<v>.zip`.
+Produit dans `dist/<version>/` : `SkunkcraftsUpdater-<v>.zip` (les trois clients graphiques, mode « posé dans X-Plane »), `SkunkcraftsUpdater-<v>-windows-setup.exe` (NSIS, `makensis` requis), `SkunkcraftsUpdater-<v>-macos.zip` (`.app` universel, arm64 signé ad hoc — jamais de `strip` après l'édition de liens, les symboles sont retirés par le linker), `SkunkcraftsUpdater-<v>-x86_64.AppImage` (runtime statique officiel + squashfs gzip fabriqué dans le conteneur, pas d'`appimagetool` ; gzip parce que libappimage, donc l'intégration AppImageLauncher, ne lit pas zstd), `sku-cli-<v>.zip`.
 
 Icônes : `packaging/icons/icon.png` → `.ico` (ImageMagick) et `.icns` (`tools/make_icns.py`). Ressource Windows (icône, infos de version) : `packaging/windows/app.rc.in`.
 
 Piège de test : cette machine a **AppImageLauncher**, qui intercepte toute exécution d'AppImage via `binfmt_misc` (y compris dans les conteneurs Docker, où l'exécution échoue alors avec « No such file or directory »). Pour tester une AppImage sans lui, mettre à zéro les 3 octets magiques à l'offset 8 d'une copie (`printf '\x00\x00\x00' | dd of=copie bs=1 seek=8 conv=notrunc`), puis l'exécuter normalement ou avec `APPIMAGE_EXTRACT_AND_RUN=1`.
+
+Incompatibilité connue : **AppImageLauncher 2.2.0** (dernière version stable, 2020, celle des dépôts et de cette machine) ne sait pas lancer les AppImages construites avec le runtime statique moderne, le nôtre comme celui d'`appimagetool` (« fuse: memory allocation failed », ticket amont AppImage/type2-runtime#121). L'intégration dans le menu marche, le lancement non. Corrigé seulement dans AppImageLauncher 3.0 alpha. Revenir à l'ancien runtime dynamique n'est pas une option : il exige libfuse2, absent d'Ubuntu 22.04 et suivants. Le zip avec `SkunkcraftsUpdater_lin` reste la solution universelle.
 
 ## Tests
 
