@@ -68,6 +68,8 @@ Aides de test : `--screenshot DIR` (une capture BMP par seconde) et `SKU_AUTOPIL
 
 ## Release
 
+Publication d'une version empaquetée sur le dépôt du client et le CDN du store : `docs/publish.sh <version>`, décrit dans [docs/PUBLISH.md](docs/PUBLISH.md).
+
 ```bash
 ./release.sh 4.0.0            # ou 4.0.0-beta1 : version estampillée dans les trois binaires
 ```
