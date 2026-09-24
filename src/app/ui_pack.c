@@ -143,17 +143,19 @@ void ui_pack(app *ap)
 	/* members */
 	nk_layout_row_dynamic(ctx, row, 1);
 	nk_label(ctx, "Members (click one for its details):", NK_TEXT_LEFT);
-	nk_layout_row_dynamic(ctx, nk_window_get_height(ctx) - (ap->nmissing ? 8 + ap->nmissing : 6) * row - 20, 1);
+	{
+		static const char *titles[] = { "Channel", "Name", "Version", "Status" };
+		ui_column_header(ap, titles, ui_list_default_cols, ap->prefs.cols, 4, row - 4);
+	}
+	nk_layout_row_dynamic(ctx, nk_window_get_height(ctx) - (ap->nmissing ? 9 + ap->nmissing : 7) * row - 20, 1);
 	if (nk_group_begin(ctx, "members", NK_WINDOW_BORDER)) {
 		for (int m = 0; m < p->nmembers; m++) {
 			app_item *it = &ap->items[p->members[m]];
 			bool clicked = false;
 			nk_bool sel = nk_false;
-			nk_layout_row_template_begin(ctx, row - 4);
-			nk_layout_row_template_push_static(ctx, 250);
-			nk_layout_row_template_push_static(ctx, 100);
-			nk_layout_row_template_push_dynamic(ctx);
-			nk_layout_row_template_end(ctx);
+			nk_layout_row(ctx, NK_DYNAMIC, row - 4, 4, ap->prefs.cols);
+			clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
+			if (it->nchannels) nk_label_colored(ctx, it->channel, NK_TEXT_CENTERED, ui_channel_color(ap, it->channel)); else nk_label(ctx, "", NK_TEXT_LEFT);
 			clicked |= nk_selectable_label(ctx, it->name, NK_TEXT_LEFT, &sel) != 0;
 			clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
 			nk_label(ctx, it->version, NK_TEXT_LEFT);

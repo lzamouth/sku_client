@@ -114,3 +114,58 @@ int ui_combo(app *ap, const char **items, int n, int selected, int item_height, 
 {
 	return ui_combo_ex(ap, items, NULL, n, selected, item_height, w, h);
 }
+
+const float ui_list_default_cols[4] = { 0.12f, 0.32f, 0.10f, 0.46f };
+
+void ui_column_header(app *ap, const char **titles, const float *defaults, float *cols, int n, float row)
+{
+	struct nk_context *ctx = ap->ctx;
+	struct nk_input *in = &ctx->input;
+	static int dragging = -1;
+	static float start_x, start[8];
+	static SDL_Cursor *ew_cursor;
+	static bool cursor_set;
+	struct nk_rect cell[8];
+	struct nk_command_buffer *out;
+	struct nk_color line = ap->dark ? nk_rgb(100, 100, 100) : nk_rgb(150, 150, 150);
+	struct nk_color accent = ap->dark ? nk_rgb(0, 191, 255) : nk_rgb(0, 110, 190);
+	struct nk_color title = ap->dark ? nk_rgb(170, 170, 170) : nk_rgb(90, 90, 90);
+	float x0, x1, total;
+	int hover = -1;
+
+	if (n > 8) n = 8;
+	nk_layout_row(ctx, NK_DYNAMIC, row, n, cols);
+	for (int i = 0; i < n; i++) {
+		cell[i] = nk_widget_bounds(ctx);
+		nk_label_colored(ctx, titles[i], NK_TEXT_LEFT, title);
+	}
+	out = nk_window_get_canvas(ctx);
+	x0 = cell[0].x; x1 = cell[n - 1].x + cell[n - 1].w; total = x1 - x0;
+	if (total <= 0) return;
+
+	for (int i = 0; i < n - 1; i++) {
+		float bx = cell[i].x + cell[i].w + ctx->style.window.spacing.x / 2;
+		struct nk_rect zone = nk_rect(bx - 5, cell[i].y, 10, cell[i].h);
+		bool over = nk_input_is_mouse_hovering_rect(in, zone);
+		if (over) hover = i;
+		nk_stroke_line(out, bx, cell[i].y + 2, bx, cell[i].y + cell[i].h - 2, 1, (over || dragging == i) ? accent : line);
+		if (over && nk_input_is_mouse_pressed(in, NK_BUTTON_DOUBLE)) { memcpy(cols, defaults, (size_t)n * sizeof *cols); prefs_save(ap); dragging = -1; }
+		else if (dragging < 0 && over && nk_input_is_mouse_pressed(in, NK_BUTTON_LEFT)) { dragging = i; start_x = in->mouse.pos.x; memcpy(start, cols, (size_t)n * sizeof *cols); }
+	}
+	if (dragging >= 0) {
+		if (nk_input_is_mouse_down(in, NK_BUTTON_LEFT)) {
+			int i = dragging;
+			float d = (in->mouse.pos.x - start_x) / total, a = start[i] + d, b = start[i + 1] - d;
+			if (a < 0.05f) { b += a - 0.05f; a = 0.05f; }
+			if (b < 0.05f) { a += b - 0.05f; b = 0.05f; }
+			cols[i] = a; cols[i + 1] = b;
+		} else { dragging = -1; prefs_save(ap); }
+	}
+	nk_stroke_line(out, x0, cell[0].y + cell[0].h + 1, x1, cell[0].y + cell[0].h + 1, 1, line);
+
+	/* resize cursor over a boundary */
+	if (hover >= 0 || dragging >= 0) {
+		if (!ew_cursor) ew_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE);
+		if (ew_cursor && !cursor_set) { SDL_SetCursor(ew_cursor); cursor_set = true; }
+	} else if (cursor_set) { SDL_SetCursor(SDL_GetDefaultCursor()); cursor_set = false; }
+}

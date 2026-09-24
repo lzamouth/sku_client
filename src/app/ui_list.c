@@ -39,7 +39,8 @@ void ui_list(app *ap)
 	int nvisible = 0, *idx;
 	bool busy = app_any_busy(ap);
 	char buf[300];
-	static const float cols[] = { 0.12f, 0.32f, 0.10f, 0.46f };   /* channel, name, version, status */
+	float *cols = ap->prefs.cols;   /* channel, name, version, status: dragged from the header */
+	static const char *titles[] = { "Channel", "Name", "Version", "Status" };
 
 	ui_client_banner(ap);
 
@@ -75,7 +76,8 @@ void ui_list(app *ap)
 		if (any) idx[nvisible++] = ap->nitems + p;
 	}
 
-	nk_layout_row_dynamic(ctx, nk_window_get_height(ctx) - 3 * row - 40, 1);
+	ui_column_header(ap, titles, ui_list_default_cols, cols, 4, row - 4);
+	nk_layout_row_dynamic(ctx, nk_window_get_height(ctx) - 4 * row - 40, 1);
 	{
 		struct nk_list_view view;
 		struct nk_rect list_bounds = nk_widget_bounds(ctx);

@@ -240,7 +240,7 @@ void app_apply_theme(app *ap)
 
 /* ------------------------------------------------------------ test hook */
 
-/* SKU_AUTOPILOT=<file>: lines "<seq> click <x> <y>" (pixels, as seen in a
+/* SKU_AUTOPILOT=<file>: lines "<seq> click <x> <y>" or "<seq> drag <x> <y> <x2> <y2>" (pixels, as seen in a
  * --screenshot frame) are fed straight into Nuklear's input, once each, over
  * three frames: hover (Nuklear activates a window only when it is hovered
  * with the button up), press (buttons trigger on press), release. Lets the
@@ -249,7 +249,7 @@ void app_apply_theme(app *ap)
 static void autopilot(app *ap)
 {
 	static const char *file;
-	static int last_seq = 0, cx, cy, phase;   /* phase: 0 idle, 1 hovered, 2 pressed */
+	static int last_seq = 0, cx, cy, dx, dy, phase;   /* phase: 0 idle, 1 hovered, 2 pressed, 3 dragged */
 	static bool checked;
 	char *text;
 	if (!checked) { file = getenv("SKU_AUTOPILOT"); checked = true; }
@@ -261,7 +261,12 @@ static void autopilot(app *ap)
 		return;
 	}
 	if (phase == 2) {
-		nk_input_button(ap->ctx, NK_BUTTON_LEFT, (int)(cx / ap->scale), (int)(cy / ap->scale), nk_false);
+		if (dx == cx && dy == cy) { nk_input_button(ap->ctx, NK_BUTTON_LEFT, (int)(cx / ap->scale), (int)(cy / ap->scale), nk_false); phase = 0; }
+		else { nk_input_motion(ap->ctx, (int)(dx / ap->scale), (int)(dy / ap->scale)); phase = 3; }   /* drag: move with the button down */
+		return;
+	}
+	if (phase == 3) {
+		nk_input_button(ap->ctx, NK_BUTTON_LEFT, (int)(dx / ap->scale), (int)(dy / ap->scale), nk_false);
 		phase = 0;
 		return;
 	}
@@ -269,11 +274,17 @@ static void autopilot(app *ap)
 	{
 		char *cursor = text, *line;
 		while ((line = sku_next_line(&cursor)) != NULL) {
-			int seq, x, y;
+			int seq, x, y, x2, y2;
 			if (sscanf(line, "%d click %d %d", &seq, &x, &y) == 3 && seq > last_seq) {
-				last_seq = seq; cx = x; cy = y; phase = 1;
+				last_seq = seq; cx = dx = x; cy = dy = y; phase = 1;
 				nk_input_motion(ap->ctx, (int)(x / ap->scale), (int)(y / ap->scale));
 				sku_info("autopilot: click %d %d", x, y);
+				break;
+			}
+			if (sscanf(line, "%d drag %d %d %d %d", &seq, &x, &y, &x2, &y2) == 5 && seq > last_seq) {
+				last_seq = seq; cx = x; cy = y; dx = x2; dy = y2; phase = 1;
+				nk_input_motion(ap->ctx, (int)(x / ap->scale), (int)(y / ap->scale));
+				sku_info("autopilot: drag %d %d -> %d %d", x, y, x2, y2);
 				break;
 			}
 		}
