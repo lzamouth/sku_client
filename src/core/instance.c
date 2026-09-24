@@ -4,6 +4,7 @@
 #include "log.h"
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #define LOG_ROTATE_BYTES (2 * 1024 * 1024)
 
@@ -99,23 +100,33 @@ int sku_instance_known(sku_strlist *out)
 	return SKU_OK;
 }
 
+/* "<folder name>-<hash>": readable in the cache folder, unique per full path
+ * (two addons may share a folder name in different places). */
 static void addon_key(const char *addon_dir, char *out, size_t n)
 {
 	uint64_t h = 1469598103934665603ULL;
+	const char *base = sku_path_basename(addon_dir);
+	char name[48];
+	size_t k = 0;
 	for (const char *s = addon_dir; *s; s++) { h ^= (unsigned char)*s; h *= 1099511628211ULL; }
-	sku_snprintf(out, n, "%016llx", (unsigned long long)h);
+	for (const char *s = base; *s && k < sizeof name - 1; s++) {
+		unsigned char c = (unsigned char)*s;
+		name[k++] = (c < 128 && (isalnum(c) || c == '.' || c == '-' || c == '_')) ? (char)c : '_';
+	}
+	name[k] = 0;
+	sku_snprintf(out, n, "%s-%08llx", k ? name : "addon", (unsigned long long)(h & 0xFFFFFFFFULL));
 }
 
 void sku_instance_cache_path(const sku_instance *in, const char *addon_dir, char *out, size_t n)
 {
-	char key[32];
+	char key[64];
 	addon_key(addon_dir, key, sizeof key);
 	sku_snprintf(out, n, "%s/cache/%s.crc", in->data_dir, key);
 }
 
 void sku_instance_report_path(const sku_instance *in, const char *addon_dir, char *out, size_t n)
 {
-	char key[32];
+	char key[64];
 	addon_key(addon_dir, key, sizeof key);
 	sku_snprintf(out, n, "%s/reports/%s.txt", in->data_dir, key);
 }

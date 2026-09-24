@@ -28,6 +28,10 @@ Barre de titre sous GNOME Wayland : SDL délègue la décoration à libdecor ; s
 
 Guide de publication pour les développeurs dont le produit occupe plusieurs dossiers : [docs/PUBLISHING.md](docs/PUBLISHING.md) (anglais : dépôts, betas multiples, packs). Les clés de pack du cfg distant sont adoptées à la vérification, comme l'identité du dépôt.
 
+## Données par instance
+
+`Output/skunkcrafts/updater/` dans le dossier X-Plane : `updater_log.txt` (rotation à 2 Mo), `cache/<dossier de l'addon>-<empreinte>.crc` (cache CRC : `chemin|taille|mtime|crc32`, une ligne par fichier, invalidé par taille ou date), `cache/<…>.<liste>` et `.meta` (copies des listes distantes avec leurs validateurs HTTP), `cache/<…>.changelog.txt` / `.readme.txt`, `reports/<…>.txt` (dernier rapport), `custom_addons.txt`. L'empreinte est celle du chemin complet, deux addons de même nom ne se confondent donc pas.
+
 ## Mise à jour du client lui-même
 
 Le client vérifie à chaque démarrage, au plus une fois par heure (préférence `client_check`, case dans Options) un dépôt au même protocole que les addons, `SKU_CLIENT_DEPOT_URL` à la compilation, `client_url` dans les préférences ensuite : si le cfg distant annonce un autre `module`, le client le suit, ce qui permet de déménager le dépôt sans recompiler. Le dépôt publie les livrables sous des noms fixes (`SkunkcraftsUpdater-windows-setup.exe`, `-windows.zip`, `-macos.zip`, `-linux.zip`, `-x86_64.AppImage`, `sku-cli.zip`), `release.sh` les prépare dans `dist/<version>/depot/` avec le cfg et le changelog (`CHANGELOG.txt`, première ligne = version, comme un changelog d'avion). Quand une version plus récente existe, un bandeau au-dessus de toutes les vues propose « What's new » (changelog dans About, nouveautés en couleur), « Download » (le paquet de la plateforme et du mode d'installation, CRC vérifié, déposé dans `<config utilisateur>/downloads`) et « Later ». L'installation reste manuelle pour l'instant (palier 2 : remplacement en place). `SKU_NO_CLIENT_CHECK=1` désactive la vérification au démarrage (tests).
