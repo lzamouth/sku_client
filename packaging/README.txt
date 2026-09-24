@@ -27,6 +27,10 @@ System Settings > Privacy & Security.
 Linux: an AppImage needs no installation; make it executable and run it.
 The program only depends on the system C library (glibc 2.35 or newer, i.e.
 Ubuntu 22.04 or any distribution from 2022 onwards).
+If you use AppImageLauncher, you need version 3.0 or newer: the old 2.2
+release (2020) can add the AppImage to your menu but cannot start it, like
+every AppImage built with the current runtime. In that case simply use
+SkunkcraftsUpdater_lin from the zip, which needs nothing at all.
 
 What it writes
 --------------
