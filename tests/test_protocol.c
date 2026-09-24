@@ -68,9 +68,12 @@ static void test_parsers(void)
 	{
 		sku_cfg c; char err[128];
 		sku_cfg_init(&c);
-		sku_cfg_parse(&c, "name|X\nmodule|https://x\nversion|1\n");
+		sku_cfg_parse(&c, "name|X\nmodule|https://x\n");
 		CHECK_EQ_INT(sku_protocol_check_remote_cfg(&c, err, sizeof err), SKU_ERR_FORMAT);
-		CHECK(strstr(err, "locked") != NULL);
+		CHECK(strstr(err, "version") != NULL);
+		sku_cfg_set(&c, "version", "1");
+		CHECK_EQ_INT(sku_protocol_check_remote_cfg(&c, err, sizeof err), SKU_OK);   /* "locked" is optional: absent = unlocked */
+		CHECK(!sku_cfg_get_bool(&c, "locked", false));
 		sku_cfg_set(&c, "locked", "false");
 		CHECK_EQ_INT(sku_protocol_check_remote_cfg(&c, err, sizeof err), SKU_OK);
 		CHECK_EQ_INT(sku_protocol_level(&c), 1);

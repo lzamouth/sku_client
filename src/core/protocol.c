@@ -196,7 +196,8 @@ void sku_protocol_base_url(char *out, size_t n, const char *zone, const char *mo
 
 int sku_protocol_check_remote_cfg(const sku_cfg *remote, char *err, size_t n)
 {
-	static const char *required[] = { "name", "module", "version", "locked" };
+	/* "locked" is optional: a depot published without it is unlocked (xp_depot --no-lock) */
+	static const char *required[] = { "name", "module", "version" };
 	for (size_t i = 0; i < sizeof required / sizeof *required; i++) {
 		if (!sku_cfg_has(remote, required[i])) {
 			sku_snprintf(err, n, "remote configuration is missing \"%s\"", required[i]);
