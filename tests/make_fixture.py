@@ -116,6 +116,13 @@ for name, version in (("client", "9.9.9"), ("client_old", "0.1.0")):
 	write(os.path.join(base, "skunkcrafts_updater_sizeslist.txt"), "\n".join(sz) + "\n")
 	write(os.path.join(base, "changelog.txt"), version + "\n- self update\n\n0.0.1\n- first\n")
 
+# the beta depot: same files as level 1, its cfg names the channel
+base = os.path.join(depot, "beta")
+for rel, data in files.items():
+	write(os.path.join(base, rel), data)
+write(os.path.join(base, "skunkcrafts_updater.cfg"), "name|Test plane\nmodule|http://127.0.0.1:" + port + "/level1\nversion|2.0b1\nlocked|false\nzone|custom\nchannel|Private beta\n")
+write(os.path.join(base, "skunkcrafts_updater_whitelist.txt"), "\n".join("%s|%d" % (rel, -1 if rel == "data/OptionSave.prf" else crc(data)) for rel, data in files.items()) + "\n")
+
 # a locked depot and one answering HTML instead of the cfg
 write(os.path.join(depot, "locked", "skunkcrafts_updater.cfg"), "name|Test plane\nmodule|x\nversion|3.0\nlocked|true\n")
 write(os.path.join(depot, "html", "skunkcrafts_updater.cfg"), "<!DOCTYPE html><html><body>403</body></html>")

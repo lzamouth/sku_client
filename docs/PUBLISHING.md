@@ -214,7 +214,25 @@ named `beta`.
 The 3.x client only knows `skunkcrafts_updater_beta.cfg`; testers on 3.x see
 that one channel only.
 
-### 2.4 Going to production
+### 2.4 Naming a channel (4.0 client)
+
+The channel is named after the tester's file (`beta`, or `<x>` for
+`skunkcrafts_updater_beta_<x>.cfg`). To show another name, or to rename a
+channel your testers already have, add to the configuration uploaded to
+**that** depot:
+
+```
+channel|Private beta
+```
+
+A 4.0 client following that depot renames its channel at the next check, in
+place: same URL, new name, nothing added. Clients on the production channel
+ignore the key, so if you run a single beta depot the line can simply live in
+your shared configuration file. With several beta depots, each needs its own
+name, hence its own copy of the configuration. The 3.x client ignores the key
+and keeps calling it "beta".
+
+### 2.5 Going to production
 
 When the beta becomes the release, publish the build to the production depot
 with the release version. Testers who stay on the beta channel keep
