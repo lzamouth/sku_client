@@ -1,3 +1,7 @@
+4.0.0-beta7
+- A tester file carrying the same depot URL under a new name renames the existing channel instead of adding one
+- On a beta channel the depot configuration never renames or moves anything: the production URL always stays
+
 4.0.0-beta6
 - The Update / repair buttons light up when an update or a repair is available
 - Column titles above the addon list, columns resizable from the header
