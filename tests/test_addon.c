@@ -247,6 +247,27 @@ static void test_level(const char *level, bool second_run_uses_cache)
 	CHECK(sku_strlist_has(&a->ignore, "data/restored.prf"));
 	CHECK(sku_strlist_has(&a->ignore, "data/user.prf"));
 
+	/* --- a new beta file with the same depot URL and another name renames the channel (no second channel) */
+	{
+		char text[SKU_URL_MAX + 64];
+		sku_snprintf(text, sizeof text, "module|%s/beta\nzone|custom\nchannel|Private beta\nenabled|false\n", url);
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_beta.cfg");
+		CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+		CHECK_EQ_INT(a->nchannels, 1);
+		CHECK_EQ_STR(a->channels[0].name, "Private beta");
+		CHECK_EQ_STR(a->channel, "stable");
+		CHECK_EQ_INT(sku_addon_save(a), SKU_OK);   /* the file is absorbed */
+		CHECK(!sku_exists(p));
+		/* and back to the plain name for the rest of the test */
+		sku_snprintf(text, sizeof text, "module|%s/beta\nzone|custom\nchannel|beta\nenabled|false\n", url);
+		CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+		CHECK_EQ_INT(a->nchannels, 1);
+		CHECK_EQ_STR(a->channels[0].name, "beta");
+		CHECK_EQ_INT(sku_addon_save(a), SKU_OK);
+	}
+
 	/* --- second check: everything up to date, hashes come from the cache,
 	 * and the unchanged remote lists were answered with 304 */
 	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);

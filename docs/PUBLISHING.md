@@ -226,7 +226,13 @@ channel|Private beta
 ```
 
 A 4.0 client following that depot renames its channel at the next check, in
-place: same URL, new name, nothing added. Clients on the production channel
+place: same URL, new name, nothing added. The line carries no URL, so a
+production client that reads it learns nothing and cannot join the channel.
+
+The other way is a new tester file: a `skunkcrafts_updater_beta.cfg` with
+the same `module` and a `channel|Private beta` line, handed to the testers
+as before. A 4.0 client that has a channel at that URL renames it rather than
+adding a second one. Clients on the production channel
 ignore the key, so if you run a single beta depot the line can simply live in
 your shared configuration file. With several beta depots, each needs its own
 name, hence its own copy of the configuration. The 3.x client ignores the key

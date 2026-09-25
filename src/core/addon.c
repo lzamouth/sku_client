@@ -151,7 +151,25 @@ static void merge_beta_file(sku_addon *a, const char *file, const char *default_
 	if (sku_cfg_load(&b, file) != SKU_OK) { sku_cfg_free(&b); return; }
 	name = sku_cfg_get_or(&b, "channel", default_name);
 	module = sku_cfg_get(&b, "module");
-	if (module && *name) {
+	if (module && *name && !strchr(name, '.') && !strchr(name, '|') && strcmp(name, "stable") != 0) {
+		/* the same depot under another name: rename the channel we have instead of adding one */
+		for (int i = 0; i < a->local.n; i++) {
+			const char *k = a->local.v[i].key, *dot;
+			char old[64];
+			size_t len;
+			if (!k || strncmp(k, "channel.", 8) != 0 || !a->local.v[i].value) continue;
+			dot = strrchr(k, '.');
+			if (!dot || strcmp(dot + 1, "module") != 0 || strcmp(a->local.v[i].value, module) != 0) continue;
+			len = (size_t)(dot - (k + 8));
+			if (len == 0 || len >= sizeof old) continue;
+			memcpy(old, k + 8, len); old[len] = 0;
+			if (strcmp(old, name) == 0) break;
+			sku_snprintf(key, sizeof key, "channel.%s.module", old); sku_cfg_remove(&a->local, key);
+			sku_snprintf(key, sizeof key, "channel.%s.zone", old);   sku_cfg_remove(&a->local, key);
+			if (strcmp(sku_cfg_get_or(&a->local, "channel", "stable"), old) == 0) sku_cfg_set(&a->local, "channel", name);
+			sku_info("%s: channel \"%s\" renamed \"%s\" (same depot) by %s", a->dir, old, name, sku_path_basename(file));
+			break;
+		}
 		sku_snprintf(key, sizeof key, "channel.%s.module", name); sku_cfg_set(&a->local, key, module);
 		sku_snprintf(key, sizeof key, "channel.%s.zone", name);   sku_cfg_set(&a->local, key, sku_cfg_get_or(&b, "zone", "custom"));
 		/* the legacy "enabled" flag selects the active channel */
