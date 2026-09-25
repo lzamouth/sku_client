@@ -61,14 +61,14 @@ static void test_client(void)
 	CHECK_EQ_STR(info.version, "9.9.9");
 	CHECK(info.newer);
 	CHECK(!info.locked);
-	CHECK_EQ_STR(info.package, SKU_PKG_LINUX_ZIP);
+	CHECK_EQ_STR(info.package, "SkunkcraftsUpdater-9.9.9-linux.zip");   /* the versioned name wins */
 	CHECK(info.check_crc);
 	CHECK(info.size > 0);
 	CHECK(info.changelog && strstr(info.changelog, "self update"));
 	CHECK(sku_str_ends(info.module, "/client/"));
 	sku_path_join(dir, sizeof dir, xp, "Output/client_downloads");
 	CHECK_EQ_INT(sku_client_download(depot, &info, dir, NULL, NULL, NULL, dest, sizeof dest, err, sizeof err), SKU_OK);
-	CHECK(sku_str_ends(dest, SKU_PKG_LINUX_ZIP));
+	CHECK(sku_str_ends(dest, "SkunkcraftsUpdater-9.9.9-linux.zip"));
 	CHECK_EQ_INT(sku_read_file(dest, &data, NULL), SKU_OK);
 	CHECK_EQ_STR(data, "package SkunkcraftsUpdater-linux.zip 9.9.9");
 	free(data);
@@ -80,11 +80,17 @@ static void test_client(void)
 	CHECK_EQ_INT(sku_client_download(depot, &info, dir, NULL, NULL, NULL, dest, sizeof dest, err, sizeof err), SKU_ERR_NOTFOUND);
 	sku_client_info_free(&info);
 
-	/* an older version: nothing to do */
+	/* an older depot with plain names: found through the fallback; and not newer */
 	sku_snprintf(depot, sizeof depot, "%s/client_old", url);
 	CHECK_EQ_INT(sku_client_check(depot, NULL, &info, err, sizeof err), SKU_OK);
 	CHECK(!info.newer);
+	CHECK_EQ_STR(info.package, SKU_PKG_LINUX_ZIP);
 	sku_client_info_free(&info);
+	{
+		char v[128];
+		sku_client_versioned_name(SKU_PKG_WINDOWS_SETUP, "4.1.0", v, sizeof v); CHECK_EQ_STR(v, "SkunkcraftsUpdater-4.1.0-windows-setup.exe");
+		sku_client_versioned_name(SKU_PKG_CLI_ZIP, "4.1.0", v, sizeof v);       CHECK_EQ_STR(v, "sku-cli-4.1.0.zip");
+	}
 
 	/* a web page instead of the depot */
 	sku_snprintf(depot, sizeof depot, "%s/html", url);

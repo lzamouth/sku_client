@@ -20,7 +20,7 @@ STAGE="$DIST/stage"
 OSX=/usr/local/osxcross/bin
 OTOOL=$OSX/x86_64-apple-darwin20.4-otool
 # depot the clients check for their own updates (the client follows the module announced there if it moves)
-CLIENT_URL="${SKU_CLIENT_DEPOT_URL:-https://cdn.skunkcrafts.com/updater/skunkcrafts/sku_client}"
+CLIENT_URL="${SKU_CLIENT_DEPOT_URL:-https://1228098873.rsc.cdn77.org/sku_client}"
 [ "$(head -1 "$ROOT/CHANGELOG.txt" | tr -d '\r')" = "$VER" ] || { echo "CHANGELOG.txt must start with the line \"$VER\" (the aircraft-style bare version header)" >&2; exit 1; }
 
 echo "=== building $VER"
@@ -32,6 +32,7 @@ echo "=== building $VER"
 rm -rf "$DIST"; mkdir -p "$STAGE"
 sed "s/@VERSION@/$VER/" "$ROOT/packaging/README.txt" > "$STAGE/README.txt"
 cp "$ROOT/THIRD_PARTY_NOTICES.txt" "$ROOT/docs/USER_GUIDE.md" "$STAGE/"
+python3 "$ROOT/tools/md2html.py" "$ROOT/docs/USER_GUIDE.md" "$STAGE/USER_GUIDE.html"
 cp "$ROOT/packaging/icons/icon.ico" "$STAGE/"
 cp "$ROOT/build/linux/src/app/SkunkcraftsUpdater_lin" "$STAGE/"
 cp "$ROOT/build/windows/src/app/SkunkcraftsUpdater.exe" "$STAGE/"
@@ -46,8 +47,8 @@ mv "$STAGE/SkunkcraftsUpdater-macos.zip" "$DIST/SkunkcraftsUpdater-$VER-macos.zi
 [ "$($OTOOL -arch arm64 -l "$STAGE/SkunkcraftsUpdater.app/Contents/MacOS/SkunkcraftsUpdater" | grep -c LC_CODE_SIGNATURE)" = 1 ] || { echo "arm64 slice is not signed" >&2; exit 1; }
 
 echo "=== standalone zips (Windows, Linux; the macOS one comes from make_app.sh)"
-( cd "$STAGE" && zip -qr "$DIST/SkunkcraftsUpdater-$VER-windows.zip" SkunkcraftsUpdater.exe README.txt USER_GUIDE.md THIRD_PARTY_NOTICES.txt )
-( cd "$STAGE" && zip -qr "$DIST/SkunkcraftsUpdater-$VER-linux.zip" SkunkcraftsUpdater_lin README.txt USER_GUIDE.md THIRD_PARTY_NOTICES.txt )
+( cd "$STAGE" && zip -qr "$DIST/SkunkcraftsUpdater-$VER-windows.zip" SkunkcraftsUpdater.exe README.txt USER_GUIDE.html THIRD_PARTY_NOTICES.txt )
+( cd "$STAGE" && zip -qr "$DIST/SkunkcraftsUpdater-$VER-linux.zip" SkunkcraftsUpdater_lin README.txt USER_GUIDE.html THIRD_PARTY_NOTICES.txt )
 
 echo "=== Windows installer"
 makensis -V2 -DVERSION="$VER" -DSTAGE="$STAGE" -DOUT="$DIST/SkunkcraftsUpdater-$VER-windows-setup.exe" "$ROOT/packaging/windows/installer.nsi"
@@ -61,7 +62,7 @@ cp "$ROOT/packaging/linux/SkunkcraftsUpdater.desktop" "$APPDIR/"
 cp "$ROOT/packaging/icons/icon.png" "$APPDIR/skunkcrafts-updater.png"
 cp "$ROOT/packaging/icons/icon.png" "$APPDIR/.DirIcon"   # required by libappimage (AppImageLauncher integration)
 cp "$ROOT/packaging/icons/icon.png" "$APPDIR/usr/share/icons/hicolor/128x128/apps/skunkcrafts-updater.png"
-cp "$STAGE/README.txt" "$STAGE/USER_GUIDE.md" "$STAGE/THIRD_PARTY_NOTICES.txt" "$APPDIR/"
+cp "$STAGE/README.txt" "$STAGE/USER_GUIDE.html" "$STAGE/THIRD_PARTY_NOTICES.txt" "$APPDIR/"
 printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/bin/SkunkcraftsUpdater_lin" "$@"\n' > "$APPDIR/AppRun"
 chmod +x "$APPDIR/AppRun"
 # gzip squashfs: read by our static runtime (zlib/zstd) AND by libappimage / AppImageLauncher (gzip/xz), which
@@ -78,20 +79,17 @@ mkdir -p "$STAGE/cli/linux" "$STAGE/cli/windows" "$STAGE/cli/macos"
 cp "$ROOT/build/linux/src/cli/sku" "$STAGE/cli/linux/" && strip "$STAGE/cli/linux/sku"
 cp "$STAGE/sku.exe" "$STAGE/cli/windows/"
 cp "$ROOT/build/macos/src/cli/sku" "$STAGE/cli/macos/"   # never strip: it would break the ad-hoc arm64 signature
-cp "$STAGE/README.txt" "$STAGE/USER_GUIDE.md" "$STAGE/THIRD_PARTY_NOTICES.txt" "$STAGE/cli/"
+cp "$STAGE/README.txt" "$STAGE/USER_GUIDE.html" "$STAGE/THIRD_PARTY_NOTICES.txt" "$STAGE/cli/"
 ( cd "$STAGE" && zip -qry "$DIST/sku-cli-$VER.zip" cli )
 
-echo "=== client depot: dist/$VER/depot, to copy into the depot folder and push with xp_depot"
+echo "=== client depot: dist/$VER/depot (versioned package names), published by docs/publish.sh"
 DEPOT="$DIST/depot"
 mkdir -p "$DEPOT"
-cp "$DIST/SkunkcraftsUpdater-$VER-windows-setup.exe" "$DEPOT/SkunkcraftsUpdater-windows-setup.exe"
-cp "$DIST/SkunkcraftsUpdater-$VER-windows.zip" "$DEPOT/SkunkcraftsUpdater-windows.zip"
-cp "$DIST/SkunkcraftsUpdater-$VER-macos.zip" "$DEPOT/SkunkcraftsUpdater-macos.zip"
-cp "$DIST/SkunkcraftsUpdater-$VER-linux.zip" "$DEPOT/SkunkcraftsUpdater-linux.zip"
-cp "$DIST/SkunkcraftsUpdater-$VER-x86_64.AppImage" "$DEPOT/SkunkcraftsUpdater-x86_64.AppImage"
-cp "$DIST/sku-cli-$VER.zip" "$DEPOT/sku-cli.zip"
+for f in SkunkcraftsUpdater-$VER-windows-setup.exe SkunkcraftsUpdater-$VER-windows.zip SkunkcraftsUpdater-$VER-macos.zip \
+         SkunkcraftsUpdater-$VER-linux.zip SkunkcraftsUpdater-$VER-x86_64.AppImage sku-cli-$VER.zip; do cp "$DIST/$f" "$DEPOT/"; done
 tr -d '\r' < "$ROOT/CHANGELOG.txt" > "$DEPOT/changelog.txt"
 cp "$STAGE/README.txt" "$DEPOT/readme.txt"
+cp "$STAGE/USER_GUIDE.html" "$STAGE/USER_GUIDE.md" "$DEPOT/"
 printf 'zone|custom\nmodule|%s\nname|SkunkCrafts Updater\nversion|%s\nlocked|false\n' "$CLIENT_URL" "$VER" > "$DEPOT/skunkcrafts_updater_config.txt"
 
 rm -rf "$STAGE"

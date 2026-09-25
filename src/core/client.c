@@ -85,6 +85,14 @@ const char *sku_client_package(void)
 	return SKU_PKG_LINUX_ZIP;
 }
 
+void sku_client_versioned_name(const char *package, const char *version, char *out, size_t n)
+{
+	static const char prefix[] = "SkunkcraftsUpdater-";
+	if (strncmp(package, prefix, sizeof prefix - 1) == 0) sku_snprintf(out, n, "%s%s-%s", prefix, version, package + sizeof prefix - 1);
+	else if (strcmp(package, SKU_PKG_CLI_ZIP) == 0) sku_snprintf(out, n, "sku-cli-%s.zip", version);
+	else sku_strlcpy(out, package, n);
+}
+
 /* ------------------------------------------------------------ depot */
 
 static void base_url(char *out, size_t n, const char *depot_url)
@@ -155,16 +163,22 @@ int sku_client_check(const char *depot_url, const char *package, sku_client_info
 		sku_protocol_parse_whitelist(text, &files, &rejected); free(text); text = NULL;
 		if (get_text(h, base, SKU_F_SIZES, &text, &r) == SKU_OK) { sku_protocol_apply_sizes(text, &files); free(text); text = NULL; }
 	}
-	for (int i = 0; i < files.n; i++) {
-		if (strcmp(files.v[i].path, package) == 0) {
-			sku_strlcpy(out->package, package, sizeof out->package);
-			out->crc = files.v[i].crc;
-			out->check_crc = files.v[i].check_crc;
-			out->size = files.v[i].size;
-			break;
-		}
+	{
+		/* the versioned name first, the plain one for older depots */
+		char versioned[128];
+		const char *candidates[2] = { versioned, package };
+		sku_client_versioned_name(package, out->version, versioned, sizeof versioned);
+		for (int c = 0; c < 2 && !out->package[0]; c++)
+			for (int i = 0; i < files.n; i++) {
+				if (strcmp(files.v[i].path, candidates[c]) != 0) continue;
+				sku_strlcpy(out->package, candidates[c], sizeof out->package);
+				out->crc = files.v[i].crc;
+				out->check_crc = files.v[i].check_crc;
+				out->size = files.v[i].size;
+				break;
+			}
+		if (!out->package[0]) sku_warn("client: the depot publishes neither %s nor %s", versioned, package);
 	}
-	if (!out->package[0]) sku_warn("client: the depot publishes no %s", package);
 
 	/* what's new: declared file, else the default name (check_relative normalizes in place: copy first) */
 	{

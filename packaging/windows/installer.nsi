@@ -1,5 +1,5 @@
 ; SkunkCrafts Updater - Windows installer (NSIS 3, built with makensis on Linux)
-; Expects: /DVERSION=x.y.z /DSTAGE=<folder with SkunkcraftsUpdater.exe, sku.exe, README.txt, USER_GUIDE.md, THIRD_PARTY_NOTICES.txt> /DOUT=<output exe>
+; Expects: /DVERSION=x.y.z /DSTAGE=<folder with SkunkcraftsUpdater.exe, sku.exe, README.txt, USER_GUIDE.html, THIRD_PARTY_NOTICES.txt> /DOUT=<output exe>
 Unicode true
 SetCompressor /SOLID lzma
 RequestExecutionLevel admin
@@ -41,7 +41,7 @@ Section "SkunkCrafts Updater" SecMain
 	File "${STAGE}\SkunkcraftsUpdater.exe"
 	File "${STAGE}\sku.exe"
 	File "${STAGE}\README.txt"
-	File "${STAGE}\USER_GUIDE.md"
+	File "${STAGE}\USER_GUIDE.html"
 	File "${STAGE}\THIRD_PARTY_NOTICES.txt"
 	File "${STAGE}\icon.ico"
 	WriteUninstaller "$INSTDIR\Uninstall.exe"
@@ -68,7 +68,7 @@ Section "Uninstall"
 	Delete "$INSTDIR\SkunkcraftsUpdater.exe"
 	Delete "$INSTDIR\sku.exe"
 	Delete "$INSTDIR\README.txt"
-	Delete "$INSTDIR\USER_GUIDE.md"
+	Delete "$INSTDIR\USER_GUIDE.html"
 	Delete "$INSTDIR\THIRD_PARTY_NOTICES.txt"
 	Delete "$INSTDIR\icon.ico"
 	Delete "$INSTDIR\Uninstall.exe"

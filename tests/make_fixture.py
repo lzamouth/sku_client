@@ -103,14 +103,18 @@ for level in ("level1", "level2"):
 # the updater's own depot: fixed package names, at two versions
 packages = ["SkunkcraftsUpdater-windows-setup.exe", "SkunkcraftsUpdater-windows.zip", "SkunkcraftsUpdater-macos.zip",
             "SkunkcraftsUpdater-linux.zip", "SkunkcraftsUpdater-x86_64.AppImage", "sku-cli.zip"]
+def versioned(p, version):
+	return p.replace("SkunkcraftsUpdater-", "SkunkcraftsUpdater-" + version + "-") if p.startswith("SkunkcraftsUpdater-") else "sku-cli-" + version + ".zip"
+# "client" publishes versioned names (current depots), "client_old" plain ones (older depots)
 for name, version in (("client", "9.9.9"), ("client_old", "0.1.0")):
 	base = os.path.join(depot, name)
 	wl, sz = [], []
 	for p in packages:
+		fname = versioned(p, version) if name == "client" else p
 		data = ("package " + p + " " + version).encode()
-		write(os.path.join(base, p), data)
-		wl.append("%s|%d" % (p, crc(data)))
-		sz.append("%s|%d" % (p, len(data)))
+		write(os.path.join(base, fname), data)
+		wl.append("%s|%d" % (fname, crc(data)))
+		sz.append("%s|%d" % (fname, len(data)))
 	write(os.path.join(base, "skunkcrafts_updater.cfg"), "zone|custom\nmodule|http://127.0.0.1:%s/%s\nname|SkunkCrafts Updater\nversion|%s\nlocked|false\n" % (port, name, version))
 	write(os.path.join(base, "skunkcrafts_updater_whitelist.txt"), "\n".join(wl) + "\n")
 	write(os.path.join(base, "skunkcrafts_updater_sizeslist.txt"), "\n".join(sz) + "\n")

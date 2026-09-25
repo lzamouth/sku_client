@@ -10,10 +10,13 @@
 #include <stdatomic.h>
 
 #ifndef SKU_CLIENT_DEPOT_URL
-#define SKU_CLIENT_DEPOT_URL "https://cdn.skunkcrafts.com/updater/skunkcrafts/sku_client"
+#define SKU_CLIENT_DEPOT_URL "https://1228098873.rsc.cdn77.org/sku_client"
 #endif
 
-/* Package names published in the depot (release.sh writes them). */
+/* Package names. The depot publishes them with the version inserted
+ * ("SkunkcraftsUpdater-4.0.1-linux.zip", "sku-cli-4.0.1.zip") so that a
+ * CDN serving a stale list can never point at the wrong file; the plain
+ * names below are the fallback for older depots. */
 #define SKU_PKG_WINDOWS_SETUP "SkunkcraftsUpdater-windows-setup.exe"
 #define SKU_PKG_WINDOWS_ZIP   "SkunkcraftsUpdater-windows.zip"
 #define SKU_PKG_MACOS_ZIP     "SkunkcraftsUpdater-macos.zip"
@@ -42,6 +45,9 @@ int sku_client_version_cmp(const char *a, const char *b);
  * when the executable sits next to its Uninstall.exe, the AppImage when
  * running as one, else the zip of the drop-in program. */
 const char *sku_client_package(void);
+
+/* The versioned form of a package name: "SkunkcraftsUpdater-<v>-linux.zip", "sku-cli-<v>.zip". */
+void sku_client_versioned_name(const char *package, const char *version, char *out, size_t n);
 
 /* Reads the depot: version, package entry (crc/size), changelog.
  * package NULL = sku_client_package(). Fails only when the cfg or the file
