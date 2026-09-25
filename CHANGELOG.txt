@@ -1,3 +1,10 @@
+4.0.0-beta8
+- User guide (USER_GUIDE.html) shipped with every package
+- The updater's own update depot moves to the store CDN; packages are looked up by version, older names still work
+- Changelog: bullets and bold version headers; tab-indented entries display cleanly
+- The main channel is shown as "Main"
+- A tester file with the same name replaces the beta channel it created, whatever its URL, and enabled|false returns to Main
+
 4.0.0-beta7
 - A tester file carrying the same depot URL under a new name renames the existing channel instead of adding one
 - On a beta channel the depot configuration never renames or moves anything: the production URL always stays
