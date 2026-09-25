@@ -11,7 +11,7 @@ option(SKU_BUILD_TESTS "Build the core unit tests (Linux only)" ON)
 option(SKU_BUILD_SPIKE "Build the toolchain spike" OFF)
 
 set(SKU_VERSION "4.0.0-dev" CACHE STRING "Version stamped into the binaries (x.y.z or x.y.z-suffix)")
-set(SKU_CLIENT_DEPOT_URL "https://1228098873.rsc.cdn77.org/sku_client" CACHE STRING "Depot the client checks for its own updates (can move later: the client follows the module announced there)")
+set(SKU_CLIENT_DEPOT_URL "https://1228098873.rsc.cdn77.org/updater/depot" CACHE STRING "Depot the client checks for its own updates (can move later: the client follows the module announced there)")
 string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" _v "${SKU_VERSION}")
 set(SKU_VERSION_MAJOR "${CMAKE_MATCH_1}")
 set(SKU_VERSION_MINOR "${CMAKE_MATCH_2}")

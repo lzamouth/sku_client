@@ -20,7 +20,7 @@ STAGE="$DIST/stage"
 OSX=/usr/local/osxcross/bin
 OTOOL=$OSX/x86_64-apple-darwin20.4-otool
 # depot the clients check for their own updates (the client follows the module announced there if it moves)
-CLIENT_URL="${SKU_CLIENT_DEPOT_URL:-https://1228098873.rsc.cdn77.org/sku_client}"
+CLIENT_URL="${SKU_CLIENT_DEPOT_URL:-https://1228098873.rsc.cdn77.org/updater/depot}"
 [ "$(head -1 "$ROOT/CHANGELOG.txt" | tr -d '\r')" = "$VER" ] || { echo "CHANGELOG.txt must start with the line \"$VER\" (the aircraft-style bare version header)" >&2; exit 1; }
 
 echo "=== building $VER"

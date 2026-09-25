@@ -10,7 +10,7 @@
 #include <stdatomic.h>
 
 #ifndef SKU_CLIENT_DEPOT_URL
-#define SKU_CLIENT_DEPOT_URL "https://1228098873.rsc.cdn77.org/sku_client"
+#define SKU_CLIENT_DEPOT_URL "https://1228098873.rsc.cdn77.org/updater/depot"
 #endif
 
 /* Package names. The depot publishes them with the version inserted
