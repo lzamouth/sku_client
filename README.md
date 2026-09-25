@@ -24,6 +24,12 @@ Police d'interface Roboto (Apache 2.0), DejaVu Sans Mono pour le texte à chasse
 
 Barre de titre sous GNOME Wayland : SDL délègue la décoration à libdecor ; sans le greffon GTK (`libdecor-0-plugin-1-gtk`), libdecor dessine sa barre minimale cairo, très fine. C'est un réglage de la machine, pas du client ; `SDL_VIDEO_DRIVER=x11` est l'autre contournement, au prix d'un rendu XWayland.
 
+## Documentation
+
+- [docs/USER_GUIDE.md](docs/USER_GUIDE.md) : guide utilisateur (anglais), livré dans chaque paquet.
+- [docs/PUBLISHING.md](docs/PUBLISHING.md) : guide de publication pour les développeurs (dépôts, betas, packs).
+- [docs/PUBLISH.md](docs/PUBLISH.md) : publier une version du client (interne).
+
 ## Packs
 
 Guide de publication pour les développeurs dont le produit occupe plusieurs dossiers : [docs/PUBLISHING.md](docs/PUBLISHING.md) (anglais : dépôts, betas multiples, packs). Les clés de pack du cfg distant sont adoptées à la vérification, comme l'identité du dépôt.

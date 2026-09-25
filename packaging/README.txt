@@ -67,6 +67,8 @@ Command line
      sku --xp DIR changelog [name]    what changed
      sku client [download [DIR]]      is a newer updater published?
 
+The full user guide is USER_GUIDE.md, next to this file.
+
 Support: the log file is Output/skunkcrafts/updater/updater_log.txt in your
 X-Plane folder. Third-party components and their licenses are listed in
 THIRD_PARTY_NOTICES.txt.
