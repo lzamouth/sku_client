@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <errno.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -369,10 +373,31 @@ static void choose_startup_instance(app *ap, const char *forced)
 	ap->view = VIEW_INSTANCE;
 }
 
+/* Starts exe with our own arguments as a detached process, then asks the loop to quit. */
+void app_relaunch(app *ap, const char *exe)
+{
+#ifndef _WIN32
+	pid_t pid = fork();
+	if (pid == 0) {
+		setsid();
+		ap->argv[0] = (char *)exe;
+		execv(exe, ap->argv);
+		_exit(127);
+	}
+	if (pid < 0) { app_message(ap, "Cannot relaunch: %s", strerror(errno)); return; }
+	sku_info("client: relaunching %s", exe);
+	ap->running = false;
+#else
+	(void)exe;
+	app_message(ap, "Quit and start the program again to use the new version");
+#endif
+}
+
 int main(int argc, char **argv)
 {
 	static app ap;
 	const char *forced = NULL;
+	ap.argv = argv;
 	int64_t last_size_save = 0;
 
 	for (int i = 1; i < argc; i++) {

@@ -161,10 +161,14 @@ several channels; each comes with its own file.
 - **Updater updates**: at every start (at most once an hour) the program
   checks whether a newer version of itself is published. "Check now" asks
   immediately. When one exists, a banner appears above every page with
-  "What's new", "Download" and "Later". Download fetches the package for
-  your system into your user profile (a `downloads` folder next to the
-  updater's preferences; the banner opens it); install it the same way you
-  installed this one. "Later" hides the banner until the next version.
+  "What's new", "Download" (or "Update") and "Later".
+  - As a Linux AppImage the button reads **Update**: the new version is
+    downloaded, verified and put in place of the running file, so your menu
+    entry and dock icon stay valid; the banner then offers "Restart now".
+  - Elsewhere, **Download** fetches the package for your system into your
+    user profile (a `downloads` folder next to the updater's preferences; the
+    banner opens it); install it the same way you installed this one.
+  "Later" hides the banner until the next version.
 
 ## 9. What the updater writes, and how to keep files out of updates
 

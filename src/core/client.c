@@ -232,6 +232,32 @@ int sku_client_download(const char *depot_url, const sku_client_info *info, cons
 	return SKU_OK;
 }
 
+int sku_client_install_file(const char *downloaded, const char *target, char *err, size_t en)
+{
+	char tmp[SKU_PATH_MAX];
+	FILE *in, *out;
+	char buf[65536];
+	size_t n;
+	bool ok = true;
+
+	if (err && en) err[0] = 0;
+	sku_snprintf(tmp, sizeof tmp, "%s.skupart", target);
+	in = sku_fopen(downloaded, "rb");
+	if (!in) { sku_snprintf(err, en, "cannot read %s", downloaded); return SKU_ERR_IO; }
+	out = sku_fopen(tmp, "wb");
+	if (!out) { fclose(in); sku_snprintf(err, en, "cannot write next to %s", target); return SKU_ERR_IO; }
+	while ((n = fread(buf, 1, sizeof buf, in)) > 0) if (fwrite(buf, 1, n, out) != n) { ok = false; break; }
+	if (ferror(in)) ok = false;
+	if (fclose(out) != 0) ok = false;
+	fclose(in);
+	if (!ok) { sku_remove_file(tmp); sku_snprintf(err, en, "copy to %s failed", tmp); return SKU_ERR_IO; }
+	if (sku_set_executable(tmp) != SKU_OK) { sku_remove_file(tmp); sku_snprintf(err, en, "cannot make %s executable", tmp); return SKU_ERR_IO; }
+	if (sku_rename(tmp, target) != SKU_OK) { sku_remove_file(tmp); sku_snprintf(err, en, "cannot replace %s", target); return SKU_ERR_IO; }
+	sku_remove_file(downloaded);
+	sku_info("client: %s installed over %s", downloaded, target);
+	return SKU_OK;
+}
+
 void sku_client_info_free(sku_client_info *info)
 {
 	free(info->changelog);

@@ -26,6 +26,7 @@ int   sku_mkdir_p(const char *path);
 int   sku_remove_file(const char *path);
 int   sku_remove_dir(const char *path);           /* must be empty */
 int   sku_rename(const char *from, const char *to); /* atomic replace of an existing target */
+int   sku_set_executable(const char *path);        /* rwxr-xr-x on POSIX, no-op on Windows */
 int   sku_realpath(const char *path, char *out, size_t n);  /* resolves symlinks, absolute */
 int   sku_getcwd(char *out, size_t n);
 int   sku_chdir(const char *path);

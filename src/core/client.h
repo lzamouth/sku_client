@@ -59,6 +59,12 @@ int sku_client_check(const char *depot_url, const char *package, sku_client_info
 int sku_client_download(const char *depot_url, const sku_client_info *info, const char *dest_dir,
                         sku_progress_cb cb, void *user, atomic_int *cancel, char *dest, size_t n, char *err, size_t en);
 
+/* Installs a downloaded single-file package (an AppImage, a drop-in program) over target:
+ * copied next to it under a temporary name, made executable, then renamed over it, so the
+ * running program keeps its old inode and the path serves the new version from now on.
+ * The downloaded file is removed on success. */
+int sku_client_install_file(const char *downloaded, const char *target, char *err, size_t en);
+
 void sku_client_info_free(sku_client_info *info);
 
 #endif

@@ -48,13 +48,26 @@ static int on_progress(void *user, int64_t got, int64_t total)
 	return 0;
 }
 
+/* Running as an AppImage and the package is one: the file can be replaced in place. */
+static const char *install_target(app *ap)
+{
+	const char *ai = getenv("APPIMAGE");
+	if (!ai || !*ai || !sku_str_ends(ap->client.package, ".AppImage")) return NULL;
+	return ai;
+}
+
 static void *download_thread(void *arg)
 {
 	app *ap = arg;
 	char dir[SKU_PATH_MAX], dest[SKU_PATH_MAX], err[256];
+	const char *target;
 	int rc;
 	downloads_dir(dir, sizeof dir);
 	rc = sku_client_download(ap->prefs.client_url, &ap->client, dir, on_progress, ap, &ap->client_cancel, dest, sizeof dest, err, sizeof err);
+	if (rc == SKU_OK && (target = install_target(ap)) != NULL) {
+		rc = sku_client_install_file(dest, target, err, sizeof err);
+		if (rc == SKU_OK) { sku_strlcpy(ap->client_file, target, sizeof ap->client_file); atomic_store(&ap->client_state, CLIENT_INSTALLED); return NULL; }
+	}
 	if (rc == SKU_OK) {
 		sku_strlcpy(ap->client_file, dest, sizeof ap->client_file);
 		atomic_store(&ap->client_state, CLIENT_DOWNLOADED);
@@ -138,7 +151,7 @@ static bool banner_wanted(app *ap)
 {
 	int st = atomic_load(&ap->client_state);
 	if (ap->client_dismissed) return false;
-	if (st == CLIENT_DOWNLOADING || st == CLIENT_DOWNLOADED) return true;
+	if (st == CLIENT_DOWNLOADING || st == CLIENT_DOWNLOADED || st == CLIENT_INSTALLED) return true;
 	if (st == CLIENT_FAILED) return ap->client_err[0] && ap->client_manual;
 	return st == CLIENT_CHECKED && ap->client.newer && (ap->client_manual || strcmp(ap->client.version, ap->prefs.client_skip) != 0);
 }
@@ -180,6 +193,14 @@ bool ui_client_banner(app *ap)
 		nk_layout_row_push(ctx, UI_W(ap, 120));
 		if (ui_button(ap, "Close")) ap->client_dismissed = true;
 		break;
+	case CLIENT_INSTALLED:
+		sku_snprintf(buf, sizeof buf, "%s %s is installed: restart to use it", APP_NAME, ap->client.version);
+		nk_label_colored(ctx, buf, NK_TEXT_LEFT, accent);
+		nk_layout_row_push(ctx, UI_W(ap, 120));
+		if (ui_button(ap, "Restart now")) app_relaunch(ap, ap->client_file);
+		nk_layout_row_push(ctx, UI_W(ap, 120));
+		if (ui_button(ap, "Later")) ap->client_dismissed = true;
+		break;
 	case CLIENT_FAILED:
 		sku_snprintf(buf, sizeof buf, "Updater update: %s", ap->client_err);
 		nk_label_colored(ctx, buf, NK_TEXT_LEFT, nk_rgb(255, 80, 80));
@@ -192,7 +213,7 @@ bool ui_client_banner(app *ap)
 		nk_layout_row_push(ctx, UI_W(ap, 120));
 		if (ap->client.changelog && ui_button(ap, "What's new")) { ap->about_mode = 2; ap->view = VIEW_ABOUT; }
 		nk_layout_row_push(ctx, UI_W(ap, 120));
-		if (ap->client.package[0] && !ap->client.locked && ui_button(ap, "Download")) app_client_download_start(ap);
+		if (ap->client.package[0] && !ap->client.locked && ui_button(ap, install_target(ap) ? "Update" : "Download")) app_client_download_start(ap);
 		nk_layout_row_push(ctx, UI_W(ap, 120));
 		if (ui_button(ap, "Later")) { sku_strlcpy(ap->prefs.client_skip, ap->client.version, sizeof ap->prefs.client_skip); prefs_save(ap); ap->client_manual = false; }
 		break;
@@ -217,7 +238,7 @@ void ui_client_options(app *ap)
 		nk_bool on = p->client_check;
 		if (nk_checkbox_label(ctx, "Check for a new version of the updater at startup", &on)) { p->client_check = on; changed = true; }
 	}
-	if (st == CLIENT_CHECKING || st == CLIENT_DOWNLOADING) nk_label(ctx, "Checking...", NK_TEXT_CENTERED);
+	if (st == CLIENT_CHECKING || st == CLIENT_DOWNLOADING) nk_label(ctx, "Working...", NK_TEXT_CENTERED);
 	else if (ui_button(ap, "Check now")) { ap->client_manual = true; app_client_check_start(ap); }
 
 	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);

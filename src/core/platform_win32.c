@@ -276,6 +276,12 @@ void sku_sleep_ms(int ms)
 	Sleep((DWORD)ms);
 }
 
+int sku_set_executable(const char *path)
+{
+	(void)path;
+	return SKU_OK;
+}
+
 int sku_cpu_count(void)
 {
 	SYSTEM_INFO si;

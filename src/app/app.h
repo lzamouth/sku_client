@@ -66,7 +66,7 @@ typedef struct {
 	char client_skip[64];             /* "Later" on this version: no banner until the next one */
 } app_prefs;
 
-typedef enum { CLIENT_IDLE, CLIENT_CHECKING, CLIENT_CHECKED, CLIENT_DOWNLOADING, CLIENT_DOWNLOADED, CLIENT_FAILED } client_state;
+typedef enum { CLIENT_IDLE, CLIENT_CHECKING, CLIENT_CHECKED, CLIENT_DOWNLOADING, CLIENT_DOWNLOADED, CLIENT_INSTALLED, CLIENT_FAILED } client_state;
 
 typedef struct app {
 	SDL_Window   *win;
@@ -118,6 +118,7 @@ typedef struct app {
 	bool client_dismissed;            /* banner closed */
 	bool client_manual;               /* "Check now": show failures too */
 	int  about_mode;                  /* 0 license, 1 notices, 2 what's new */
+	char **argv;                      /* the command line, for a relaunch after a self-update */
 	char shot_dir[SKU_PATH_MAX];      /* --screenshot DIR: one BMP per second, for testing */
 	int64_t last_shot;
 	int shot_index;
@@ -150,6 +151,7 @@ void app_set_text_size(app *ap, int size);
 void app_apply_theme(app *ap);
 bool app_any_busy(app *ap);
 void app_browse_folder(app *ap, int what);
+void app_relaunch(app *ap, const char *exe);      /* starts exe with this program's arguments, then quits */
 
 /* theme.c */
 struct nk_color;

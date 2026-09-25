@@ -84,6 +84,11 @@ int sku_rename(const char *from, const char *to)
 	return rename(from, to) == 0 ? SKU_OK : SKU_ERR_IO;
 }
 
+int sku_set_executable(const char *path)
+{
+	return chmod(path, 0755) == 0 ? SKU_OK : SKU_ERR_IO;
+}
+
 int sku_realpath(const char *path, char *out, size_t n)
 {
 	char buf[PATH_MAX];

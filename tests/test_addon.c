@@ -15,6 +15,7 @@
 #include "pack.h"
 #include "changelog.h"
 #include "client.h"
+#include <unistd.h>
 
 static const char *xp, *url;
 
@@ -73,6 +74,21 @@ static void test_client(void)
 	CHECK_EQ_STR(data, "package SkunkcraftsUpdater-linux.zip 9.9.9");
 	free(data);
 	sku_client_info_free(&info);
+
+	/* in-place install: the downloaded file replaces the target, made executable, and is removed */
+	{
+		char target[SKU_PATH_MAX], *content;
+		sku_path_join(target, sizeof target, dir, "running.AppImage");
+		CHECK_EQ_INT(sku_write_file_atomic(target, "old program", 11), SKU_OK);
+		CHECK_EQ_INT(sku_client_install_file(dest, target, err, sizeof err), SKU_OK);
+		CHECK(!sku_exists(dest));
+		CHECK_EQ_INT(sku_read_file(target, &content, NULL), SKU_OK);
+		CHECK_EQ_STR(content, "package SkunkcraftsUpdater-linux.zip 9.9.9");
+		CHECK(access(target, X_OK) == 0);
+		free(content);
+		sku_client_install_file("/nonexistent/file", target, err, sizeof err);
+		CHECK(err[0]);
+	}
 
 	/* an unknown package name: the check still reports the version */
 	CHECK_EQ_INT(sku_client_check(depot, "nope.zip", &info, err, sizeof err), SKU_OK);
