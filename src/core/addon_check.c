@@ -291,13 +291,6 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 		}
 	}
 
-	/* a channel depot may name its channel: "channel|Private beta" renames ours (stable never renames) */
-	if (strcmp(a->channel, "stable") != 0) {
-		const char *cn = sku_cfg_get(&a->remote, "channel");
-		if (cn && *cn && strcmp(cn, a->channel) != 0 && sku_addon_rename_channel(a, a->channel, cn, opts->dry_run) == SKU_OK)
-			sku_addon_reload(a);
-	}
-
 	if (sku_cfg_get_bool(&a->remote, "locked", false)) {
 		sku_addon_set_status(a, SKU_ST_LOCKED, "Update repository locked for maintenance", "Updates are not possible until the developer removes the lock.");
 		rc = SKU_OK;

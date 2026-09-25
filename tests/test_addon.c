@@ -299,15 +299,12 @@ static void test_level(const char *level, bool second_run_uses_cache)
 	CHECK_EQ_INT(sku_addon_set_channel(a, "beta", false), SKU_OK);
 	CHECK_EQ_STR(a->channel, "beta");
 	CHECK(strstr(a->base_url, "/beta/") != NULL);
-	/* the beta depot names its channel "Private beta": a check renames ours, in place */
+	/* on a channel, the remote cfg (the same as production's) neither renames nor moves anything */
 	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
-	CHECK_EQ_STR(a->channel, "Private beta");
+	CHECK_EQ_STR(a->channel, "beta");
 	CHECK_EQ_STR(a->remote_version, "2.0b1");
-	CHECK(strstr(a->base_url, "/beta/") != NULL);                  /* same depot, new name */
-	CHECK(sku_cfg_has(&a->local, "channel.Private beta.module"));
-	CHECK(!sku_cfg_has(&a->local, "channel.beta.module"));
-	CHECK_EQ_INT(a->nchannels, 1);
-	CHECK_EQ_INT(sku_addon_set_channel(a, "beta", false), SKU_ERR_NOTFOUND);
+	CHECK(strstr(a->base_url, "/beta/") != NULL);
+	CHECK(strstr(sku_cfg_get_or(&a->local, "module", ""), "/level1") != NULL);   /* the production URL stays */
 	CHECK_EQ_INT(sku_addon_set_channel(a, "stable", false), SKU_OK);
 
 	/* --- disabled addon: check does nothing */

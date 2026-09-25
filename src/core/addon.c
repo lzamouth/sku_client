@@ -416,28 +416,6 @@ void sku_addon_cancel(sku_addon *a)
 	atomic_store(&a->cancel, 1);
 }
 
-int sku_addon_rename_channel(sku_addon *a, const char *from, const char *to, bool dry_run)
-{
-	char kold[128], knew[128];
-	const char *v;
-	static const char *fields[] = { "module", "zone" };
-	if (!from[0] || !to[0] || strcmp(from, "stable") == 0 || strcmp(to, "stable") == 0 || strcmp(from, to) == 0) return SKU_ERR_ARG;
-	if (strchr(to, '.') || strchr(to, '|') || strlen(to) >= 64) return SKU_ERR_ARG;
-	if (!channel_get(a, from)) return SKU_ERR_NOTFOUND;
-	for (size_t i = 0; i < sizeof fields / sizeof *fields; i++) {
-		sku_snprintf(kold, sizeof kold, "channel.%s.%s", from, fields[i]);
-		sku_snprintf(knew, sizeof knew, "channel.%s.%s", to, fields[i]);
-		v = sku_cfg_get(&a->local, kold);
-		if (v && !sku_cfg_has(&a->local, knew)) sku_cfg_set(&a->local, knew, v);   /* an existing target keeps its own settings */
-		sku_cfg_remove(&a->local, kold);
-	}
-	if (strcmp(a->channel, from) == 0) sku_cfg_set(&a->local, "channel", to);
-	sku_info("%s: channel \"%s\" renamed \"%s\"", a->dir, from, to);
-	fields_from_cfg(a);
-	a->dirty = true;
-	return dry_run ? SKU_OK : sku_addon_save(a);
-}
-
 /* ------------------------------------------------------------ settings */
 
 static int apply(sku_addon *a, bool dry_run)

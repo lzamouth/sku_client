@@ -217,22 +217,21 @@ that one channel only.
 ### 2.4 Naming a channel (4.0 client)
 
 The channel is named after the tester's file (`beta`, or `<x>` for
-`skunkcrafts_updater_beta_<x>.cfg`). To show another name, or to rename a
-channel your testers already have, add to the configuration uploaded to
-**that** depot:
+`skunkcrafts_updater_beta_<x>.cfg`), or after the `channel|` line inside it
+when there is one:
 
 ```
+module|https://cdn.example.com/updater/aerobask/F8XBeta
+zone|custom
 channel|Private beta
 ```
 
-A 4.0 client following that depot renames its channel at the next check, in
-place: same URL, new name, nothing added. The line carries no URL, so a
-production client that reads it learns nothing and cannot join the channel.
-
-The other way is a new tester file: a `skunkcrafts_updater_beta.cfg` with
-the same `module` and a `channel|Private beta` line, handed to the testers
-as before. A 4.0 client that has a channel at that URL renames it rather than
-adding a second one. Clients on the production channel
+To rename a channel your testers already have, hand them a new file with
+the **same** `module` and the new name. A 4.0 client that has a channel at
+that URL renames it rather than adding a second one; a client that has none
+adds it. Nothing goes through the depot: the configuration uploaded there is
+the production one, identical on every channel, and a channel only ever
+substitutes its own URL for the production one. Clients on the production channel
 ignore the key, so if you run a single beta depot the line can simply live in
 your shared configuration file. With several beta depots, each needs its own
 name, hence its own copy of the configuration. The 3.x client ignores the key
