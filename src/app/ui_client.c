@@ -251,6 +251,8 @@ void ui_client_news(app *ap)
 	while ((line = sku_next_line(&cursor)) != NULL) {
 		bool newer = false;
 		for (int s = 0; s < ns; s++) if (lineno >= sec[s].first_line && lineno <= sec[s].last_line) newer = sec[s].newer;
+		char tidy[1024];
+		line = (char *)ui_tidy_line(line, tidy, sizeof tidy);
 		nk_layout_row_dynamic(ctx, row, 1);
 		if (newer) nk_label_colored(ctx, line, NK_TEXT_LEFT, hi); else nk_label(ctx, line, NK_TEXT_LEFT);
 		lineno++;

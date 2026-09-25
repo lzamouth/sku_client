@@ -54,6 +54,21 @@ bool ui_button(app *ap, const char *label)
 	return hit;
 }
 
+const char *ui_tidy_line(const char *line, char *buf, size_t n)
+{
+	size_t k = 0;
+	const char *p = line;
+	while (*p == ' ' || *p == '\t') p++;
+	for (; *p && k + 1 < n; p++) {
+		unsigned char c = (unsigned char)*p;
+		if (c == '\t') { buf[k++] = ' '; if (k + 1 < n) buf[k++] = ' '; }
+		else if (c < 0x20) buf[k++] = ' ';
+		else buf[k++] = (char)c;
+	}
+	buf[k] = 0;
+	return buf;
+}
+
 bool ui_needs_update(sku_status st)
 {
 	return st == SKU_ST_UPDATE || st == SKU_ST_REPAIR || st == SKU_ST_VERSION_MISMATCH;

@@ -130,7 +130,10 @@ static void doc_tab(app *ap, int index, int kind, float height)
 				nk_label_colored(ctx, title, NK_TEXT_LEFT, newer ? (ap->dark ? nk_rgb(0, 255, 255) : nk_rgb(0, 130, 160)) : (ap->dark ? nk_rgb(200, 200, 200) : nk_rgb(80, 80, 80)));
 			} else {
 				const struct nk_user_font *f = ctx->style.font;
-				float w = f->width(f->userdata, f->height, line, (int)strlen(line));
+				char tidy[1024];
+				float w;
+				line = (char *)ui_tidy_line(line, tidy, sizeof tidy);   /* tab-indented 3.x changelogs */
+				w = f->width(f->userdata, f->height, line, (int)strlen(line));
 				float avail = nk_window_get_content_region(ctx).w - 30;
 				int lines = avail > 0 ? (int)(w / avail) + 1 : 1;
 				nk_layout_row_dynamic(ctx, (float)lines * ((float)ap->prefs.text_size + 4), 1);
