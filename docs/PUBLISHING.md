@@ -226,10 +226,13 @@ zone|custom
 channel|Private beta
 ```
 
-To rename a channel your testers already have, hand them a new file with
-the **same** `module` and the new name. A 4.0 client that has a channel at
-that URL renames it rather than adding a second one; a client that has none
-adds it. Nothing goes through the depot: the configuration uploaded there is
+To rename a channel your testers already have, hand them a new
+`skunkcrafts_updater_beta.cfg` with the new name (and the current URL). As
+in 3.x, one beta file means one beta: the file replaces the channel it would
+have created without the `channel|` line (`beta` for that file name, `<x>`
+for `skunkcrafts_updater_beta_<x>.cfg`), or the channel already pointing at
+the same URL, whichever exists. A client that has neither adds it. The file
+is absorbed as soon as the client loads the folder. Nothing goes through the depot: the configuration uploaded there is
 the production one, identical on every channel, and a channel only ever
 substitutes its own URL for the production one. Clients on the production channel
 ignore the key, so if you run a single beta depot the line can simply live in

@@ -259,13 +259,25 @@ static void test_level(const char *level, bool second_run_uses_cache)
 		CHECK_EQ_STR(a->channel, "stable");
 		CHECK_EQ_INT(sku_addon_save(a), SKU_OK);   /* the file is absorbed */
 		CHECK(!sku_exists(p));
-		/* and back to the plain name for the rest of the test */
+		/* skunkcrafts_updater_beta.cfg replaces the "beta" channel whatever the URL (3.x: one file, one beta),
+		 * and a v4 addon absorbs the file at load, without waiting for a save */
+		sku_snprintf(text, sizeof text, "module|%s/beta2/\nzone|custom\nchannel|Private beta\nenabled|true\n", url);
+		CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+		CHECK_EQ_INT(a->nchannels, 1);
+		CHECK_EQ_STR(a->channels[0].name, "Private beta");
+		CHECK(sku_str_ends(a->channels[0].module, "/beta2/"));
+		CHECK_EQ_STR(a->channel, "Private beta");
+		CHECK(!sku_exists(p));
+		/* the same the other way round: a file whose default name is the current one renames it back */
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_beta_Private beta.cfg");
 		sku_snprintf(text, sizeof text, "module|%s/beta\nzone|custom\nchannel|beta\nenabled|false\n", url);
 		CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
 		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
 		CHECK_EQ_INT(a->nchannels, 1);
 		CHECK_EQ_STR(a->channels[0].name, "beta");
-		CHECK_EQ_INT(sku_addon_save(a), SKU_OK);
+		CHECK_EQ_STR(a->channel, "stable");
+		CHECK(!sku_exists(p));
 	}
 
 	/* --- second check: everything up to date, hashes come from the cache,

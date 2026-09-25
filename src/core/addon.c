@@ -141,6 +141,15 @@ static void channels_from_cfg(sku_addon *a)
 	}
 }
 
+/* Same depot URL, trailing slashes aside. */
+static bool same_url(const char *a, const char *b)
+{
+	size_t la = strlen(a), lb = strlen(b);
+	while (la && a[la - 1] == '/') la--;
+	while (lb && b[lb - 1] == '/') lb--;
+	return la == lb && strncmp(a, b, la) == 0;
+}
+
 /* A 3.x beta file: skunkcrafts_updater_beta*.cfg -> channel keys, then the file is dropped on save. */
 static void merge_beta_file(sku_addon *a, const char *file, const char *default_name)
 {
@@ -152,28 +161,35 @@ static void merge_beta_file(sku_addon *a, const char *file, const char *default_
 	name = sku_cfg_get_or(&b, "channel", default_name);
 	module = sku_cfg_get(&b, "module");
 	if (module && *name && !strchr(name, '.') && !strchr(name, '|') && strcmp(name, "stable") != 0) {
-		/* the same depot under another name: rename the channel we have instead of adding one */
-		for (int i = 0; i < a->local.n; i++) {
+		/* A file REPLACES a channel rather than adding one (3.x semantics: one beta file, one beta):
+		 * the channel it would have created without a "channel|" line (its default name), or the
+		 * channel already pointing at the same depot under another name. */
+		const char *old = NULL;
+		char found[64];
+		sku_snprintf(key, sizeof key, "channel.%s.module", default_name);
+		if (strcmp(name, default_name) != 0 && sku_cfg_has(&a->local, key)) old = default_name;
+		for (int i = 0; !old && i < a->local.n; i++) {
 			const char *k = a->local.v[i].key, *dot;
-			char old[64];
 			size_t len;
 			if (!k || strncmp(k, "channel.", 8) != 0 || !a->local.v[i].value) continue;
 			dot = strrchr(k, '.');
-			if (!dot || strcmp(dot + 1, "module") != 0 || strcmp(a->local.v[i].value, module) != 0) continue;
+			if (!dot || strcmp(dot + 1, "module") != 0 || !same_url(a->local.v[i].value, module)) continue;
 			len = (size_t)(dot - (k + 8));
-			if (len == 0 || len >= sizeof old) continue;
-			memcpy(old, k + 8, len); old[len] = 0;
-			if (strcmp(old, name) == 0) break;
+			if (len == 0 || len >= sizeof found) continue;
+			memcpy(found, k + 8, len); found[len] = 0;
+			if (strcmp(found, name) != 0) old = found;
+		}
+		if (old) {
 			sku_snprintf(key, sizeof key, "channel.%s.module", old); sku_cfg_remove(&a->local, key);
 			sku_snprintf(key, sizeof key, "channel.%s.zone", old);   sku_cfg_remove(&a->local, key);
 			if (strcmp(sku_cfg_get_or(&a->local, "channel", "stable"), old) == 0) sku_cfg_set(&a->local, "channel", name);
-			sku_info("%s: channel \"%s\" renamed \"%s\" (same depot) by %s", a->dir, old, name, sku_path_basename(file));
-			break;
+			sku_info("%s: channel \"%s\" replaced by \"%s\" from %s", a->dir, old, name, sku_path_basename(file));
 		}
 		sku_snprintf(key, sizeof key, "channel.%s.module", name); sku_cfg_set(&a->local, key, module);
 		sku_snprintf(key, sizeof key, "channel.%s.zone", name);   sku_cfg_set(&a->local, key, sku_cfg_get_or(&b, "zone", "custom"));
-		/* the legacy "enabled" flag selects the active channel */
+		/* the legacy "enabled" flag selects the active channel: true = follow this channel, false = production */
 		if (sku_cfg_get_bool(&b, "enabled", true)) sku_cfg_set(&a->local, "channel", name);
+		else if (strcmp(sku_cfg_get_or(&a->local, "channel", "stable"), name) == 0) sku_cfg_set(&a->local, "channel", "stable");
 		sku_info("%s: merged beta channel \"%s\" from %s", a->dir, name, sku_path_basename(file));
 	} else {
 		sku_warn("%s: beta file %s has no module, ignored", a->dir, sku_path_basename(file));
@@ -295,9 +311,12 @@ int sku_addon_reload(sku_addon *a)
 	/* 3.x beta files are merged from both layouts: a tester can drop one later */
 	{
 		struct beta_scan s = { a };
+		bool was_dirty = a->dirty;
 		sku_list_dir(a->dir, beta_cb, &s);
+		fields_from_cfg(a);
+		/* already v4 and allowed to write: absorb the file now rather than at the next save */
+		if (a->dirty && !was_dirty && a->v4 && !a->inst->read_only) sku_addon_save(a);
 	}
-	fields_from_cfg(a);
 	sku_addon_set_status(a, a->disabled ? SKU_ST_DISABLED : SKU_ST_LOCAL,
 		a->disabled ? "Updates disabled by user" : "Information from local configuration", "");
 	return SKU_OK;
