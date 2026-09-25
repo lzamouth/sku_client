@@ -1,3 +1,6 @@
+4.0.0-beta9
+- Linux AppImage: the Update button replaces the running AppImage in place and offers to restart, so menu entries and dock icons stay valid
+
 4.0.0-beta8
 - User guide (USER_GUIDE.html) shipped with every package
 - The updater's own update depot moves to the store CDN; packages are looked up by version, older names still work
