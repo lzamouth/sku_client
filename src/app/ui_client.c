@@ -249,12 +249,19 @@ void ui_client_news(app *ap)
 	for (int s = 0; s < ns; s++) sec[s].newer = sec[s].version[0] && sku_client_version_cmp(sec[s].version, SKU_VERSION) > 0;
 	copy = sku_xstrdup(ap->client.changelog); cursor = copy;
 	while ((line = sku_next_line(&cursor)) != NULL) {
-		bool newer = false;
-		for (int s = 0; s < ns; s++) if (lineno >= sec[s].first_line && lineno <= sec[s].last_line) newer = sec[s].newer;
-		char tidy[1024];
-		line = (char *)ui_tidy_line(line, tidy, sizeof tidy);
+		bool newer = false, header = false;
+		char tidy[1024], version[64];
+		for (int s = 0; s < ns; s++) if (lineno >= sec[s].first_line && lineno <= sec[s].last_line) { newer = sec[s].newer; header = lineno == sec[s].first_line && sec[s].version[0]; }
 		nk_layout_row_dynamic(ctx, row, 1);
-		if (newer) nk_label_colored(ctx, line, NK_TEXT_LEFT, hi); else nk_label(ctx, line, NK_TEXT_LEFT);
+		if (header && sku_changelog_is_header(line, version, sizeof version)) {
+			sku_snprintf(tidy, sizeof tidy, "%s %s", newer ? "\xE2\x96\xB6" : "\xE2\x80\xA2", version);
+			nk_style_set_font(ctx, &ap->bold->handle);
+			nk_label_colored(ctx, tidy, NK_TEXT_LEFT, newer ? hi : (ap->dark ? nk_rgb(220, 220, 220) : nk_rgb(60, 60, 60)));
+			nk_style_set_font(ctx, &ap->font->handle);
+		} else {
+			line = (char *)ui_tidy_line(line, tidy, sizeof tidy);
+			if (newer) nk_label_colored(ctx, line, NK_TEXT_LEFT, hi); else nk_label(ctx, line, NK_TEXT_LEFT);
+		}
 		lineno++;
 	}
 	free(copy); free(sec);

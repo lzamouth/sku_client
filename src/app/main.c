@@ -20,6 +20,8 @@
 
 extern const unsigned char sku_font_ui[];
 extern const size_t sku_font_ui_len;
+extern const unsigned char sku_font_ui_bold[];
+extern const size_t sku_font_ui_bold_len;
 extern const unsigned char sku_font_sans[];
 extern const size_t sku_font_sans_len;
 extern const unsigned char sku_font_mono[];
@@ -197,7 +199,7 @@ static void load_fonts(app *ap)
 	float px = (float)ap->prefs.text_size * ap->scale;
 	/* UI text: Roboto over Latin-1 + ellipsis; the two symbols the UI uses (black
 	 * right-pointing triangle, small square) come from DejaVu Sans, merged in */
-	static const nk_rune ranges[] = { 0x0020, 0x00FF, 0x2026, 0x2026, 0 };
+	static const nk_rune ranges[] = { 0x0020, 0x00FF, 0x2022, 0x2022, 0x2026, 0x2026, 0 };   /* + bullet, ellipsis */
 	static const nk_rune symbols[] = { 0x25AB, 0x25AB, 0x25B6, 0x25B6, 0 };
 	static const nk_rune mono_ranges[] = { 0x0020, 0x00FF, 0x2026, 0x2026, 0x25AB, 0x25AB, 0x25B6, 0x25B6, 0 };
 	struct nk_font_config merge = nk_font_config(0);
@@ -212,10 +214,13 @@ static void load_fonts(app *ap)
 	merge.range = symbols;
 	merge.merge_mode = 1;
 	nk_font_atlas_add_from_memory(atlas, (void *)sku_font_sans, sku_font_sans_len, px, &merge);
+	ap->bold = nk_font_atlas_add_from_memory(atlas, (void *)sku_font_ui_bold, sku_font_ui_bold_len, px, &cfg);
+	nk_font_atlas_add_from_memory(atlas, (void *)sku_font_sans, sku_font_sans_len, px, &merge);
 	cfg.range = mono_ranges;
 	ap->mono = nk_font_atlas_add_from_memory(atlas, (void *)sku_font_mono, sku_font_mono_len, px, &cfg);
 	nk_sdl_font_stash_end(ap->ctx);
 	ap->font->handle.height /= ap->scale;
+	ap->bold->handle.height /= ap->scale;
 	ap->mono->handle.height /= ap->scale;
 	nk_style_set_font(ap->ctx, &ap->font->handle);
 }

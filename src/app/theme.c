@@ -4,6 +4,11 @@
 #include "nuklear_config.h"
 #include <string.h>
 
+const char *ui_channel_label(const char *channel)
+{
+	return strcmp(channel, "stable") == 0 ? UI_MAIN_CHANNEL : channel;
+}
+
 struct nk_color ui_channel_color(app *ap, const char *channel)
 {
 	if (strcmp(channel, "stable") == 0) return ap->dark ? nk_rgb(100, 180, 255) : nk_rgb(0, 110, 190);

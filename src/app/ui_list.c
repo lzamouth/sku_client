@@ -113,16 +113,16 @@ void ui_list(app *ap)
 				/* column 1: the channel, as a drop-down when there is a choice; a press
 				 * anywhere else on the row opens the addon (Nuklear widgets trigger on press) */
 				if (it->nchannels && !atomic_load(&it->busy)) {
-					const char *names[APP_MAX_CHANNELS + 1];
+					const char *names[APP_MAX_CHANNELS + 1], *labels[APP_MAX_CHANNELS + 1];
 					struct nk_color colors[APP_MAX_CHANNELS + 1];
 					int n = 0, cur = 0, now;
-					names[n] = "stable"; colors[n] = ui_channel_color(ap, "stable"); n++;
-					for (int c = 0; c < it->nchannels; c++) { if (strcmp(it->channels[c], it->channel) == 0) cur = n; colors[n] = ui_channel_color(ap, it->channels[c]); names[n++] = it->channels[c]; }
-					now = ui_combo_ex(ap, names, colors, n, cur, (int)row, UI_W(ap, 160), (float)(n + 1) * row);
+					names[n] = "stable"; labels[n] = UI_MAIN_CHANNEL; colors[n] = ui_channel_color(ap, "stable"); n++;
+					for (int c = 0; c < it->nchannels; c++) { if (strcmp(it->channels[c], it->channel) == 0) cur = n; colors[n] = ui_channel_color(ap, it->channels[c]); labels[n] = it->channels[c]; names[n++] = it->channels[c]; }
+					now = ui_combo_ex(ap, labels, colors, n, cur, (int)row, UI_W(ap, 160), (float)(n + 1) * row);
 					if (now != cur) { sku_addon_set_channel(it->a, names[now], false); app_refresh_item(it); }
 				} else {
 					clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
-					if (it->nchannels) nk_label_colored(ctx, it->channel, NK_TEXT_CENTERED, ui_channel_color(ap, it->channel));   /* busy: no menu */
+					if (it->nchannels) nk_label_colored(ctx, ui_channel_label(it->channel), NK_TEXT_CENTERED, ui_channel_color(ap, it->channel));   /* busy: no menu */
 					else nk_label(ctx, "", NK_TEXT_CENTERED);
 				}
 

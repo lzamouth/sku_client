@@ -159,7 +159,7 @@ void ui_pack(app *ap)
 			nk_bool sel = nk_false;
 			nk_layout_row(ctx, NK_DYNAMIC, row - 4, 4, ap->prefs.cols);
 			clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
-			if (it->nchannels) nk_label_colored(ctx, it->channel, NK_TEXT_CENTERED, ui_channel_color(ap, it->channel)); else nk_label(ctx, "", NK_TEXT_LEFT);
+			if (it->nchannels) nk_label_colored(ctx, ui_channel_label(it->channel), NK_TEXT_CENTERED, ui_channel_color(ap, it->channel)); else nk_label(ctx, "", NK_TEXT_LEFT);
 			clicked |= nk_selectable_label(ctx, it->name, NK_TEXT_LEFT, &sel) != 0;
 			clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
 			nk_label(ctx, it->version, NK_TEXT_LEFT);

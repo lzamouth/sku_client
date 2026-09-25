@@ -198,7 +198,7 @@ production URL and is left alone. Removing the file, or setting
 with the production depot and "repairs" the folder to the production build.
 
 The 3.x client shows a "beta" toggle for a folder that has this file; the 4.0
-client shows a channel drop-down (`stable` / `beta`) in the addon list, and
+client shows a channel drop-down (`Main` / `beta`) in the addon list, and
 converts the file into its own settings at the first save.
 
 ### 2.3 Several betas at once (4.0 client)
@@ -207,7 +207,7 @@ The 4.0 client supports any number of channels. Each additional file
 `skunkcrafts_updater_beta_<channel>.cfg` declares one: for example
 `skunkcrafts_updater_beta_rc.cfg` declares the channel `rc`,
 `skunkcrafts_updater_beta_experimental.cfg` the channel `experimental`. Same
-three keys. The drop-down then lists `stable`, `beta`, `rc`, ... and the
+three keys. The drop-down then lists `Main`, `beta`, `rc`, ... and the
 user picks. The plain `skunkcrafts_updater_beta.cfg` remains the channel
 named `beta`.
 
@@ -245,7 +245,7 @@ and keeps calling it "beta".
 When the beta becomes the release, publish the build to the production depot
 with the release version. Testers who stay on the beta channel keep
 following the beta depot: either publish the release there too, or tell them
-to switch back to stable. Do not delete a beta depot while testers are on it:
+to switch back to Main. Do not delete a beta depot while testers are on it:
 an unreachable depot shows as an error in their list.
 
 ## Part 3 - On the user's side: local files and the 4.0 migration

@@ -125,9 +125,11 @@ static void doc_tab(app *ap, int index, int kind, float height)
 			if (header && sku_changelog_is_header(line, version, sizeof version)) {
 				char title[128];
 				bool installed = strcmp(version, it->version) == 0 || (it->version[0] == 'v' && strcmp(version, it->version + 1) == 0);
-				sku_snprintf(title, sizeof title, "%s %s%s", newer ? "\xE2\x96\xB6" : "\xE2\x96\xAB", version, newer ? "   (new)" : installed ? "   (installed)" : "");
+				sku_snprintf(title, sizeof title, "%s %s%s", newer ? "\xE2\x96\xB6" : "\xE2\x80\xA2", version, newer ? "   (new)" : installed ? "   (installed)" : "");
 				nk_layout_row_dynamic(ctx, (float)ap->prefs.text_size + 8, 1);
-				nk_label_colored(ctx, title, NK_TEXT_LEFT, newer ? (ap->dark ? nk_rgb(0, 255, 255) : nk_rgb(0, 130, 160)) : (ap->dark ? nk_rgb(200, 200, 200) : nk_rgb(80, 80, 80)));
+				nk_style_set_font(ctx, &ap->bold->handle);
+				nk_label_colored(ctx, title, NK_TEXT_LEFT, newer ? (ap->dark ? nk_rgb(0, 255, 255) : nk_rgb(0, 130, 160)) : (ap->dark ? nk_rgb(220, 220, 220) : nk_rgb(60, 60, 60)));
+				nk_style_set_font(ctx, &ap->font->handle);
 			} else {
 				const struct nk_user_font *f = ctx->style.font;
 				char tidy[1024];
@@ -210,15 +212,16 @@ void ui_detail(app *ap)
 	nk_layout_row_end(ctx);
 
 	if (it->nchannels) {
-		const char *names[APP_MAX_CHANNELS + 1];
+		const char *names[APP_MAX_CHANNELS + 1], *labels[APP_MAX_CHANNELS + 1];
+		struct nk_color colors[APP_MAX_CHANNELS + 1];
 		int sel = 0, n = 0;
-		names[n++] = "stable";
-		for (int i = 0; i < it->nchannels; i++) { if (strcmp(it->channels[i], it->channel) == 0) sel = n; names[n++] = it->channels[i]; }
+		names[n] = "stable"; labels[n] = UI_MAIN_CHANNEL; colors[n] = ui_channel_color(ap, "stable"); n++;
+		for (int i = 0; i < it->nchannels; i++) { if (strcmp(it->channels[i], it->channel) == 0) sel = n; colors[n] = ui_channel_color(ap, it->channels[i]); labels[n] = it->channels[i]; names[n++] = it->channels[i]; }
 		nk_layout_row_begin(ctx, NK_STATIC, row, 2);
 		nk_layout_row_push(ctx, UI_W(ap, 170)); nk_label(ctx, "Channel:", NK_TEXT_RIGHT);
 		nk_layout_row_push(ctx, UI_W(ap, 250));
 		{
-			int now = ui_combo(ap, names, n, sel, (int)row, 250, 200);
+			int now = ui_combo_ex(ap, labels, colors, n, sel, (int)row, UI_W(ap, 250), (float)(n + 1) * row);
 			if (now != sel && !busy) { sku_addon_set_channel(it->a, names[now], false); app_refresh_item(it); }
 		}
 		nk_layout_row_end(ctx);

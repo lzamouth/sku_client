@@ -72,7 +72,7 @@ typedef struct app {
 	SDL_Window   *win;
 	SDL_Renderer *ren;
 	struct nk_context *ctx;
-	struct nk_font *font, *mono;
+	struct nk_font *font, *bold, *mono;
 	float scale;
 	bool  running;
 	bool  dark;                       /* effective theme */
@@ -191,6 +191,8 @@ int  ui_combo(app *ap, const char **items, int n, int selected, int item_height,
 struct nk_color;
 int  ui_combo_ex(app *ap, const char **items, const struct nk_color *colors, int n, int selected, int item_height, float w, float h);
 struct nk_color ui_channel_color(app *ap, const char *channel);   /* stable blue, the others yellow */
+#define UI_MAIN_CHANNEL "Main"                                     /* what the "stable" token is called on screen */
+const char *ui_channel_label(const char *channel);               /* "stable" -> UI_MAIN_CHANNEL, others unchanged */
 /* Column titles over a list; the boundaries can be dragged (double-click: defaults). cols is updated and saved. */
 void ui_column_header(app *ap, const char **titles, const float *defaults, float *cols, int n, float row);
 extern const float ui_list_default_cols[4];
