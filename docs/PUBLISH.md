@@ -19,7 +19,9 @@ et servi par `https://1228098873.rsc.cdn77.org/`, dans son dossier `updater/` :
    `SkunkcraftsUpdater-windows.zip`, `-windows-setup.exe`, `-macos.zip`,
    `-linux.zip`, `-x86_64.AppImage`, plus `sku-cli.zip`, `USER_GUIDE.html` et
    `USER_GUIDE.md`. Ce sont les liens permanents de la page de téléchargement ;
-   ils changent de contenu à chaque version, pas de nom.
+   ils changent de contenu à chaque version, pas de nom. La liste des liens
+   pour la page du store, `updater/urls to updater v4.txt`, n'a donc plus à
+   être modifiée à chaque version ; le script ne la touche pas.
 
 Deux anciennes adresses ne servent plus qu'à rediriger, par un cfg dont
 `module` annonce `https://1228098873.rsc.cdn77.org/updater/depot` : le dépôt

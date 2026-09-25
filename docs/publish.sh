@@ -73,3 +73,4 @@ echo "$(curl -sIL --max-time 30 -o /dev/null -w '%{http_code}' "$DEPOT_URL/skunk
 SKU_CLIENT_URL="$DEPOT_URL" "$ROOT/build/linux/src/cli/sku" client | grep -E "published|package"
 echo "=== done: $VER published"
 echo "Permanent links: $CDN_BASE/SkunkcraftsUpdater-<windows.zip|windows-setup.exe|macos.zip|linux.zip|x86_64.AppImage>, $CDN_BASE/USER_GUIDE.html"
+[ -f "$S3_DIR/urls to updater v4.txt" ] && echo "Links file (unchanged, the names are permanent): $S3_DIR/urls to updater v4.txt"
