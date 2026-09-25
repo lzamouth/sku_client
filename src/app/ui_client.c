@@ -254,10 +254,15 @@ void ui_client_news(app *ap)
 		for (int s = 0; s < ns; s++) if (lineno >= sec[s].first_line && lineno <= sec[s].last_line) { newer = sec[s].newer; header = lineno == sec[s].first_line && sec[s].version[0]; }
 		nk_layout_row_dynamic(ctx, row, 1);
 		if (header && sku_changelog_is_header(line, version, sizeof version)) {
-			sku_snprintf(tidy, sizeof tidy, "%s %s", newer ? "\xE2\x96\xB6" : "\xE2\x80\xA2", version);
+			struct nk_color c = newer ? hi : (ap->dark ? nk_rgb(220, 220, 220) : nk_rgb(60, 60, 60));
+			nk_layout_row_begin(ctx, NK_STATIC, row, 2);
+			nk_layout_row_push(ctx, UI_W(ap, 16));
+			nk_label_colored(ctx, newer ? "\xE2\x96\xB6" : "\xE2\x80\xA2", NK_TEXT_LEFT, c);
+			nk_layout_row_push(ctx, nk_window_get_content_region(ctx).w - UI_W(ap, 40));
 			nk_style_set_font(ctx, &ap->bold->handle);
-			nk_label_colored(ctx, tidy, NK_TEXT_LEFT, newer ? hi : (ap->dark ? nk_rgb(220, 220, 220) : nk_rgb(60, 60, 60)));
+			nk_label_colored(ctx, version, NK_TEXT_LEFT, c);
 			nk_style_set_font(ctx, &ap->font->handle);
+			nk_layout_row_end(ctx);
 		} else {
 			line = (char *)ui_tidy_line(line, tidy, sizeof tidy);
 			if (newer) nk_label_colored(ctx, line, NK_TEXT_LEFT, hi); else nk_label(ctx, line, NK_TEXT_LEFT);

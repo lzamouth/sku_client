@@ -125,11 +125,17 @@ static void doc_tab(app *ap, int index, int kind, float height)
 			if (header && sku_changelog_is_header(line, version, sizeof version)) {
 				char title[128];
 				bool installed = strcmp(version, it->version) == 0 || (it->version[0] == 'v' && strcmp(version, it->version + 1) == 0);
-				sku_snprintf(title, sizeof title, "%s %s%s", newer ? "\xE2\x96\xB6" : "\xE2\x80\xA2", version, newer ? "   (new)" : installed ? "   (installed)" : "");
-				nk_layout_row_dynamic(ctx, (float)ap->prefs.text_size + 8, 1);
+				struct nk_color c = newer ? (ap->dark ? nk_rgb(0, 255, 255) : nk_rgb(0, 130, 160)) : (ap->dark ? nk_rgb(220, 220, 220) : nk_rgb(60, 60, 60));
+				sku_snprintf(title, sizeof title, "%s%s", version, newer ? "   (new)" : installed ? "   (installed)" : "");
+				/* the marker comes from the regular font (the symbols are merged there), the version is bold */
+				nk_layout_row_begin(ctx, NK_STATIC, (float)ap->prefs.text_size + 8, 2);
+				nk_layout_row_push(ctx, UI_W(ap, 16));
+				nk_label_colored(ctx, newer ? "\xE2\x96\xB6" : "\xE2\x80\xA2", NK_TEXT_LEFT, c);
+				nk_layout_row_push(ctx, nk_window_get_content_region(ctx).w - UI_W(ap, 40));
 				nk_style_set_font(ctx, &ap->bold->handle);
-				nk_label_colored(ctx, title, NK_TEXT_LEFT, newer ? (ap->dark ? nk_rgb(0, 255, 255) : nk_rgb(0, 130, 160)) : (ap->dark ? nk_rgb(220, 220, 220) : nk_rgb(60, 60, 60)));
+				nk_label_colored(ctx, title, NK_TEXT_LEFT, c);
 				nk_style_set_font(ctx, &ap->font->handle);
+				nk_layout_row_end(ctx);
 			} else {
 				const struct nk_user_font *f = ctx->style.font;
 				char tidy[1024];
