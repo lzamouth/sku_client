@@ -1,3 +1,8 @@
+4.0.0-beta11
+- Linux: runs through X11 (XWayland) by default, which resizes smoothly and uses the desktop's title bar; "Window system" option to prefer Wayland on fractional-scale displays
+- The addon list fills its area to the bottom
+- Development builds are stamped with their commit
+
 4.0.0-beta10
 - skunkcrafts_updater.cfg stays in place as the configuration file: aircraft and publishing tools read the version there. Folders converted by earlier betas are migrated back automatically
 - The skunkcrafts/ folder inside an add-on now holds only the CRC cache
