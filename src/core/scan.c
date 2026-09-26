@@ -34,10 +34,10 @@ static void add(sku_found_list *l, const char *dir, sku_genre genre, bool v4)
 bool sku_scan_is_addon(const char *dir, bool *v4)
 {
 	char p[SKU_PATH_MAX];
-	sku_path_join(p, sizeof p, dir, SKU_F_V4_CFG);
-	if (sku_is_file(p)) { if (v4) *v4 = true; return true; }
 	sku_path_join(p, sizeof p, dir, SKU_F_CFG);
 	if (sku_is_file(p)) { if (v4) *v4 = false; return true; }
+	sku_path_join(p, sizeof p, dir, SKU_F_V4_CFG);   /* converted by a 4.0 beta: migrated back on load */
+	if (sku_is_file(p)) { if (v4) *v4 = true; return true; }
 	return false;
 }
 
@@ -79,7 +79,7 @@ static void walk(sku_found_list *out, const char *dir, int depth, sku_genre genr
 	bool v4;
 	if (sku_scan_is_addon(dir, &v4)) {
 		add(out, dir, genre, v4);
-		sku_info("scan: %s: managed %s found (%s config)", dir, genre == SKU_GENRE_AIRCRAFT ? "aircraft" : "addon", v4 ? "v4" : "3.x");
+		sku_info("scan: %s: managed %s found (%s config)", dir, genre == SKU_GENRE_AIRCRAFT ? "aircraft" : "addon", v4 ? "4.0-beta layout, to migrate" : "3.x");
 		return;
 	}
 	if (depth <= 0) { stop_reason(genre, dir, "max depth reached, not explored"); return; }
@@ -107,7 +107,7 @@ static int root_cb(const char *name, bool is_dir, bool is_symlink, void *user)
 	sku_path_join(full, sizeof full, w->dir, name);
 	if (sku_is_dir(full) && sku_scan_is_addon(full, &v4)) {
 		add(w->out, full, SKU_GENRE_OTHER, v4);
-		sku_info("scan: %s: managed addon found at the X-Plane root (%s config)", full, v4 ? "v4" : "3.x");
+		sku_info("scan: %s: managed addon found at the X-Plane root (%s config)", full, v4 ? "4.0-beta layout, to migrate" : "3.x");
 	}
 	return 0;
 }
@@ -127,7 +127,7 @@ int sku_scan_instance(const sku_instance *in, sku_found_list *out)
 	sku_scan_custom_load(in, &custom);
 	for (int i = 0; i < custom.n; i++) {
 		bool v4;
-		if (sku_scan_is_addon(custom.v[i], &v4)) { add(out, custom.v[i], SKU_GENRE_CUSTOM, v4); sku_info("scan: %s: custom addon folder (%s config)", custom.v[i], v4 ? "v4" : "3.x"); }
+		if (sku_scan_is_addon(custom.v[i], &v4)) { add(out, custom.v[i], SKU_GENRE_CUSTOM, v4); sku_info("scan: %s: custom addon folder (%s config)", custom.v[i], v4 ? "4.0-beta layout, to migrate" : "3.x"); }
 		else sku_warn("custom addon folder not found or no longer an addon: %s", custom.v[i]);
 	}
 	sku_strlist_free(&custom);

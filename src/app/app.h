@@ -34,7 +34,7 @@ typedef struct {
 	char channel[64], channels[APP_MAX_CHANNELS][64];
 	int  nchannels;
 	sku_genre genre;
-	bool disabled, liveries, checked, v4;
+	bool disabled, liveries, checked;
 	int  n_new, n_changed, n_delete, n_ignored, n_error, n_unchanged;
 	int64_t bytes;
 	int  pack;                      /* index into app.packs, or -1 */

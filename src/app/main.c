@@ -64,7 +64,6 @@ void app_refresh_item(app_item *it)
 	it->disabled = a->disabled;
 	it->liveries = a->liveries;
 	it->checked = a->checked;
-	it->v4 = a->v4;
 	it->n_new = a->plan.n_new; it->n_changed = a->plan.n_changed; it->n_delete = a->plan.n_delete;
 	it->n_ignored = a->plan.n_ignored; it->n_error = a->plan.n_error; it->n_unchanged = a->plan.n_unchanged;
 	it->bytes = a->plan.bytes;

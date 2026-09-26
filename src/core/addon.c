@@ -1,4 +1,5 @@
-/* Addon: local configuration, v1 <-> v4 layouts, status, settings. */
+/* Addon: local configuration (skunkcrafts_updater.cfg, kept where 3.x, aircraft and other
+ * tools read it; the 4.0 channel keys live in the same file), status, settings. */
 #include "addon.h"
 #include "platform.h"
 #include "paths.h"
@@ -268,22 +269,16 @@ int sku_addon_reload(sku_addon *a)
 	a->dirty = false;
 	a->checked = false;
 
-	sku_path_join(p, sizeof p, a->dir, SKU_F_V4_CFG);
-	a->v4 = sku_is_file(p);
-	if (a->v4) {
-		/* a 3.x cfg put back next to the v4 layout (package reinstalled, user restoring a file):
-		 * the v4 file keeps the user's settings and wins; the files decide by CRC anyway */
-		char old[SKU_PATH_MAX];
-		sku_path_join(old, sizeof old, a->dir, SKU_F_CFG);
-		if (sku_is_file(old)) {
-			sku_cfg o;
-			sku_cfg_init(&o);
-			sku_cfg_load(&o, old);
-			sku_warn("%s: both %s and %s exist: the v4 file wins, the 3.x one (version %s) is ignored and will be removed at the next save",
-				a->dir, SKU_F_V4_CFG, SKU_F_CFG, sku_cfg_get_or(&o, "version", "?"));
-			sku_cfg_free(&o);
-		}
-	} else sku_path_join(p, sizeof p, a->dir, SKU_F_CFG);
+	/* the configuration is skunkcrafts_updater.cfg; an install converted by a 4.0 beta
+	 * (skunkcrafts/updater.cfg, the root file removed) is read from there and migrated back */
+	{
+		char legacy[SKU_PATH_MAX];
+		sku_path_join(p, sizeof p, a->dir, SKU_F_CFG);
+		sku_path_join(legacy, sizeof legacy, a->dir, SKU_F_V4_CFG);
+		a->legacy_v4 = sku_is_file(legacy);
+		if (a->legacy_v4 && !sku_is_file(p)) { sku_strlcpy(p, legacy, sizeof p); sku_info("%s: 4.0-beta layout found, migrating back to %s", a->dir, SKU_F_CFG); }
+		else if (a->legacy_v4) sku_info("%s: leftover %s ignored, %s is the configuration", a->dir, SKU_F_V4_CFG, SKU_F_CFG);
+	}
 	rc = sku_cfg_load(&a->local, p);
 	if (rc != SKU_OK) {
 		sku_addon_set_status(a, SKU_ST_ERROR_CONFIG, "Cannot read the local configuration", p);
@@ -298,24 +293,18 @@ int sku_addon_reload(sku_addon *a)
 	sku_cfg_set_default(&a->local, "channel", "stable");
 	if (a->genre == SKU_GENRE_AIRCRAFT) sku_cfg_set_default(&a->local, "liveries", "true");
 
-	if (a->v4) {
-		sku_path_join(p, sizeof p, a->dir, SKU_F_V4_IGNORE);
-		load_ignore(a, p);
-		/* a 3.x ignore list put back later counts too; it is folded into ours at the next save */
-		sku_path_join(p, sizeof p, a->dir, SKU_F_IGNORE);
-		if (sku_is_file(p)) { sku_info("%s: 3.x ignore list also present, merged", a->dir); load_ignore(a, p); }
-	} else {
-		sku_path_join(p, sizeof p, a->dir, SKU_F_IGNORE);
-		load_ignore(a, p);
-	}
-	/* 3.x beta files are merged from both layouts: a tester can drop one later */
+	sku_path_join(p, sizeof p, a->dir, SKU_F_IGNORE);
+	load_ignore(a, p);
+	sku_path_join(p, sizeof p, a->dir, SKU_F_V4_IGNORE);
+	if (sku_is_file(p)) { load_ignore(a, p); a->legacy_v4 = true; }   /* folded into the 3.x file at the next save */
+	if (a->legacy_v4) a->dirty = true;
+	/* beta files (skunkcrafts_updater_beta*.cfg) become channel keys of the configuration */
 	{
 		struct beta_scan s = { a };
-		bool was_dirty = a->dirty;
 		sku_list_dir(a->dir, beta_cb, &s);
 		fields_from_cfg(a);
-		/* already v4 and allowed to write: absorb the file now rather than at the next save */
-		if (a->dirty && !was_dirty && a->v4 && !a->inst->read_only) sku_addon_save(a);
+		/* allowed to write: absorb beta files and the legacy layout now rather than at the next save */
+		if (a->dirty && !a->inst->read_only) sku_addon_save(a);
 	}
 	sku_addon_set_status(a, a->disabled ? SKU_ST_DISABLED : SKU_ST_LOCAL,
 		a->disabled ? "Updates disabled by user" : "Information from local configuration", "");
@@ -351,35 +340,35 @@ void sku_addon_close(sku_addon *a)
 	free(a);
 }
 
-struct v1_cleanup { sku_addon *a; };
+struct absorb { sku_addon *a; };
 
-static int cleanup_cb(const char *name, bool is_dir, bool is_symlink, void *user)
+/* Beta files were merged into the configuration on load: remove them. */
+static int absorb_cb(const char *name, bool is_dir, bool is_symlink, void *user)
 {
-	struct v1_cleanup *c = user;
+	struct absorb *c = user;
 	char file[SKU_PATH_MAX];
 	(void)is_symlink;
 	if (is_dir) return 0;
-	if (strcmp(name, SKU_F_CFG) == 0 || strcmp(name, SKU_F_IGNORE) == 0 ||
-	    (strncmp(name, "skunkcrafts_updater_beta", 24) == 0 && sku_str_ends(name, ".cfg"))) {
+	if (strncmp(name, "skunkcrafts_updater_beta", 24) == 0 && sku_str_ends(name, ".cfg")) {
 		sku_path_join(file, sizeof file, c->a->dir, name);
-		if (sku_remove_file(file) == SKU_OK) sku_info("%s: removed 3.x file %s", c->a->dir, name);
+		if (sku_remove_file(file) == SKU_OK) sku_info("%s: absorbed %s", c->a->dir, name);
 	}
 	return 0;
 }
 
-/* Folds the lines of a 3.x ignore list into the v4 one (union, order kept). */
-static void merge_ignore_file(const sku_addon *a, const char *old, const char *v4)
+/* Folds the lines of one ignore list into another (union, order kept), then removes the source. */
+static void fold_ignore_file(const sku_addon *a, const char *from, const char *into)
 {
 	char *text;
 	sku_strlist lines = {0}, all = {0};
 	size_t cap = 1024, n = 0;
 	char *buf;
-	if (sku_read_file(v4, &text, NULL) == SKU_OK) {
+	if (sku_read_file(into, &text, NULL) == SKU_OK) {
 		sku_split_lines(text, &lines);
 		for (int i = 0; i < lines.n; i++) if (*sku_str_trim(lines.v[i])) sku_strlist_push(&all, sku_str_trim(lines.v[i]));
 		sku_strlist_free(&lines); free(text);
 	}
-	if (sku_read_file(old, &text, NULL) == SKU_OK) {
+	if (sku_read_file(from, &text, NULL) == SKU_OK) {
 		sku_split_lines(text, &lines);
 		for (int i = 0; i < lines.n; i++) {
 			char *l = sku_str_trim(lines.v[i]);
@@ -393,38 +382,31 @@ static void merge_ignore_file(const sku_addon *a, const char *old, const char *v
 		if (n + need > cap) { while (n + need > cap) cap *= 2; buf = sku_xrealloc(buf, cap); }
 		n += (size_t)sprintf(buf + n, "%s\n", all.v[i]);
 	}
-	if (sku_write_file_atomic(v4, buf, n) == SKU_OK) sku_info("%s: 3.x ignore list folded into %s", a->dir, SKU_F_V4_IGNORE);
+	if (sku_write_file_atomic(into, buf, n) == SKU_OK && sku_remove_file(from) == SKU_OK)
+		sku_info("%s: %s folded into %s", a->dir, sku_path_basename(from), sku_path_basename(into));
 	free(buf);
 	sku_strlist_free(&all);
 }
 
 int sku_addon_save(sku_addon *a)
 {
-	char dir[SKU_PATH_MAX], p[SKU_PATH_MAX];
+	char p[SKU_PATH_MAX], legacy[SKU_PATH_MAX];
+	struct absorb c = { a };
 	int rc;
-	sku_path_join(dir, sizeof dir, a->dir, SKU_DIR_V4);
-	if (sku_mkdir_p(dir) != SKU_OK) return SKU_ERR_IO;
-	sku_path_join(p, sizeof p, a->dir, SKU_F_V4_CFG);
-	rc = sku_cfg_save(&a->local, p);
+
+	/* key|value lines only: 3.x clients, aircraft and publishing tools keep reading it */
+	sku_path_join(p, sizeof p, a->dir, SKU_F_CFG);
+	rc = sku_cfg_save_v1(&a->local, p);
 	if (rc != SKU_OK) { sku_error("%s: cannot write %s", a->dir, p); return rc; }
-	if (!a->v4) {
-		/* first save in v4: move the ignore list, drop the 3.x files */
-		char old[SKU_PATH_MAX];
-		struct v1_cleanup c = { a };
-		sku_path_join(old, sizeof old, a->dir, SKU_F_IGNORE);
-		sku_path_join(p, sizeof p, a->dir, SKU_F_V4_IGNORE);
-		if (sku_is_file(old)) sku_rename(old, p);
-		sku_list_dir(a->dir, cleanup_cb, &c);
-		sku_info("%s: converted to the v4 layout", a->dir);
-		a->v4 = true;
-	} else {
-		/* 3.x files dropped in later: beta files were merged on load, the ignore
-		 * list is folded into ours, the cfg is ignored; then all of them go away */
-		char old[SKU_PATH_MAX];
-		struct v1_cleanup c = { a };
-		sku_path_join(old, sizeof old, a->dir, SKU_F_IGNORE);
-		if (sku_is_file(old)) { sku_path_join(p, sizeof p, a->dir, SKU_F_V4_IGNORE); merge_ignore_file(a, old, p); }
-		sku_list_dir(a->dir, cleanup_cb, &c);
+	sku_list_dir(a->dir, absorb_cb, &c);
+	if (a->legacy_v4) {
+		/* the 4.0-beta layout: configuration now rewritten above, ignore list folded, files removed */
+		sku_path_join(legacy, sizeof legacy, a->dir, SKU_F_V4_CFG);
+		if (sku_is_file(legacy) && sku_remove_file(legacy) == SKU_OK) sku_info("%s: removed %s", a->dir, SKU_F_V4_CFG);
+		sku_path_join(legacy, sizeof legacy, a->dir, SKU_F_V4_IGNORE);
+		sku_path_join(p, sizeof p, a->dir, SKU_F_IGNORE);
+		if (sku_is_file(legacy)) fold_ignore_file(a, legacy, p);
+		a->legacy_v4 = false;
 	}
 	a->dirty = false;
 	return SKU_OK;

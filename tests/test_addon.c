@@ -144,7 +144,8 @@ static void test_level(const char *level, bool second_run_uses_cache)
 	CHECK_EQ_INT(a->nchannels, 1);
 	CHECK_EQ_STR(a->channels[0].name, "beta");
 	CHECK_EQ_INT(a->ignore.n, 1);
-	CHECK(!a->v4);
+	CHECK(!a->legacy_v4);
+	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_beta.cfg");   CHECK(!sku_exists(p));   /* absorbed at load */
 
 	/* --- check */
 	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
@@ -231,43 +232,68 @@ static void test_level(const char *level, bool second_run_uses_cache)
 		free(sec); free(text);
 	}
 
-	/* the CRC cache lives in the addon, next to the v4 config */
+	/* the CRC cache lives in the addon's private folder */
 	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/crc_cache.txt"); CHECK(sku_is_file(p));
 
-	/* v4 layout after the first save */
-	CHECK(a->v4);
+	/* the configuration stayed where 3.x, aircraft and tools read it, as plain key|value lines,
+	 * with the channel keys added; the beta file was absorbed; nothing else in skunkcrafts/ */
 	CHECK_EQ_STR(a->version, "2.0");
-	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/updater.cfg");        CHECK(sku_is_file(p));
-	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/ignore.txt");         CHECK(sku_is_file(p));
-	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater.cfg");        CHECK(!sku_exists(p));
-	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_beta.cfg");   CHECK(!sku_exists(p));
-	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_ignore.txt"); CHECK(!sku_exists(p));
+	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater.cfg");        CHECK(sku_is_file(p));
 	{
-		char beta[SKU_URL_MAX];
+		char *cfg_text, beta[SKU_URL_MAX];
+		CHECK_EQ_INT(sku_read_file(p, &cfg_text, NULL), SKU_OK);
+		CHECK(strstr(cfg_text, "version|2.0\n") != NULL);
+		CHECK(strstr(cfg_text, "channel.beta.module|") != NULL);
+		CHECK(strchr(cfg_text, '#') == NULL);                          /* no comment lines for 3.x parsers */
+		free(cfg_text);
 		sku_snprintf(beta, sizeof beta, "%s/beta", url);
 		CHECK_EQ_STR(sku_cfg_get_or(&a->local, "channel.beta.module", "?"), beta);
 	}
+	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_ignore.txt"); CHECK(sku_is_file(p));
+	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_beta.cfg");   CHECK(!sku_exists(p));
+	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/updater.cfg");        CHECK(!sku_exists(p));
+	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/ignore.txt");         CHECK(!sku_exists(p));
 	CHECK_EQ_STR(sku_cfg_get_or(&a->local, "channel", "?"), "stable");
 
-	/* --- 3.x files put back next to the v4 layout (package reinstalled, file restored by hand):
-	 * the v4 cfg wins, the old ignore list is folded in, the old files go away at the next save */
-	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater.cfg");
-	CHECK_EQ_INT(sku_write_file_atomic(p, "name|Old name\nmodule|http://nowhere/x\nversion|0.1\ndisabled|true\n", 60), SKU_OK);
-	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_ignore.txt");
-	CHECK_EQ_INT(sku_write_file_atomic(p, "data/restored.prf\ndata/user.prf\n", 32), SKU_OK);
-	CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
-	CHECK(a->v4);
-	CHECK_EQ_STR(a->version, "2.0");
-	CHECK(!a->disabled);
-	CHECK(sku_strlist_has(&a->ignore, "data/restored.prf"));
-	CHECK(sku_strlist_has(&a->ignore, "data/user.prf"));
-	CHECK_EQ_INT(sku_addon_save(a), SKU_OK);
-	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater.cfg");        CHECK(!sku_exists(p));
-	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_ignore.txt"); CHECK(!sku_exists(p));
-	CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
-	CHECK_EQ_INT(a->ignore.n, 2);
-	CHECK(sku_strlist_has(&a->ignore, "data/restored.prf"));
-	CHECK(sku_strlist_has(&a->ignore, "data/user.prf"));
+	/* --- an install converted by a 4.0 beta (configuration and ignore list moved into skunkcrafts/,
+	 * root files removed) is migrated back on load: settings kept, ignore lists folded, folder emptied */
+	{
+		char *cfg_text;
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater.cfg");
+		CHECK_EQ_INT(sku_read_file(p, &cfg_text, NULL), SKU_OK);
+		sku_remove_file(p);
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/updater.cfg");
+		{
+			char *with_rc = sku_xmalloc(strlen(cfg_text) + 128);
+			sprintf(with_rc, "# 4.0 beta layout\n%schannel.rc.module|%s/rc\nchannel.rc.zone|custom\n", cfg_text, url);
+			CHECK_EQ_INT(sku_write_file_atomic(p, with_rc, strlen(with_rc)), SKU_OK);
+			free(with_rc);
+		}
+		free(cfg_text);
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/ignore.txt");
+		CHECK_EQ_INT(sku_write_file_atomic(p, "data/restored.prf\n", 18), SKU_OK);
+		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+		CHECK_EQ_STR(a->version, "2.0");
+		CHECK_EQ_INT(a->nchannels, 2);                                  /* beta and rc */
+		CHECK(sku_strlist_has(&a->ignore, "data/restored.prf"));
+		CHECK(sku_strlist_has(&a->ignore, "data/user.prf"));
+		CHECK(!a->legacy_v4);                                           /* migrated at load (writable instance) */
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater.cfg");        CHECK(sku_is_file(p));
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/updater.cfg");        CHECK(!sku_exists(p));
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/ignore.txt");         CHECK(!sku_exists(p));
+		CHECK_EQ_INT(sku_read_file(p, &cfg_text, NULL) == SKU_OK ? 1 : 0, 0);
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_ignore.txt");
+		CHECK_EQ_INT(sku_read_file(p, &cfg_text, NULL), SKU_OK);
+		CHECK(strstr(cfg_text, "data/restored.prf") && strstr(cfg_text, "data/user.prf"));
+		free(cfg_text);
+		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+		CHECK_EQ_INT(a->ignore.n, 2);
+		/* drop the rc channel again for the rest of the test */
+		sku_cfg_remove(&a->local, "channel.rc.module"); sku_cfg_remove(&a->local, "channel.rc.zone");
+		CHECK_EQ_INT(sku_addon_save(a), SKU_OK);
+		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+		CHECK_EQ_INT(a->nchannels, 1);
+	}
 
 	/* --- a new beta file with the same depot URL and another name renames the channel (no second channel) */
 	{
@@ -282,7 +308,7 @@ static void test_level(const char *level, bool second_run_uses_cache)
 		CHECK_EQ_INT(sku_addon_save(a), SKU_OK);   /* the file is absorbed */
 		CHECK(!sku_exists(p));
 		/* skunkcrafts_updater_beta.cfg replaces the "beta" channel whatever the URL (3.x: one file, one beta),
-		 * and a v4 addon absorbs the file at load, without waiting for a save */
+		 * and the file is absorbed at load, without waiting for a save */
 		sku_snprintf(text, sizeof text, "module|%s/beta2/\nzone|custom\nchannel|Private beta\nenabled|true\n", url);
 		CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
 		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);

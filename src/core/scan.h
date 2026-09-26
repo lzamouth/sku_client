@@ -18,7 +18,7 @@ const char *sku_genre_name(sku_genre g);
 typedef struct {
 	char      dir[SKU_PATH_MAX];   /* the addon folder */
 	sku_genre genre;
-	bool      v4;                  /* found through skunkcrafts/updater.cfg rather than the 3.x marker */
+	bool      v4;                  /* found through the legacy skunkcrafts/updater.cfg only (4.0 betas) */
 } sku_found;
 
 typedef struct {
@@ -33,7 +33,7 @@ void sku_found_list_free(sku_found_list *l);
  * folders are followed. */
 int  sku_scan_instance(const sku_instance *in, sku_found_list *out);
 
-/* True when dir holds either marker; *v4 tells which. */
+/* True when dir holds skunkcrafts_updater.cfg, or the legacy skunkcrafts/updater.cfg (*v4 then true). */
 bool sku_scan_is_addon(const char *dir, bool *v4);
 
 /* Custom addon folders, kept in <data_dir>/custom_addons.txt. */

@@ -66,7 +66,7 @@ typedef struct {
 	const sku_instance *inst;
 	char       dir[SKU_PATH_MAX];
 	sku_genre  genre;
-	bool       v4;               /* local files are in the v4 layout */
+	bool       legacy_v4;        /* the 4.0-beta "skunkcrafts/" layout was found: migrated back at the next save */
 	bool       dirty;            /* in-memory local cfg differs from disk */
 
 	/* local configuration (unified model, whatever the on-disk layout) */
@@ -121,7 +121,7 @@ typedef struct {
 sku_addon *sku_addon_open(const sku_instance *in, const char *dir, sku_genre genre);
 void       sku_addon_close(sku_addon *a);
 int        sku_addon_reload(sku_addon *a);       /* re-reads the local files */
-int        sku_addon_save(sku_addon *a);         /* writes the v4 layout and removes the 3.x files */
+int        sku_addon_save(sku_addon *a);         /* writes skunkcrafts_updater.cfg (3.x readable), absorbs beta files and the legacy layout */
 
 int        sku_addon_check(sku_addon *a, const sku_check_opts *opts);
 int        sku_addon_update(sku_addon *a, const sku_update_opts *opts);

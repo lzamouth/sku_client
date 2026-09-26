@@ -172,17 +172,18 @@ several channels; each comes with its own file.
 
 ## 9. What the updater writes, and how to keep files out of updates
 
-Inside each managed add-on folder, a `skunkcrafts` sub-folder holds the
-updater's own files: `updater.cfg` (settings for that add-on), `ignore.txt`,
-and `crc_cache.txt` (what makes checks fast). The first time the 4.0 updater
-saves something for an add-on, the older `skunkcrafts_updater.cfg` and
-related files are folded into this folder and removed. From then on, the
-older 3.x updater no longer manages that folder; keep using 4.0.
+Inside each managed add-on folder, the updater keeps the same files as the
+previous versions did: `skunkcrafts_updater.cfg` (the add-on's settings,
+which the aircraft itself may also read) and `skunkcrafts_updater_ignore.txt`.
+A beta file you dropped there is absorbed into the settings and removed.
+The updater's own `skunkcrafts` sub-folder holds only the cache that makes
+checks fast; it can be deleted at any time, the next check rebuilds it.
 
 To keep a file the way you changed it, list its path, relative to the
-add-on folder, one per line, in `skunkcrafts/ignore.txt`; the updater will
-neither check nor overwrite it. Files you added yourself are never touched:
-the updater only deletes what the developer explicitly removed.
+add-on folder, one per line, in `skunkcrafts_updater_ignore.txt`; the
+updater will neither check nor overwrite it. Files you added yourself are
+never touched: the updater only deletes what the developer explicitly
+removed.
 
 In the X-Plane folder, `Output/skunkcrafts/updater/` holds the log
 (`updater_log.txt`), the last report of each add-on, and copies of the
@@ -204,7 +205,7 @@ on Windows, `Library/Application Support` on macOS, `~/.config` on Linux.
   unreadable, often because X-Plane is running. Close X-Plane and retry.
 - **Every check says "repair" for the same add-on**: a file the add-on
   rewrites while running, or one you changed on purpose. Put it in
-  `skunkcrafts/ignore.txt` (section 9) or let the developer know.
+  `skunkcrafts_updater_ignore.txt` (section 9) or let the developer know.
 - **An update stopped half way**: run "Update / repair" again; what was
   downloaded is kept, only the rest is fetched.
 - **Reporting a problem**: send the developer the add-on's report (Report

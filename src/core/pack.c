@@ -114,7 +114,7 @@ int sku_pack_missing(const sku_pack *p, sku_addon **addons, sku_pack_member_decl
 
 int sku_pack_create_member(const sku_instance *in, const sku_pack *p, const sku_pack_member_decl *d, char *created_dir, size_t n)
 {
-	char rel[SKU_PATH_MAX], dir[SKU_PATH_MAX], sub[SKU_PATH_MAX], cfg_path[SKU_PATH_MAX];
+	char rel[SKU_PATH_MAX], dir[SKU_PATH_MAX], cfg_path[SKU_PATH_MAX];
 	sku_cfg c;
 	int rc;
 
@@ -122,8 +122,7 @@ int sku_pack_create_member(const sku_instance *in, const sku_pack *p, const sku_
 	if (sku_path_check_relative(rel) != SKU_OK || !sku_pack_path_allowed(rel)) return SKU_ERR_UNSAFE;
 	sku_path_join(dir, sizeof dir, in->root, rel);
 	if (sku_scan_is_addon(dir, NULL)) return SKU_OK;   /* already there (found outside the scan): nothing to do */
-	sku_path_join(sub, sizeof sub, dir, SKU_DIR_V4);
-	if (sku_mkdir_p(sub) != SKU_OK) return SKU_ERR_IO;
+	if (sku_mkdir_p(dir) != SKU_OK) return SKU_ERR_IO;
 
 	sku_cfg_init(&c);
 	sku_cfg_add_raw(&c, "# created by SkunkCrafts Updater for a pack member; the first update fills the folder");
@@ -136,8 +135,8 @@ int sku_pack_create_member(const sku_instance *in, const sku_pack *p, const sku_
 	sku_cfg_set(&c, "pack", p->id);
 	sku_cfg_set(&c, "member", d->member_id);
 	if (p->name[0] && strcmp(p->name, p->id) != 0) sku_cfg_set(&c, "pack_name", p->name);
-	sku_path_join(cfg_path, sizeof cfg_path, dir, SKU_F_V4_CFG);
-	rc = sku_cfg_save(&c, cfg_path);
+	sku_path_join(cfg_path, sizeof cfg_path, dir, SKU_F_CFG);
+	rc = sku_cfg_save_v1(&c, cfg_path);
 	sku_cfg_free(&c);
 	if (rc == SKU_OK) {
 		sku_info("pack %s: created member \"%s\" at %s (%s)", p->id, d->member_id, dir, d->url);

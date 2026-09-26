@@ -16,10 +16,12 @@
 #define SKU_F_CHANGELOG  "changelog.txt"
 #define SKU_F_README     "readme.txt"
 
-/* v4 local layout inside the addon folder */
+/* The client's private folder inside the addon (CRC cache). The 4.0 betas up to beta9 also
+ * moved the configuration and the ignore list there; those files are migrated back to the
+ * 3.x names, which aircraft and other tools read (the version string, for one). */
 #define SKU_DIR_V4       "skunkcrafts"
-#define SKU_F_V4_CFG     "skunkcrafts/updater.cfg"
-#define SKU_F_V4_IGNORE  "skunkcrafts/ignore.txt"
+#define SKU_F_V4_CFG     "skunkcrafts/updater.cfg"    /* legacy, migrated back to skunkcrafts_updater.cfg */
+#define SKU_F_V4_IGNORE  "skunkcrafts/ignore.txt"     /* legacy, folded into skunkcrafts_updater_ignore.txt */
 #define SKU_F_V4_CRC     "skunkcrafts/crc_cache.txt"   /* CRC cache: moves and dies with the addon */
 
 typedef struct {

@@ -252,50 +252,42 @@ an unreachable depot shows as an error in their list.
 
 ### 3.1 What the client writes
 
-Inside the product folder, the 3.x client keeps:
+Inside the product folder, both the 3.x and the 4.0 clients keep the same
+files, at the same names:
 
 ```
 skunkcrafts_updater.cfg              the configuration (yours, then maintained by the client)
-skunkcrafts_updater_beta.cfg         the tester's beta file, if any
 skunkcrafts_updater_ignore.txt       the user's own list of paths the updater must never touch
+skunkcrafts_updater_beta.cfg         the tester's beta file, until the 4.0 client absorbs it
 ```
 
-The 4.0 client uses a sub-folder instead, created the first time it saves
-anything for that product (a setting changed, or the end of an update):
+This matters beyond the updater: aircraft read `skunkcrafts_updater.cfg` to
+show their version string, and publishing tools read it too. The 4.0 client
+therefore never moves or renames it. What it adds is a few `key|value` lines
+of its own in that file, for the channels (`channel|beta`,
+`channel.beta.module|...`); the 3.x client ignores them. The beta file is
+absorbed into those lines and removed the first time the 4.0 client loads
+the folder, so a folder managed by 4.0 shows no beta file any more; the 3.x
+client then sees only the production channel there.
 
-```
-skunkcrafts/updater.cfg              the same keys, plus the channel settings
-skunkcrafts/ignore.txt               the user's ignore list
-skunkcrafts/crc_cache.txt            the CRC cache that makes checks fast
-```
+The 4.0 client's own sub-folder `skunkcrafts/` holds nothing but its CRC
+cache (`crc_cache.txt`). Early 4.0 betas (up to beta9) moved the
+configuration into that folder; the current client migrates such folders
+back to the names above on first load.
 
 The `skunkcrafts/` sub-folder is the client's own. A depot cannot publish
 into it nor delete from it (such lines are ignored), and `xp_depot` never
 uploads it. If you run the updater on your own working copy, the folder
 appears there too; leave it out of anything you package by hand.
 
-At that moment the three 3.x files are **merged into the new layout and
-removed**: the configuration is copied, the beta file becomes the channel
-`beta` (`channel.beta.module|...`), any `skunkcrafts_updater_beta_<x>.cfg`
-becomes the channel `<x>`, the ignore list is moved. From then on a 3.x
-client no longer sees the folder as managed; this is deliberate, a folder
-maintained by 4.0 is not to be touched by 3.x.
-
-If a 3.x file reappears later next to the `skunkcrafts/` folder (the user
-reinstalled your package over the folder, or restored a file), the 4.0
-client keeps its own file, ignores the old configuration, merges an old
-ignore list or beta file, and removes them at its next save. The files on
-disk are decided by CRC anyway, so a reinstall over an existing folder ends
-in a "repair", never in a mess.
-
 Consequences for you:
 
 - Keep shipping `skunkcrafts_updater.cfg` in your package: it is what makes
   a fresh install recognised, by both clients.
 - When a user reports a problem, the configuration to ask for is
-  `skunkcrafts/updater.cfg` on 4.0, `skunkcrafts_updater.cfg` on 3.x, and
-  the log is `Output/skunkcrafts/updater/updater_log.txt` in the X-Plane
-  folder (4.0) or `skunkcrafts_updater_log.txt` at the X-Plane root (3.x).
+  `skunkcrafts_updater.cfg`, and the log is
+  `Output/skunkcrafts/updater/updater_log.txt` in the X-Plane folder (4.0) or
+  `skunkcrafts_updater_log.txt` at the X-Plane root (3.x).
 - The configuration file is never part of the whitelist, so an update never
   overwrites the user's settings; only `name`, `zone`, `module` and
   `version` are rewritten by the client, from your remote configuration.
