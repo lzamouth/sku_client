@@ -1,3 +1,7 @@
+4.0.0-beta14
+- Windows, program alone: the Update button replaces the running program in place and offers to restart
+- Windows, installed: Update downloads the new setup and "Install now" runs it
+
 4.0.0-beta13
 - Depot configuration and lists are requested so that a caching CDN cannot serve a stale copy (unique query for the configuration, version for the lists)
 
