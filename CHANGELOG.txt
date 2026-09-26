@@ -1,3 +1,6 @@
+4.0.0-beta12
+- Linux, program alone: the Update button now replaces the running program in place from the downloaded zip and offers to restart, like the AppImage
+
 4.0.0-beta11
 - Linux: runs through X11 (XWayland) by default, which resizes smoothly and uses the desktop's title bar; "Window system" option to prefer Wayland on fractional-scale displays
 - The addon list fills its area to the bottom
