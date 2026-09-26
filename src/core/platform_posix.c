@@ -1,5 +1,6 @@
 /* platform.h implementation for Linux and macOS. */
 #include "platform.h"
+#include "paths.h"
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -82,6 +83,26 @@ int sku_remove_dir(const char *path)
 int sku_rename(const char *from, const char *to)
 {
 	return rename(from, to) == 0 ? SKU_OK : SKU_ERR_IO;
+}
+
+struct rm_ctx { const char *dir; int rc; };
+static int rm_cb(const char *name, bool is_dir, bool is_symlink, void *user)
+{
+	struct rm_ctx *c = user;
+	char p[SKU_PATH_MAX];
+	sku_path_join(p, sizeof p, c->dir, name);
+	if (is_dir && !is_symlink) { if (sku_remove_tree(p) != SKU_OK) c->rc = SKU_ERR_IO; }
+	else if (sku_remove_file(p) != SKU_OK) c->rc = SKU_ERR_IO;
+	return 0;
+}
+
+int sku_remove_tree(const char *path)
+{
+	struct rm_ctx c = { path, SKU_OK };
+	if (!sku_is_dir(path)) return sku_remove_file(path);
+	if (sku_list_dir(path, rm_cb, &c) != SKU_OK) return SKU_ERR_IO;
+	if (c.rc != SKU_OK) return c.rc;
+	return sku_remove_dir(path);
 }
 
 int sku_set_executable(const char *path)

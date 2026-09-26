@@ -290,11 +290,55 @@ int sku_client_install_from_zip(const char *zip, const char *entry, const char *
 	return rc;
 }
 
+int sku_client_bundle_of(const char *exe, char *out, size_t n)
+{
+	const char *p = strstr(exe, ".app/Contents/MacOS/");
+	size_t len;
+	if (!p) return SKU_ERR_NOTFOUND;
+	len = (size_t)(p - exe) + 4;   /* up to and including ".app" */
+	if (len >= n) return SKU_ERR_ARG;
+	memcpy(out, exe, len); out[len] = 0;
+	return SKU_OK;
+}
+
+int sku_client_install_bundle(const char *zip, const char *target, char *err, size_t en)
+{
+	char parent[SKU_PATH_MAX], tmp[SKU_PATH_MAX], fresh[SKU_PATH_MAX], old[SKU_PATH_MAX];
+	const char *name = sku_path_basename(target);
+	int rc;
+
+	if (err && en) err[0] = 0;
+	sku_path_dirname(parent, sizeof parent, target);
+	sku_snprintf(tmp, sizeof tmp, "%s/.%s.new", parent, name);
+	sku_remove_tree(tmp);
+	rc = sku_zip_extract_all(zip, tmp, err, en);
+	if (rc != SKU_OK) { sku_remove_tree(tmp); return rc; }
+	sku_path_join(fresh, sizeof fresh, tmp, name);
+	if (!sku_is_dir(fresh)) { sku_remove_tree(tmp); sku_snprintf(err, en, "the zip does not contain %s", name); return SKU_ERR_FORMAT; }
+	sku_snprintf(old, sizeof old, "%s.old", target);
+	sku_remove_tree(old);
+	if (sku_is_dir(target) && sku_rename(target, old) != SKU_OK) { sku_remove_tree(tmp); sku_snprintf(err, en, "cannot move the current %s aside", name); return SKU_ERR_IO; }
+	if (sku_rename(fresh, target) != SKU_OK) {
+		sku_rename(old, target);   /* put the current one back */
+		sku_remove_tree(tmp);
+		sku_snprintf(err, en, "cannot install %s", name);
+		return SKU_ERR_IO;
+	}
+	sku_remove_tree(tmp);
+	sku_remove_file(zip);
+	sku_info("client: %s installed over %s (previous kept as %s until the next start)", zip, target, old);
+	return SKU_OK;
+}
+
 void sku_client_cleanup_old(const char *exe)
 {
-	char old[SKU_PATH_MAX];
+	char old[SKU_PATH_MAX], bundle[SKU_PATH_MAX];
 	sku_snprintf(old, sizeof old, "%s.old", exe);
 	if (sku_is_file(old) && sku_remove_file(old) == SKU_OK) sku_info("client: removed %s", old);
+	if (sku_client_bundle_of(exe, bundle, sizeof bundle) == SKU_OK) {
+		sku_snprintf(old, sizeof old, "%s.old", bundle);
+		if (sku_is_dir(old) && sku_remove_tree(old) == SKU_OK) sku_info("client: removed %s", old);
+	}
 }
 
 void sku_client_info_free(sku_client_info *info)

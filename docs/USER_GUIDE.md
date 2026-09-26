@@ -176,9 +176,11 @@ several channels; each comes with its own file.
     setup and offers "Install now": the updater quits and the setup runs (it
     asks for administrator rights, like the first time) and can start the new
     version when it finishes.
-  - On macOS, **Download** fetches the application zip into your user profile
-    (a `downloads` folder next to the updater's preferences; the banner opens
-    it); replace the application yourself.
+  - On macOS the button reads **Update** too: the new application bundle is
+    downloaded, verified and swapped with the running one, wherever it is
+    (Applications or your X-Plane folder), then "Restart now" starts it. The
+    previous bundle stays a moment as `SkunkcraftsUpdater.app.old` next to it
+    and is removed at the next start.
   "Later" hides the banner until the next version.
 
 ## 9. What the updater writes, and how to keep files out of updates

@@ -51,17 +51,20 @@ static int on_progress(void *user, int64_t got, int64_t total)
 /* Where the downloaded package can be installed in place, or NULL: the running AppImage,
  * or the running drop-in program (Linux or Windows, shipped inside the zip). The Windows
  * installer package is not installed in place: it is run (see the banner). */
+/* zip_entry: the program inside the zip, or "" when the zip holds a whole .app bundle (macOS). */
 static const char *install_target(app *ap, const char **zip_entry)
 {
-	static char exe[SKU_PATH_MAX];
+	static char exe[SKU_PATH_MAX], bundle[SKU_PATH_MAX];
 	const char *ai = getenv("APPIMAGE"), *entry = NULL;
 	if (zip_entry) *zip_entry = NULL;
 	if (ai && *ai && sku_str_ends(ap->client.package, ".AppImage")) return ai;
 	if (sku_str_ends(ap->client.package, "-linux.zip")) entry = "SkunkcraftsUpdater_lin";
 	else if (sku_str_ends(ap->client.package, "-windows.zip")) entry = "SkunkcraftsUpdater.exe";
+	else if (sku_str_ends(ap->client.package, "-macos.zip")) entry = "";
 	if (!entry || (ai && *ai) || sku_exe_path(exe, sizeof exe) != SKU_OK) return NULL;
 	if (zip_entry) *zip_entry = entry;
 	if (getenv("SKU_INSTALL_TARGET")) return getenv("SKU_INSTALL_TARGET");   /* test hook: install elsewhere than over ourselves */
+	if (!*entry) return sku_client_bundle_of(exe, bundle, sizeof bundle) == SKU_OK ? bundle : NULL;   /* not in a bundle: manual */
 	return exe;
 }
 
@@ -79,8 +82,17 @@ static void *download_thread(void *arg)
 	downloads_dir(dir, sizeof dir);
 	rc = sku_client_download(ap->prefs.client_url, &ap->client, dir, on_progress, ap, &ap->client_cancel, dest, sizeof dest, err, sizeof err);
 	if (rc == SKU_OK && (target = install_target(ap, &entry)) != NULL) {
-		rc = entry ? sku_client_install_from_zip(dest, entry, target, err, sizeof err) : sku_client_install_file(dest, target, err, sizeof err);
-		if (rc == SKU_OK) { sku_strlcpy(ap->client_file, target, sizeof ap->client_file); atomic_store(&ap->client_state, CLIENT_INSTALLED); return NULL; }
+		if (!entry) rc = sku_client_install_file(dest, target, err, sizeof err);                  /* AppImage */
+		else if (!*entry) rc = sku_client_install_bundle(dest, target, err, sizeof err);          /* macOS .app */
+		else rc = sku_client_install_from_zip(dest, entry, target, err, sizeof err);              /* program inside the zip */
+		if (rc == SKU_OK) {
+			char exe[SKU_PATH_MAX];
+			/* what to relaunch: the file itself, or our own path inside the replaced bundle */
+			if (entry && !*entry && sku_exe_path(exe, sizeof exe) == SKU_OK) sku_strlcpy(ap->client_file, exe, sizeof ap->client_file);
+			else sku_strlcpy(ap->client_file, target, sizeof ap->client_file);
+			atomic_store(&ap->client_state, CLIENT_INSTALLED);
+			return NULL;
+		}
 	}
 	if (rc == SKU_OK) {
 		sku_strlcpy(ap->client_file, dest, sizeof ap->client_file);

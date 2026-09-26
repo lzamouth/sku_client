@@ -69,8 +69,16 @@ int sku_client_install_file(const char *downloaded, const char *target, char *er
  * target, removes the zip. */
 int sku_client_install_from_zip(const char *zip, const char *entry, const char *target, char *err, size_t en);
 
-/* Removes "<exe>.old" left by a previous in-place update (Windows keeps the old program under
- * that name until it has exited). Call at start with the running executable's path. */
+/* macOS: the .app bundle holding exe ("<x>/Name.app/Contents/MacOS/Name" -> "<x>/Name.app"), or SKU_ERR_NOTFOUND. */
+int sku_client_bundle_of(const char *exe, char *out, size_t n);
+
+/* Installs a zipped .app bundle over the bundle at target: extracted next to it, the old bundle is
+ * renamed "<target>.old" (the running program keeps working from it), the new one takes its place.
+ * The zip is removed on success. */
+int sku_client_install_bundle(const char *zip, const char *target, char *err, size_t en);
+
+/* Removes "<exe>.old" (Windows) or "<bundle>.old" (macOS) left by a previous in-place update.
+ * Call at start with the running executable's path. */
 void sku_client_cleanup_old(const char *exe);
 
 void sku_client_info_free(sku_client_info *info);

@@ -25,6 +25,7 @@ int   sku_mkdir(const char *path);                /* single level, ok if it exis
 int   sku_mkdir_p(const char *path);
 int   sku_remove_file(const char *path);
 int   sku_remove_dir(const char *path);           /* must be empty */
+int   sku_remove_tree(const char *path);          /* files and folders below, then path itself (symlinks not followed) */
 int   sku_rename(const char *from, const char *to); /* atomic replace of an existing target */
 int   sku_set_executable(const char *path);        /* rwxr-xr-x on POSIX, no-op on Windows */
 /* Starts exe as an independent process (argv[0] included, NULL-terminated) and returns at once.

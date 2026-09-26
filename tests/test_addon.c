@@ -89,6 +89,7 @@ static void test_client(void)
 		sku_path_join(out, sizeof out, dir, "prog.bin");
 		CHECK_EQ_INT(sku_zip_extract(dest, "SkunkcraftsUpdater_lin", out, err, sizeof err), SKU_OK);
 		CHECK_EQ_INT(sku_read_file(out, &content, &len), SKU_OK); CHECK_EQ_INT(len, 200 * strlen("new program 9.9.9 ")); CHECK(strncmp(content, "new program 9.9.9 ", 18) == 0); free(content);
+		sku_path_join(out, sizeof out, dir, "nope.bin");
 		CHECK_EQ_INT(sku_zip_extract(dest, "nope", out, err, sizeof err), SKU_ERR_NOTFOUND);
 		CHECK(!sku_exists(out));
 		CHECK_EQ_INT(sku_zip_extract(target_dummy_path(dir, out, sizeof out), "x", out, err, sizeof err) == SKU_OK ? 1 : 0, 0);   /* not a zip */
@@ -108,6 +109,36 @@ static void test_client(void)
 		free(content);
 		sku_client_install_file("/nonexistent/file", target, err, sizeof err);
 		CHECK(err[0]);
+	}
+
+	/* macOS bundle: the zip is extracted as a tree and swapped with the running bundle, kept as .old */
+	{
+		char bundle[SKU_PATH_MAX], old[SKU_PATH_MAX], exe[SKU_PATH_MAX], zipdest[SKU_PATH_MAX], *content;
+		CHECK_EQ_INT(sku_client_check(depot, SKU_PKG_MACOS_ZIP, &info, err, sizeof err), SKU_OK);
+		CHECK_EQ_STR(info.package, "SkunkcraftsUpdater-9.9.9-macos.zip");
+		CHECK_EQ_INT(sku_client_download(depot, &info, dir, NULL, NULL, NULL, zipdest, sizeof zipdest, err, sizeof err), SKU_OK);
+		sku_client_info_free(&info);
+		sku_path_join(bundle, sizeof bundle, dir, "Apps/SkunkcraftsUpdater.app");
+		sku_path_join(exe, sizeof exe, bundle, "Contents/MacOS/SkunkcraftsUpdater");
+		{
+			char parent[SKU_PATH_MAX], found[SKU_PATH_MAX];
+			sku_path_dirname(parent, sizeof parent, exe); sku_mkdir_p(parent);
+			CHECK_EQ_INT(sku_write_file_atomic(exe, "old bundle program", 18), SKU_OK);
+			CHECK_EQ_INT(sku_client_bundle_of(exe, found, sizeof found), SKU_OK);
+			CHECK_EQ_STR(found, bundle);
+			CHECK_EQ_INT(sku_client_bundle_of("/usr/bin/x", found, sizeof found), SKU_ERR_NOTFOUND);
+		}
+		CHECK_EQ_INT(sku_client_install_bundle(zipdest, bundle, err, sizeof err), SKU_OK);
+		CHECK(!sku_exists(zipdest));
+		CHECK_EQ_INT(sku_read_file(exe, &content, NULL), SKU_OK);
+		CHECK(strncmp(content, "new bundle program 9.9.9 ", 25) == 0); free(content);
+		CHECK(access(exe, X_OK) == 0);
+		sku_path_join(old, sizeof old, dir, "Apps/SkunkcraftsUpdater.app.old/Contents/MacOS/SkunkcraftsUpdater");
+		CHECK_EQ_INT(sku_read_file(old, &content, NULL), SKU_OK);
+		CHECK_EQ_STR(content, "old bundle program"); free(content);
+		sku_path_join(old, sizeof old, dir, "Apps/SkunkcraftsUpdater.app/Contents/Info.plist"); CHECK(sku_is_file(old));
+		sku_client_cleanup_old(exe);                                    /* the next start drops the .old bundle */
+		sku_path_join(old, sizeof old, dir, "Apps/SkunkcraftsUpdater.app.old"); CHECK(!sku_exists(old));
 	}
 
 	/* an unknown package name: the check still reports the version */
