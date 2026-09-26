@@ -349,10 +349,21 @@ static void draw(app *ap)
 	}
 	nk_end(ctx);
 
-	if (ap->dark) SDL_SetRenderDrawColor(ap->ren, 32, 32, 32, 255); else SDL_SetRenderDrawColor(ap->ren, 240, 240, 240, 255);
-	SDL_RenderClear(ap->ren);
-	nk_sdl_render(ctx, NK_ANTI_ALIASING_ON);
-	nk_sdl_update_TextInput(ctx);
+	{
+		/* slow frames go to the debug log: build (Nuklear), render, present */
+		int64_t t0 = sku_time_ms(), t1, t2, t3;
+		if (ap->dark) SDL_SetRenderDrawColor(ap->ren, 32, 32, 32, 255); else SDL_SetRenderDrawColor(ap->ren, 240, 240, 240, 255);
+		SDL_RenderClear(ap->ren);
+		t1 = sku_time_ms();
+		nk_sdl_render(ctx, NK_ANTI_ALIASING_ON);
+		t2 = sku_time_ms();
+		nk_sdl_update_TextInput(ctx);
+		SDL_RenderPresent(ap->ren);
+		t3 = sku_time_ms();
+		if (t3 - ap->frame_start > 40)
+			sku_debug("slow frame: %lld ms (ui %lld, clear %lld, render %lld, present %lld) at %dx%d",
+				(long long)(t3 - ap->frame_start), (long long)(t0 - ap->frame_start), (long long)(t1 - t0), (long long)(t2 - t1), (long long)(t3 - t2), w, h);
+	}
 	if (ap->shot_dir[0] && sku_time_ms() - ap->last_shot > 1000) {
 		SDL_Surface *s = SDL_RenderReadPixels(ap->ren, NULL);
 		char path[SKU_PATH_MAX];
@@ -363,7 +374,6 @@ static void draw(app *ap)
 		}
 		ap->last_shot = sku_time_ms();
 	}
-	SDL_RenderPresent(ap->ren);
 }
 
 static void choose_startup_instance(app *ap, const char *forced)
@@ -424,7 +434,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "window: %s\n", SDL_GetError()); return 1;
 	}
 	SDL_SetWindowMinimumSize(ap.win, 640, 400);
-	SDL_SetRenderVSync(ap.ren, 1);
+	SDL_SetRenderVSync(ap.ren, getenv("SKU_NOVSYNC") ? 0 : 1);   /* SKU_NOVSYNC=1: diagnose resize lag */
 	ap.scale = SDL_GetWindowDisplayScale(ap.win);
 	if (ap.scale <= 0) ap.scale = 1;
 	SDL_SetRenderScale(ap.ren, ap.scale, ap.scale);
@@ -474,6 +484,7 @@ int main(int argc, char **argv)
 		autopilot(&ap);
 		nk_input_end(ap.ctx);
 
+		ap.frame_start = sku_time_ms();
 		handle_browse_result(&ap);
 		app_client_poll(&ap);
 		if (jobs_done(ap.jobs) != ap.last_jobs_done) {

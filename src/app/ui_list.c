@@ -83,7 +83,9 @@ void ui_list(app *ap)
 	{
 		struct nk_list_view view;
 		struct nk_rect list_bounds = nk_widget_bounds(ctx);
-		if (nk_list_view_begin(ctx, &view, "addons", NK_WINDOW_BORDER, (int)row, nvisible)) {
+		/* rows are laid out at row - 4 (+ spacing, which Nuklear adds itself): telling the view a
+		 * bigger pitch made it count fewer visible rows and leave a blank band at the bottom */
+		if (nk_list_view_begin(ctx, &view, "addons", NK_WINDOW_BORDER, (int)(row - 4), nvisible)) {
 			for (int k = view.begin; k < view.end && k < nvisible; k++) {
 				app_item *it;
 				bool clicked = false;

@@ -119,6 +119,7 @@ typedef struct app {
 	bool client_manual;               /* "Check now": show failures too */
 	int  about_mode;                  /* 0 license, 1 notices, 2 what's new */
 	char **argv;                      /* the command line, for a relaunch after a self-update */
+	int64_t frame_start;              /* for the slow-frame trace in the debug log */
 	char shot_dir[SKU_PATH_MAX];      /* --screenshot DIR: one BMP per second, for testing */
 	int64_t last_shot;
 	int shot_index;

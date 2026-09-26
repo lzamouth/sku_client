@@ -20,7 +20,7 @@ esac
 VERSION_OPT=""
 case " $* " in *" -DSKU_VERSION="*) ;; *)
     # the commit, without git when building in the container: follow .git/HEAD by hand
-    REV="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null)"
+    REV="${SKU_GIT_REV:-$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null)}"
     if [ -z "$REV" ] && [ -f "$ROOT/.git/HEAD" ]; then
         REF="$(sed -n 's/^ref: //p' "$ROOT/.git/HEAD")"
         if [ -n "$REF" ] && [ -f "$ROOT/.git/$REF" ]; then REV="$(cut -c1-7 "$ROOT/.git/$REF")"
