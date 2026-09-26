@@ -85,7 +85,7 @@ row to resize the columns; double-click it to reset.
 | Files up to date but local and remote versions differ | harmless, an update/repair fixes the version number |
 | Update repository locked for maintenance | the developer is uploading, try later |
 | Updates disabled by user | you turned online updates off for this add-on |
-| Cannot retrieve ... / server returned a web page | network or server problem, see section 10 |
+| Cannot retrieve ... / server returned a web page | network or server problem, see section 11 |
 
 **Buttons**: "Check for new addons" rescans the X-Plane folder; "Reload all
 configs" re-reads the configuration files; "Check all updates" contacts the
@@ -114,7 +114,7 @@ Four tabs:
 
 - **Files**: what the last check decided, one line per file with its
   reason: `new` (missing on your disk), `changed`, `delete` (removed by the
-  developer), `ignored` (listed in your ignore file, section 9), `error`.
+  developer), `ignored` (listed in your ignore file, section 10), `error`.
   After an update, done lines turn green.
 - **Report**: the text of the last check or update, the same as the file
   saved for support.
@@ -161,29 +161,34 @@ several channels; each comes with its own file.
 - **Custom addon folders**: an add-on installed outside the scanned folders
   can be added by hand; it then appears under the "Other" filter.
 - **Log file**: where it is, with a button to open the folder.
-- **Updater updates**: at every start (at most once an hour) the program
-  checks whether a newer version of itself is published. "Check now" asks
-  immediately. When one exists, a banner appears above every page with
-  "What's new", "Download" (or "Update") and "Later".
-  - On Linux (AppImage or program alone) and on Windows with the program
-    alone, the button reads **Update**: the new version is downloaded,
-    verified and put in place of the running file, so your menu entry, dock
-    icon or X-Plane folder stay as they are; the banner then offers "Restart
-    now". On Windows the previous program stays a moment as
-    `SkunkcraftsUpdater.exe.old` next to the new one and is removed at the
-    next start.
-  - On Windows installed with the setup program, **Update** downloads the new
-    setup and offers "Install now": the updater quits and the setup runs (it
-    asks for administrator rights, like the first time) and can start the new
-    version when it finishes.
-  - On macOS the button reads **Update** too: the new application bundle is
-    downloaded, verified and swapped with the running one, wherever it is
-    (Applications or your X-Plane folder), then "Restart now" starts it. The
-    previous bundle stays a moment as `SkunkcraftsUpdater.app.old` next to it
-    and is removed at the next start.
-  "Later" hides the banner until the next version.
+- **Updater updates**: whether the program looks for a newer version of
+  itself at start; "Check now" asks immediately. See section 9.
 
-## 9. What the updater writes, and how to keep files out of updates
+## 9. Keeping the updater itself up to date
+
+At every start (at most once an hour) the program checks whether a newer
+version of itself is published. When one exists, a banner appears above
+every page with three buttons: "What's new" shows the changes, "Later" hides
+the banner until the next version, and the third one installs it:
+
+| How you run it | Button | What happens |
+|---|---|---|
+| Linux, AppImage | Update | the new version replaces the running file in place; menu entry and dock icon stay valid |
+| Linux, program alone | Update | the new program replaces the running one, in your X-Plane folder or wherever it is |
+| Windows, program alone | Update | same; the previous program stays a moment as `SkunkcraftsUpdater.exe.old` and is removed at the next start |
+| Windows, installed | Update, then Install now | the new setup is downloaded; the updater quits and the setup runs (it asks for administrator rights, like the first time) and can start the new version when it finishes |
+| macOS | Update | the new application bundle replaces the running one, in Applications or in your X-Plane folder; the previous one stays a moment as `SkunkcraftsUpdater.app.old` and is removed at the next start |
+
+Every download is verified before it is used. Where the program is replaced
+in place, the banner then offers "Restart now"; until you restart, the old
+version keeps running. Nothing changes in your add-ons or settings.
+
+If the replacement fails (a folder you cannot write to, for example), the
+banner says so and the downloaded package stays in a `downloads` folder next
+to the updater's preferences, with a button to open it, so you can install it
+by hand.
+
+## 10. What the updater writes, and how to keep files out of updates
 
 Inside each managed add-on folder, the updater keeps the same files as the
 previous versions did: `skunkcrafts_updater.cfg` (the add-on's settings,
@@ -203,7 +208,7 @@ In the X-Plane folder, `Output/skunkcrafts/updater/` holds the log
 servers' lists. Your own preferences live in your user profile: `AppData`
 on Windows, `Library/Application Support` on macOS, `~/.config` on Linux.
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 - **"X is not an X-Plane installation"**: the folder must contain
   `Aircraft`, `Custom Scenery`, `Resources/plugins` and `Output`. Point the
@@ -218,13 +223,13 @@ on Windows, `Library/Application Support` on macOS, `~/.config` on Linux.
   unreadable, often because X-Plane is running. Close X-Plane and retry.
 - **Every check says "repair" for the same add-on**: a file the add-on
   rewrites while running, or one you changed on purpose. Put it in
-  `skunkcrafts_updater_ignore.txt` (section 9) or let the developer know.
+  `skunkcrafts_updater_ignore.txt` (section 10) or let the developer know.
 - **An update stopped half way**: run "Update / repair" again; what was
   downloaded is kept, only the rest is fetched.
 - **Reporting a problem**: send the developer the add-on's report (Report
   tab) and the log file (Options > Log file > Open folder).
 
-## 11. Command line
+## 12. Command line
 
 `sku` (`sku.exe` on Windows) is the same updater without a window, for
 scripts and support:

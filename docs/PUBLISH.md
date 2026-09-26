@@ -71,7 +71,12 @@ n'est pas monté. Puis :
 ## Après publication
 
 Un client 4.0 antérieur, lancé dans l'heure, affiche le bandeau « version
-disponible » avec le changelog et le téléchargement du paquet de sa
-plateforme. Le réglage du dépôt interrogé est `client_url` dans les
-préférences ; si le dépôt déménage encore, publier à l'ancienne adresse un
-cfg dont `module` pointe sur la nouvelle suffit, les clients suivent.
+disponible » avec le changelog et « Update » : remplacement en place puis
+« Restart now » (AppImage, binaire Linux, exe Windows posé, bundle macOS),
+ou téléchargement du setup et « Install now » (Windows installé). Les
+clients antérieurs à la beta9 (AppImage), beta12 (Linux posé), beta14
+(Windows) et beta15 (macOS) ne savent que télécharger : une dernière
+installation à la main pour eux. Le réglage du dépôt interrogé est
+`client_url` dans les préférences ; si le dépôt déménage encore, publier à
+l'ancienne adresse un cfg dont `module` pointe sur la nouvelle suffit, les
+clients suivent.

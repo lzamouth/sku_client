@@ -50,10 +50,11 @@ Updates of the updater
 ----------------------
 
 At startup the program checks whether a newer version of itself has been
-published (at most once an hour). If so, a banner offers to show what changed and to download the
-package for your system into your user profile folder (a button opens it);
-install it the same way you installed this one. You can turn the check off
-in Options.
+published (at most once an hour). If so, a banner offers to show what
+changed and to install it: the running program is replaced in place, then
+"Restart now" starts the new version (on Windows, the installed edition
+downloads the new setup and runs it instead). You can turn the check off in
+Options. Details in USER_GUIDE.html, section 9.
 
 Command line
 ------------
