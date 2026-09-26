@@ -48,24 +48,36 @@ static int on_progress(void *user, int64_t got, int64_t total)
 	return 0;
 }
 
-/* Running as an AppImage and the package is one: the file can be replaced in place. */
-static const char *install_target(app *ap)
+/* Where the downloaded package can be installed in place, or NULL: the running AppImage,
+ * or the running drop-in Linux program (shipped inside the zip). */
+static const char *install_target(app *ap, const char **zip_entry)
 {
+#if defined(__linux__)
+	static char exe[SKU_PATH_MAX];
+#endif
 	const char *ai = getenv("APPIMAGE");
-	if (!ai || !*ai || !sku_str_ends(ap->client.package, ".AppImage")) return NULL;
-	return ai;
+	if (zip_entry) *zip_entry = NULL;
+	if (ai && *ai && sku_str_ends(ap->client.package, ".AppImage")) return ai;
+#if defined(__linux__)
+	if ((!ai || !*ai) && sku_str_ends(ap->client.package, "-linux.zip") && sku_exe_path(exe, sizeof exe) == SKU_OK) {
+		if (zip_entry) *zip_entry = "SkunkcraftsUpdater_lin";
+		if (getenv("SKU_INSTALL_TARGET")) return getenv("SKU_INSTALL_TARGET");   /* test hook: install elsewhere than over ourselves */
+		return exe;
+	}
+#endif
+	return NULL;
 }
 
 static void *download_thread(void *arg)
 {
 	app *ap = arg;
 	char dir[SKU_PATH_MAX], dest[SKU_PATH_MAX], err[256];
-	const char *target;
+	const char *target, *entry;
 	int rc;
 	downloads_dir(dir, sizeof dir);
 	rc = sku_client_download(ap->prefs.client_url, &ap->client, dir, on_progress, ap, &ap->client_cancel, dest, sizeof dest, err, sizeof err);
-	if (rc == SKU_OK && (target = install_target(ap)) != NULL) {
-		rc = sku_client_install_file(dest, target, err, sizeof err);
+	if (rc == SKU_OK && (target = install_target(ap, &entry)) != NULL) {
+		rc = entry ? sku_client_install_from_zip(dest, entry, target, err, sizeof err) : sku_client_install_file(dest, target, err, sizeof err);
 		if (rc == SKU_OK) { sku_strlcpy(ap->client_file, target, sizeof ap->client_file); atomic_store(&ap->client_state, CLIENT_INSTALLED); return NULL; }
 	}
 	if (rc == SKU_OK) {
@@ -213,7 +225,7 @@ bool ui_client_banner(app *ap)
 		nk_layout_row_push(ctx, UI_W(ap, 120));
 		if (ap->client.changelog && ui_button(ap, "What's new")) { ap->about_mode = 2; ap->view = VIEW_ABOUT; }
 		nk_layout_row_push(ctx, UI_W(ap, 120));
-		if (ap->client.package[0] && !ap->client.locked && ui_button(ap, install_target(ap) ? "Update" : "Download")) app_client_download_start(ap);
+		if (ap->client.package[0] && !ap->client.locked && ui_button(ap, install_target(ap, NULL) ? "Update" : "Download")) app_client_download_start(ap);
 		nk_layout_row_push(ctx, UI_W(ap, 120));
 		if (ui_button(ap, "Later")) { sku_strlcpy(ap->prefs.client_skip, ap->client.version, sizeof ap->prefs.client_skip); prefs_save(ap); ap->client_manual = false; }
 		break;

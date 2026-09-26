@@ -22,6 +22,7 @@ set(SKU_CORE_SOURCES
 	pack.c
 	changelog.c
 	client.c
+	zip.c
 )
 if(WIN32)
 	list(APPEND SKU_CORE_SOURCES platform_win32.c)
@@ -45,4 +46,10 @@ target_compile_definitions(sku_core PUBLIC CURL_STATICLIB SKU_VERSION="${SKU_VER
 if(NOT WIN32)
 	target_compile_definitions(sku_core PRIVATE _GNU_SOURCE _FILE_OFFSET_BITS=64)
 endif()
-target_link_libraries(sku_core PUBLIC CURL::libcurl Threads::Threads)
+# our static zlib (the macOS SDK also offers libz.tbd, which find_package would prefer)
+if(EXISTS ${SKU_DEPS_PREFIX}/lib/libz.a)
+	set(ZLIB_LIBRARY ${SKU_DEPS_PREFIX}/lib/libz.a)
+	set(ZLIB_INCLUDE_DIR ${SKU_DEPS_PREFIX}/include)
+endif()
+find_package(ZLIB REQUIRED)
+target_link_libraries(sku_core PUBLIC CURL::libcurl ZLIB::ZLIB Threads::Threads)

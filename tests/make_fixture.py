@@ -112,6 +112,14 @@ for name, version in (("client", "9.9.9"), ("client_old", "0.1.0")):
 	for p in packages:
 		fname = versioned(p, version) if name == "client" else p
 		data = ("package " + p + " " + version).encode()
+		if p == "SkunkcraftsUpdater-linux.zip":
+			# a real zip, like the published one: the program deflated, a readme stored
+			import io, zipfile
+			bio = io.BytesIO()
+			with zipfile.ZipFile(bio, "w") as zf:
+				zf.writestr(zipfile.ZipInfo("SkunkcraftsUpdater_lin"), ("new program " + version + " ") * 200, compress_type=zipfile.ZIP_DEFLATED)
+				zf.writestr(zipfile.ZipInfo("README.txt"), "readme " + version, compress_type=zipfile.ZIP_STORED)
+			data = bio.getvalue()
 		write(os.path.join(base, fname), data)
 		wl.append("%s|%d" % (fname, crc(data)))
 		sz.append("%s|%d" % (fname, len(data)))

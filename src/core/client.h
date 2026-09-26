@@ -65,6 +65,10 @@ int sku_client_download(const char *depot_url, const sku_client_info *info, cons
  * The downloaded file is removed on success. */
 int sku_client_install_file(const char *downloaded, const char *target, char *err, size_t en);
 
+/* Same, for a program shipped inside a zip: extracts `entry` next to the zip, installs it over
+ * target, removes the zip. */
+int sku_client_install_from_zip(const char *zip, const char *entry, const char *target, char *err, size_t en);
+
 void sku_client_info_free(sku_client_info *info);
 
 #endif

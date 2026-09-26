@@ -15,6 +15,7 @@
 #include "pack.h"
 #include "changelog.h"
 #include "client.h"
+#include "zip.h"
 #include <unistd.h>
 
 static const char *xp, *url;
@@ -39,10 +40,18 @@ static bool file_is(const char *addon_dir, const char *rel, const char *content)
 	return ok;
 }
 
+/* a file that is not a zip, for the error path */
+static const char *target_dummy_path(const char *dir, char *out, size_t n)
+{
+	sku_path_join(out, n, dir, "notazip.txt");
+	sku_write_file_atomic(out, "plain text, not a zip archive", 29);
+	return out;
+}
+
 static void test_client(void)
 {
 	sku_client_info info;
-	char depot[SKU_URL_MAX], err[256], dir[SKU_PATH_MAX], dest[SKU_PATH_MAX], *data;
+	char depot[SKU_URL_MAX], err[256], dir[SKU_PATH_MAX], dest[SKU_PATH_MAX];
 
 	/* version order */
 	CHECK(sku_client_version_cmp("4.0.0", "4.0.0") == 0);
@@ -70,20 +79,31 @@ static void test_client(void)
 	sku_path_join(dir, sizeof dir, xp, "Output/client_downloads");
 	CHECK_EQ_INT(sku_client_download(depot, &info, dir, NULL, NULL, NULL, dest, sizeof dest, err, sizeof err), SKU_OK);
 	CHECK(sku_str_ends(dest, "SkunkcraftsUpdater-9.9.9-linux.zip"));
-	CHECK_EQ_INT(sku_read_file(dest, &data, NULL), SKU_OK);
-	CHECK_EQ_STR(data, "package SkunkcraftsUpdater-linux.zip 9.9.9");
-	free(data);
+	/* the Linux package is a zip: stored and deflated entries, CRC checked, missing entry reported */
+	{
+		char out[SKU_PATH_MAX], *content;
+		size_t len;
+		sku_path_join(out, sizeof out, dir, "README.txt");
+		CHECK_EQ_INT(sku_zip_extract(dest, "README.txt", out, err, sizeof err), SKU_OK);
+		CHECK_EQ_INT(sku_read_file(out, &content, NULL), SKU_OK); CHECK_EQ_STR(content, "readme 9.9.9"); free(content);
+		sku_path_join(out, sizeof out, dir, "prog.bin");
+		CHECK_EQ_INT(sku_zip_extract(dest, "SkunkcraftsUpdater_lin", out, err, sizeof err), SKU_OK);
+		CHECK_EQ_INT(sku_read_file(out, &content, &len), SKU_OK); CHECK_EQ_INT(len, 200 * strlen("new program 9.9.9 ")); CHECK(strncmp(content, "new program 9.9.9 ", 18) == 0); free(content);
+		CHECK_EQ_INT(sku_zip_extract(dest, "nope", out, err, sizeof err), SKU_ERR_NOTFOUND);
+		CHECK(!sku_exists(out));
+		CHECK_EQ_INT(sku_zip_extract(target_dummy_path(dir, out, sizeof out), "x", out, err, sizeof err) == SKU_OK ? 1 : 0, 0);   /* not a zip */
+	}
 	sku_client_info_free(&info);
 
-	/* in-place install: the downloaded file replaces the target, made executable, and is removed */
+	/* in-place install from the zip: the program inside replaces the target, made executable; the zip is removed */
 	{
 		char target[SKU_PATH_MAX], *content;
-		sku_path_join(target, sizeof target, dir, "running.AppImage");
+		sku_path_join(target, sizeof target, dir, "running_program");
 		CHECK_EQ_INT(sku_write_file_atomic(target, "old program", 11), SKU_OK);
-		CHECK_EQ_INT(sku_client_install_file(dest, target, err, sizeof err), SKU_OK);
+		CHECK_EQ_INT(sku_client_install_from_zip(dest, "SkunkcraftsUpdater_lin", target, err, sizeof err), SKU_OK);
 		CHECK(!sku_exists(dest));
 		CHECK_EQ_INT(sku_read_file(target, &content, NULL), SKU_OK);
-		CHECK_EQ_STR(content, "package SkunkcraftsUpdater-linux.zip 9.9.9");
+		CHECK(strncmp(content, "new program 9.9.9 ", 18) == 0);
 		CHECK(access(target, X_OK) == 0);
 		free(content);
 		sku_client_install_file("/nonexistent/file", target, err, sizeof err);

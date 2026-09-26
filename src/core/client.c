@@ -5,6 +5,7 @@
 #include "protocol.h"
 #include "addon.h"
 #include "crc32.h"
+#include "zip.h"
 #include "log.h"
 #include <stdlib.h>
 #include <string.h>
@@ -256,6 +257,20 @@ int sku_client_install_file(const char *downloaded, const char *target, char *er
 	sku_remove_file(downloaded);
 	sku_info("client: %s installed over %s", downloaded, target);
 	return SKU_OK;
+}
+
+int sku_client_install_from_zip(const char *zip, const char *entry, const char *target, char *err, size_t en)
+{
+	char dir[SKU_PATH_MAX], extracted[SKU_PATH_MAX];
+	int rc;
+	sku_path_dirname(dir, sizeof dir, zip);
+	sku_path_join(extracted, sizeof extracted, dir, entry);
+	rc = sku_zip_extract(zip, entry, extracted, err, en);
+	if (rc != SKU_OK) { sku_error("client: cannot extract %s from %s: %s", entry, zip, err ? err : ""); return rc; }
+	rc = sku_client_install_file(extracted, target, err, en);
+	if (rc == SKU_OK) sku_remove_file(zip);
+	else sku_remove_file(extracted);
+	return rc;
 }
 
 void sku_client_info_free(sku_client_info *info)

@@ -165,9 +165,10 @@ several channels; each comes with its own file.
   checks whether a newer version of itself is published. "Check now" asks
   immediately. When one exists, a banner appears above every page with
   "What's new", "Download" (or "Update") and "Later".
-  - As a Linux AppImage the button reads **Update**: the new version is
-    downloaded, verified and put in place of the running file, so your menu
-    entry and dock icon stay valid; the banner then offers "Restart now".
+  - On Linux, as an AppImage or as the program alone, the button reads
+    **Update**: the new version is downloaded, verified and put in place of
+    the running file, so your menu entry, dock icon or X-Plane folder stay as
+    they are; the banner then offers "Restart now".
   - Elsewhere, **Download** fetches the package for your system into your
     user profile (a `downloads` folder next to the updater's preferences; the
     banner opens it); install it the same way you installed this one.
