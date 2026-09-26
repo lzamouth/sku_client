@@ -360,9 +360,11 @@ static void draw(app *ap)
 		nk_sdl_update_TextInput(ctx);
 		SDL_RenderPresent(ap->ren);
 		t3 = sku_time_ms();
-		if (t3 - ap->frame_start > 40)
-			sku_debug("slow frame: %lld ms (ui %lld, clear %lld, render %lld, present %lld) at %dx%d",
-				(long long)(t3 - ap->frame_start), (long long)(t0 - ap->frame_start), (long long)(t1 - t0), (long long)(t2 - t1), (long long)(t3 - t2), w, h);
+		/* while resizing, a long wait for the next event is a stall upstream (compositor / SDL), worth a trace */
+		if (t3 - ap->frame_start > 40 || (ap->resizing && ap->events_ms > 30))
+			sku_debug("slow frame: %lld ms (events %lld%s, ui %lld, clear %lld, render %lld, present %lld) at %dx%d",
+				(long long)(t3 - ap->frame_start), (long long)ap->events_ms, ap->resizing ? " while resizing" : "", (long long)(t0 - ap->frame_start), (long long)(t1 - t0), (long long)(t2 - t1), (long long)(t3 - t2), w, h);
+		ap->resizing = false;
 	}
 	if (ap->shot_dir[0] && sku_time_ms() - ap->last_shot > 1000) {
 		SDL_Surface *s = SDL_RenderReadPixels(ap->ren, NULL);
@@ -428,6 +430,14 @@ int main(int argc, char **argv)
 	sku_log_set_level(ap.prefs.verbose ? SKU_LOG_DEBUG : SKU_LOG_INFO);
 	sku_http_global_init_default(NULL);
 
+#if defined(__linux__)
+	/* Interactive resizing stalls through SDL's Wayland path on GNOME (events stop arriving for
+	 * tens of ms), and is smooth through XWayland; X11 also gets the desktop's own title bar.
+	 * So X11 first when an X server is reachable, Wayland otherwise; the Options page overrides
+	 * (Wayland is the better choice on a fractional-scale display, where XWayland renders blurry). */
+	if (!getenv("SDL_VIDEO_DRIVER"))
+		SDL_SetHint(SDL_HINT_VIDEO_DRIVER, ap.prefs.video == 1 ? "wayland" : ap.prefs.video == 2 ? "x11" : "x11,wayland");
+#endif
 	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) { fprintf(stderr, "SDL_Init: %s\n", SDL_GetError()); return 1; }
 	if (!SDL_CreateWindowAndRenderer(APP_NAME " " SKU_VERSION, ap.prefs.window_w, ap.prefs.window_h,
 			SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &ap.win, &ap.ren)) {
@@ -458,6 +468,7 @@ int main(int argc, char **argv)
 	while (ap.running) {
 		SDL_Event ev;
 		bool busy = jobs_running(ap.jobs) > 0 || jobs_queued(ap.jobs) > 0 || atomic_load(&ap.browse_pending);
+		int64_t t_events = sku_time_ms();
 		nk_input_begin(ap.ctx);
 		if (SDL_WaitEventTimeout(&ev, busy ? 100 : 500)) {
 			do {
@@ -475,6 +486,7 @@ int main(int argc, char **argv)
 				if (ev.type == SDL_EVENT_WINDOW_RESIZED) {
 					SDL_GetWindowSize(ap.win, &ap.prefs.window_w, &ap.prefs.window_h);
 					last_size_save = sku_time_ms();
+					ap.resizing = true;
 				}
 				if (ev.type == SDL_EVENT_SYSTEM_THEME_CHANGED && ap.prefs.theme == THEME_SYSTEM) app_apply_theme(&ap);
 				SDL_ConvertEventToRenderCoordinates(ap.ren, &ev);
@@ -485,6 +497,7 @@ int main(int argc, char **argv)
 		nk_input_end(ap.ctx);
 
 		ap.frame_start = sku_time_ms();
+		ap.events_ms = ap.frame_start - t_events;   /* includes the wait, and libdecor's decoration drawing */
 		handle_browse_result(&ap);
 		app_client_poll(&ap);
 		if (jobs_done(ap.jobs) != ap.last_jobs_done) {

@@ -51,6 +51,7 @@ typedef enum { THEME_SYSTEM, THEME_DARK, THEME_LIGHT } app_theme;
 typedef struct {
 	app_theme theme;
 	bool relief;           /* bevelled widgets instead of flat ones */
+	int  video;            /* Linux: 0 auto (X11 first, Wayland if no X server), 1 Wayland, 2 X11; applied at start */
 	float cols[4];         /* list columns (channel, name, version, status) as fractions of the width */
 	int  text_size;        /* 10..32 */
 	int  downloads;        /* 1..32 */
@@ -119,7 +120,8 @@ typedef struct app {
 	bool client_manual;               /* "Check now": show failures too */
 	int  about_mode;                  /* 0 license, 1 notices, 2 what's new */
 	char **argv;                      /* the command line, for a relaunch after a self-update */
-	int64_t frame_start;              /* for the slow-frame trace in the debug log */
+	int64_t frame_start, events_ms;   /* for the slow-frame trace in the debug log */
+	bool resizing;                    /* a resize event was in the last batch */
 	char shot_dir[SKU_PATH_MAX];      /* --screenshot DIR: one BMP per second, for testing */
 	int64_t last_shot;
 	int shot_index;

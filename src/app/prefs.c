@@ -43,6 +43,7 @@ int prefs_load(app *ap)
 	v = sku_cfg_get_or(&c, "theme", "dark");
 	p->theme = strcmp(v, "light") == 0 ? THEME_LIGHT : strcmp(v, "system") == 0 ? THEME_SYSTEM : THEME_DARK;
 	p->relief      = sku_cfg_get_bool(&c, "relief", false);
+	p->video       = clamp(atoi(sku_cfg_get_or(&c, "video", "0")), 0, 2);
 	v = sku_cfg_get(&c, "list_cols");
 	if (v) {
 		float f[4], sum = 0;
@@ -86,6 +87,7 @@ int prefs_save(app *ap)
 	sku_cfg_add_raw(&c, "# SkunkCrafts Updater preferences");
 	sku_cfg_set(&c, "theme", p->theme == THEME_LIGHT ? "light" : p->theme == THEME_SYSTEM ? "system" : "dark");
 	sku_cfg_set_bool(&c, "relief", p->relief);
+	sku_snprintf(num, sizeof num, "%d", p->video);       sku_cfg_set(&c, "video", num);
 	sku_snprintf(num, sizeof num, "%.3f;%.3f;%.3f;%.3f", p->cols[0], p->cols[1], p->cols[2], p->cols[3]); sku_cfg_set(&c, "list_cols", num);
 	sku_snprintf(num, sizeof num, "%d", p->text_size);   sku_cfg_set(&c, "text_size", num);
 	sku_snprintf(num, sizeof num, "%d", p->downloads);   sku_cfg_set(&c, "downloads", num);

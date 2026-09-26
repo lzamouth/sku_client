@@ -50,6 +50,17 @@ void ui_options(app *ap)
 		nk_bool relief = p->relief;
 		if (nk_checkbox_label(ctx, "Bevelled widgets (relief)", &relief)) { p->relief = relief; app_apply_theme(ap); changed = true; }
 	}
+#if defined(__linux__)
+	{
+		static const char *video_items[] = { "Automatic (X11 when available, else Wayland)", "Wayland", "X11" };
+		nk_layout_row(ctx, NK_DYNAMIC, row, 3, r3);
+		nk_label(ctx, "Window system (next start):", NK_TEXT_RIGHT);
+		v = ui_combo(ap, video_items, 3, p->video, (int)row, avail, 4 * row);
+		if (v != p->video) { p->video = v; changed = true; }
+		sku_snprintf(buf, sizeof buf, "now: %s", SDL_GetCurrentVideoDriver());
+		nk_label(ctx, buf, NK_TEXT_LEFT);
+	}
+#endif
 
 	nk_layout_row(ctx, NK_DYNAMIC, row, 2, r2);
 	nk_label(ctx, "", NK_TEXT_RIGHT);

@@ -42,11 +42,12 @@ right-click "Open" route.
 **Linux.** Unzip and make the program executable (`chmod +x`), or make the
 AppImage executable and run it. Nothing else is needed: the program only
 depends on the system C library (glibc 2.35 or newer, i.e. any distribution
-from 2022 onwards). On GNOME under Wayland the window title bar is drawn by
-libdecor; install `libdecor-0-plugin-1-gtk` to get the normal GNOME bar
-instead of a thin one. AppImageLauncher 2.2 (the old stable release) cannot
-start AppImages built with the current runtime; use version 3.0 or the plain
-program from the zip.
+from 2022 onwards). Under a Wayland desktop the program runs through
+XWayland by default, which gives smooth resizing and the desktop's own title
+bar; on a display set to a fractional scale (125 %, 150 %) that can look
+blurry, in which case pick "Wayland" under Options > Window system.
+AppImageLauncher 2.2 (the old stable release) cannot start AppImages built
+with the current runtime; use version 3.0 or the plain program from the zip.
 
 ## 3. First start
 
@@ -149,6 +150,8 @@ several channels; each comes with its own file.
   update everything.
 - **Theme**: dark, light, or follow the system. **Bevelled widgets** gives a
   classic relief look instead of the flat one.
+- **Window system** (Linux): automatic, Wayland or X11, applied at the next
+  start. See section 2.
 - **Verbose logging**: only when support asks for it, the log gets large.
 - **Max concurrent downloads** and **CRC checks**: leave the defaults
   unless a slow disk or connection suffers.
