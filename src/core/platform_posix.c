@@ -89,6 +89,18 @@ int sku_set_executable(const char *path)
 	return chmod(path, 0755) == 0 ? SKU_OK : SKU_ERR_IO;
 }
 
+int sku_spawn_detached(const char *exe, char *const argv[])
+{
+	pid_t pid = fork();
+	if (pid < 0) return SKU_ERR_IO;
+	if (pid == 0) {
+		setsid();
+		execv(exe, argv);
+		_exit(127);
+	}
+	return SKU_OK;
+}
+
 int sku_realpath(const char *path, char *out, size_t n)
 {
 	char buf[PATH_MAX];

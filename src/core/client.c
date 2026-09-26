@@ -258,7 +258,19 @@ int sku_client_install_file(const char *downloaded, const char *target, char *er
 	fclose(in);
 	if (!ok) { sku_remove_file(tmp); sku_snprintf(err, en, "copy to %s failed", tmp); return SKU_ERR_IO; }
 	if (sku_set_executable(tmp) != SKU_OK) { sku_remove_file(tmp); sku_snprintf(err, en, "cannot make %s executable", tmp); return SKU_ERR_IO; }
-	if (sku_rename(tmp, target) != SKU_OK) { sku_remove_file(tmp); sku_snprintf(err, en, "cannot replace %s", target); return SKU_ERR_IO; }
+	if (sku_rename(tmp, target) != SKU_OK) {
+		/* Windows: a running program cannot be replaced, but it can be renamed; the new file then
+		 * takes its name and the old one is removed at the next start (sku_client_cleanup_old) */
+		char old[SKU_PATH_MAX];
+		sku_snprintf(old, sizeof old, "%s.old", target);
+		sku_remove_file(old);
+		if (sku_rename(target, old) != SKU_OK || sku_rename(tmp, target) != SKU_OK) {
+			sku_rename(old, target);   /* best effort: put the running program back under its name */
+			sku_remove_file(tmp);
+			sku_snprintf(err, en, "cannot replace %s", target);
+			return SKU_ERR_IO;
+		}
+	}
 	sku_remove_file(downloaded);
 	sku_info("client: %s installed over %s", downloaded, target);
 	return SKU_OK;
@@ -276,6 +288,13 @@ int sku_client_install_from_zip(const char *zip, const char *entry, const char *
 	if (rc == SKU_OK) sku_remove_file(zip);
 	else sku_remove_file(extracted);
 	return rc;
+}
+
+void sku_client_cleanup_old(const char *exe)
+{
+	char old[SKU_PATH_MAX];
+	sku_snprintf(old, sizeof old, "%s.old", exe);
+	if (sku_is_file(old) && sku_remove_file(old) == SKU_OK) sku_info("client: removed %s", old);
 }
 
 void sku_client_info_free(sku_client_info *info)

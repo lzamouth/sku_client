@@ -165,13 +165,20 @@ several channels; each comes with its own file.
   checks whether a newer version of itself is published. "Check now" asks
   immediately. When one exists, a banner appears above every page with
   "What's new", "Download" (or "Update") and "Later".
-  - On Linux, as an AppImage or as the program alone, the button reads
-    **Update**: the new version is downloaded, verified and put in place of
-    the running file, so your menu entry, dock icon or X-Plane folder stay as
-    they are; the banner then offers "Restart now".
-  - Elsewhere, **Download** fetches the package for your system into your
-    user profile (a `downloads` folder next to the updater's preferences; the
-    banner opens it); install it the same way you installed this one.
+  - On Linux (AppImage or program alone) and on Windows with the program
+    alone, the button reads **Update**: the new version is downloaded,
+    verified and put in place of the running file, so your menu entry, dock
+    icon or X-Plane folder stay as they are; the banner then offers "Restart
+    now". On Windows the previous program stays a moment as
+    `SkunkcraftsUpdater.exe.old` next to the new one and is removed at the
+    next start.
+  - On Windows installed with the setup program, **Update** downloads the new
+    setup and offers "Install now": the updater quits and the setup runs (it
+    asks for administrator rights, like the first time) and can start the new
+    version when it finishes.
+  - On macOS, **Download** fetches the application zip into your user profile
+    (a `downloads` folder next to the updater's preferences; the banner opens
+    it); replace the application yourself.
   "Later" hides the banner until the next version.
 
 ## 9. What the updater writes, and how to keep files out of updates

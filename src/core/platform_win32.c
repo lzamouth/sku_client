@@ -282,6 +282,43 @@ int sku_set_executable(const char *path)
 	return SKU_OK;
 }
 
+/* Appends one argument to a command line, quoted the way CommandLineToArgvW expects. */
+static void append_quoted(wchar_t *cmd, size_t n, const wchar_t *arg)
+{
+	size_t k = wcslen(cmd);
+	bool need = arg[0] == 0 || wcspbrk(arg, L" \t\"") != NULL;
+	if (k && k + 1 < n) { cmd[k++] = L' '; cmd[k] = 0; }
+	if (need && k + 1 < n) { cmd[k++] = L'"'; cmd[k] = 0; }
+	for (const wchar_t *p = arg; *p && k + 3 < n; p++) {
+		if (*p == L'"') cmd[k++] = L'\\';
+		cmd[k++] = *p;
+	}
+	if (need && k + 1 < n) cmd[k++] = L'"';
+	cmd[k] = 0;
+}
+
+int sku_spawn_detached(const char *exe, char *const argv[])
+{
+	wchar_t wexe[WPATH_MAX], warg[WPATH_MAX], *params;
+	SHELLEXECUTEINFOW sei;
+	BOOL ok;
+	if (to_wide(exe, wexe, WPATH_MAX) != SKU_OK) return SKU_ERR_ARG;
+	params = calloc(32768, sizeof *params);
+	if (!params) return SKU_ERR_NOMEM;
+	for (int i = 1; argv && argv[i]; i++) {
+		if (MultiByteToWideChar(CP_UTF8, 0, argv[i], -1, warg, WPATH_MAX) > 0) append_quoted(params, 32768, warg);
+	}
+	memset(&sei, 0, sizeof sei);
+	sei.cbSize = sizeof sei;
+	sei.fMask = SEE_MASK_NOASYNC;
+	sei.lpFile = wexe;
+	sei.lpParameters = params[0] ? params : NULL;
+	sei.nShow = SW_SHOWNORMAL;
+	ok = ShellExecuteExW(&sei);
+	free(params);
+	return ok ? SKU_OK : SKU_ERR_IO;
+}
+
 int sku_cpu_count(void)
 {
 	SYSTEM_INFO si;

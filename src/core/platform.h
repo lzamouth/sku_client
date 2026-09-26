@@ -27,6 +27,9 @@ int   sku_remove_file(const char *path);
 int   sku_remove_dir(const char *path);           /* must be empty */
 int   sku_rename(const char *from, const char *to); /* atomic replace of an existing target */
 int   sku_set_executable(const char *path);        /* rwxr-xr-x on POSIX, no-op on Windows */
+/* Starts exe as an independent process (argv[0] included, NULL-terminated) and returns at once.
+ * Windows goes through the shell, so an installer that needs elevation gets its prompt. */
+int   sku_spawn_detached(const char *exe, char *const argv[]);
 int   sku_realpath(const char *path, char *out, size_t n);  /* resolves symlinks, absolute */
 int   sku_getcwd(char *out, size_t n);
 int   sku_chdir(const char *path);

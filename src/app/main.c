@@ -3,10 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include <errno.h>
-#ifndef _WIN32
-#include <unistd.h>
-#endif
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -394,21 +390,10 @@ static void choose_startup_instance(app *ap, const char *forced)
 /* Starts exe with our own arguments as a detached process, then asks the loop to quit. */
 void app_relaunch(app *ap, const char *exe)
 {
-#ifndef _WIN32
-	pid_t pid = fork();
-	if (pid == 0) {
-		setsid();
-		ap->argv[0] = (char *)exe;
-		execv(exe, ap->argv);
-		_exit(127);
-	}
-	if (pid < 0) { app_message(ap, "Cannot relaunch: %s", strerror(errno)); return; }
+	ap->argv[0] = (char *)exe;
+	if (sku_spawn_detached(exe, ap->argv) != SKU_OK) { app_message(ap, "Cannot relaunch %s: start it again by hand", exe); return; }
 	sku_info("client: relaunching %s", exe);
 	ap->running = false;
-#else
-	(void)exe;
-	app_message(ap, "Quit and start the program again to use the new version");
-#endif
 }
 
 int main(int argc, char **argv)
@@ -428,6 +413,10 @@ int main(int argc, char **argv)
 	prefs_load(&ap);
 	ap.relief = ap.prefs.relief || getenv("SKU_RELIEF") != NULL;
 	sku_log_set_level(ap.prefs.verbose ? SKU_LOG_DEBUG : SKU_LOG_INFO);
+	{
+		char exe[SKU_PATH_MAX];
+		if (sku_exe_path(exe, sizeof exe) == SKU_OK) sku_client_cleanup_old(exe);   /* after an in-place update on Windows */
+	}
 	sku_http_global_init_default(NULL);
 
 #if defined(__linux__)

@@ -49,23 +49,25 @@ static int on_progress(void *user, int64_t got, int64_t total)
 }
 
 /* Where the downloaded package can be installed in place, or NULL: the running AppImage,
- * or the running drop-in Linux program (shipped inside the zip). */
+ * or the running drop-in program (Linux or Windows, shipped inside the zip). The Windows
+ * installer package is not installed in place: it is run (see the banner). */
 static const char *install_target(app *ap, const char **zip_entry)
 {
-#if defined(__linux__)
 	static char exe[SKU_PATH_MAX];
-#endif
-	const char *ai = getenv("APPIMAGE");
+	const char *ai = getenv("APPIMAGE"), *entry = NULL;
 	if (zip_entry) *zip_entry = NULL;
 	if (ai && *ai && sku_str_ends(ap->client.package, ".AppImage")) return ai;
-#if defined(__linux__)
-	if ((!ai || !*ai) && sku_str_ends(ap->client.package, "-linux.zip") && sku_exe_path(exe, sizeof exe) == SKU_OK) {
-		if (zip_entry) *zip_entry = "SkunkcraftsUpdater_lin";
-		if (getenv("SKU_INSTALL_TARGET")) return getenv("SKU_INSTALL_TARGET");   /* test hook: install elsewhere than over ourselves */
-		return exe;
-	}
-#endif
-	return NULL;
+	if (sku_str_ends(ap->client.package, "-linux.zip")) entry = "SkunkcraftsUpdater_lin";
+	else if (sku_str_ends(ap->client.package, "-windows.zip")) entry = "SkunkcraftsUpdater.exe";
+	if (!entry || (ai && *ai) || sku_exe_path(exe, sizeof exe) != SKU_OK) return NULL;
+	if (zip_entry) *zip_entry = entry;
+	if (getenv("SKU_INSTALL_TARGET")) return getenv("SKU_INSTALL_TARGET");   /* test hook: install elsewhere than over ourselves */
+	return exe;
+}
+
+static bool is_installer(app *ap)
+{
+	return sku_str_ends(ap->client.package, "-setup.exe");
 }
 
 static void *download_thread(void *arg)
@@ -192,10 +194,19 @@ bool ui_client_banner(app *ap)
 		{
 			char tail[200];
 			ui_left_truncate(ap, ap->client_file, 270, tail, sizeof tail);
-			sku_snprintf(buf, sizeof buf, "%s %s saved: %s", APP_NAME, ap->client.version, tail);
+			sku_snprintf(buf, sizeof buf, is_installer(ap) ? "%s %s installer downloaded: %s" : "%s %s saved: %s", APP_NAME, ap->client.version, tail);
 		}
 		nk_label_colored(ctx, buf, NK_TEXT_LEFT, accent);
 		nk_layout_row_push(ctx, UI_W(ap, 120));
+		if (is_installer(ap)) {
+			/* the installer replaces the program itself: start it and get out of its way */
+			if (ui_button(ap, "Install now")) {
+				char *noargs[2] = { (char *)ap->client_file, NULL };
+				if (sku_spawn_detached(ap->client_file, noargs) == SKU_OK) { sku_info("client: installer started, quitting"); ap->running = false; }
+				else app_message(ap, "Cannot start the installer: run it by hand from the downloads folder");
+			}
+			nk_layout_row_push(ctx, UI_W(ap, 120));
+		}
 		if (ui_button(ap, "Open folder")) {
 			char dir[SKU_PATH_MAX], url[SKU_PATH_MAX + 8];
 			sku_path_dirname(dir, sizeof dir, ap->client_file);
@@ -225,7 +236,7 @@ bool ui_client_banner(app *ap)
 		nk_layout_row_push(ctx, UI_W(ap, 120));
 		if (ap->client.changelog && ui_button(ap, "What's new")) { ap->about_mode = 2; ap->view = VIEW_ABOUT; }
 		nk_layout_row_push(ctx, UI_W(ap, 120));
-		if (ap->client.package[0] && !ap->client.locked && ui_button(ap, install_target(ap, NULL) ? "Update" : "Download")) app_client_download_start(ap);
+		if (ap->client.package[0] && !ap->client.locked && ui_button(ap, install_target(ap, NULL) || is_installer(ap) ? "Update" : "Download")) app_client_download_start(ap);
 		nk_layout_row_push(ctx, UI_W(ap, 120));
 		if (ui_button(ap, "Later")) { sku_strlcpy(ap->prefs.client_skip, ap->client.version, sizeof ap->prefs.client_skip); prefs_save(ap); ap->client_manual = false; }
 		break;

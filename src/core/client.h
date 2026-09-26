@@ -69,6 +69,10 @@ int sku_client_install_file(const char *downloaded, const char *target, char *er
  * target, removes the zip. */
 int sku_client_install_from_zip(const char *zip, const char *entry, const char *target, char *err, size_t en);
 
+/* Removes "<exe>.old" left by a previous in-place update (Windows keeps the old program under
+ * that name until it has exited). Call at start with the running executable's path. */
+void sku_client_cleanup_old(const char *exe);
+
 void sku_client_info_free(sku_client_info *info);
 
 #endif
