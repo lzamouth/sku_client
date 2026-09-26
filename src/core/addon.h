@@ -140,6 +140,10 @@ void       sku_addon_set_status(sku_addon *a, sku_status s, const char *text, co
 void       sku_plan_clear(sku_plan *p);
 sku_plan_item *sku_plan_add(sku_plan *p, const char *path, sku_reason reason, int64_t size, uint32_t crc, bool check_crc);
 void       sku_addon_encode_url(char *out, size_t n, const char *base_url, const char *rel);
+/* Appends "?key=value" (or "&key=value") to url, value percent-encoded. CDNs that key their
+ * cache on the full URL then serve a fresh copy: the cfg gets a timestamp, the lists the
+ * published version, so a stale edge can never pair new files with old lists. */
+void       sku_url_add_query(char *url, size_t n, const char *key, const char *value);
 /* <addon>/skunkcrafts/crc_cache.txt, its folder created unless dry_run */
 void       sku_addon_crc_cache_path(const sku_addon *a, bool dry_run, char *out, size_t n);
 

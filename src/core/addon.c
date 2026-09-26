@@ -97,6 +97,15 @@ void sku_addon_crc_cache_path(const sku_addon *a, bool dry_run, char *out, size_
 	sku_path_join(out, n, a->dir, SKU_F_V4_CRC);
 }
 
+void sku_url_add_query(char *url, size_t n, const char *key, const char *value)
+{
+	char *enc = curl_easy_escape(NULL, value, 0);
+	sku_strlcat(url, strchr(url, '?') ? "&" : "?", n);
+	sku_strlcat(url, key, n);
+	sku_strlcat(url, "=", n);
+	if (enc) { sku_strlcat(url, enc, n); curl_free(enc); }
+}
+
 /* ------------------------------------------------------------ channels */
 
 static void channels_clear(sku_addon *a)

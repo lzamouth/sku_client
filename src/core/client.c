@@ -106,12 +106,13 @@ static void base_url(char *out, size_t n, const char *depot_url)
 }
 
 /* GET a protocol text file; HTML pages are refused. */
-static int get_text(sku_http *h, const char *base, const char *file, char **out, sku_http_result *r)
+static int get_text(sku_http *h, const char *base, const char *file, const char *qkey, const char *qvalue, char **out, sku_http_result *r)
 {
 	char url[SKU_URL_MAX];
 	size_t len = 0;
 	int rc;
 	sku_addon_encode_url(url, sizeof url, base, file);
+	if (qkey) sku_url_add_query(url, sizeof url, qkey, qvalue);   /* see sku_url_add_query: no stale CDN copy */
 	rc = sku_http_get_mem(h, url, NULL, NULL, out, &len, r);
 	if (rc != SKU_OK) return rc;
 	if (sku_http_looks_like_html(*out, len, r->content_type)) {
@@ -142,7 +143,11 @@ int sku_client_check(const char *depot_url, const char *package, sku_client_info
 	if (!h) { sku_snprintf(err, n, "cannot create an HTTP handle"); return SKU_ERR_NET; }
 	sku_cfg_init(&cfg);
 
-	rc = get_text(h, base, SKU_F_CFG, &text, &r);
+	{
+		char now[32];
+		sku_snprintf(now, sizeof now, "%lld", (long long)sku_time_now());
+		rc = get_text(h, base, SKU_F_CFG, "t", now, &text, &r);
+	}
 	if (rc != SKU_OK) { sku_snprintf(err, n, "%s", r.error); goto out; }
 	sku_cfg_parse(&cfg, text); free(text); text = NULL;
 	if (sku_protocol_check_remote_cfg(&cfg, err, n) != SKU_OK) { rc = SKU_ERR_FORMAT; goto out; }
@@ -155,14 +160,14 @@ int sku_client_check(const char *depot_url, const char *package, sku_client_info
 
 	/* the package entry: crc and size */
 	if (level >= 2) {
-		rc = get_text(h, base, sku_cfg_get_or(&cfg, "manifest", SKU_F_MANIFEST), &text, &r);
+		rc = get_text(h, base, sku_cfg_get_or(&cfg, "manifest", SKU_F_MANIFEST), "v", out->version, &text, &r);
 		if (rc != SKU_OK) { sku_snprintf(err, n, "%s", r.error); goto out; }
 		sku_protocol_parse_manifest(text, &files, &rejected); free(text); text = NULL;
 	} else {
-		rc = get_text(h, base, SKU_F_WHITELIST, &text, &r);
+		rc = get_text(h, base, SKU_F_WHITELIST, "v", out->version, &text, &r);
 		if (rc != SKU_OK) { sku_snprintf(err, n, "%s", r.error); goto out; }
 		sku_protocol_parse_whitelist(text, &files, &rejected); free(text); text = NULL;
-		if (get_text(h, base, SKU_F_SIZES, &text, &r) == SKU_OK) { sku_protocol_apply_sizes(text, &files); free(text); text = NULL; }
+		if (get_text(h, base, SKU_F_SIZES, "v", out->version, &text, &r) == SKU_OK) { sku_protocol_apply_sizes(text, &files); free(text); text = NULL; }
 	}
 	{
 		/* the versioned name first, the plain one for older depots */
@@ -185,7 +190,7 @@ int sku_client_check(const char *depot_url, const char *package, sku_client_info
 	{
 		char cl[SKU_PATH_MAX];
 		sku_strlcpy(cl, sku_cfg_get_or(&cfg, "changelog", SKU_F_CHANGELOG), sizeof cl);
-		if (sku_path_check_relative(cl) == SKU_OK && get_text(h, base, cl, &text, &r) == SKU_OK) { out->changelog = text; text = NULL; }
+		if (sku_path_check_relative(cl) == SKU_OK && get_text(h, base, cl, "v", out->version, &text, &r) == SKU_OK) { out->changelog = text; text = NULL; }
 	}
 	sku_info("client: published %s (%s), package %s%s", out->version, out->newer ? "newer" : "not newer",
 		out->package[0] ? out->package : "none", out->locked ? ", depot locked" : "");

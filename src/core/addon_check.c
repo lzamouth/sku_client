@@ -13,12 +13,14 @@
 #include <string.h>
 
 /* Fetches a protocol text file; rejects HTML pages and truncated bodies. */
-static int fetch_text(sku_addon *a, sku_http *h, const char *file, bool required, char **out, sku_http_result *r)
+/* query: "t=<now>" for the cfg (always fresh), "v=<version>" for the rest (fresh per version) */
+static int fetch_text(sku_addon *a, sku_http *h, const char *file, const char *qkey, const char *qvalue, bool required, char **out, sku_http_result *r)
 {
 	char url[SKU_URL_MAX];
 	size_t len = 0;
 	int rc;
 	sku_addon_encode_url(url, sizeof url, a->base_url, file);
+	if (qkey) sku_url_add_query(url, sizeof url, qkey, qvalue);
 	rc = sku_http_get_mem(h, url, NULL, NULL, out, &len, r);
 	if (rc != SKU_OK) {
 		if (required || rc == SKU_ERR_CANCELLED) sku_warn("%s: GET %s failed: %s", a->name, url, r->error);
@@ -58,6 +60,7 @@ static int fetch_list(sku_addon *a, sku_http *h, const char *file, bool required
 	int rc;
 
 	sku_addon_encode_url(url, sizeof url, a->base_url, file);
+	sku_url_add_query(url, sizeof url, "v", a->remote_version);   /* a new version is a new URL: no stale CDN copy */
 	list_cache_paths(a, file, body_path, meta_path, sizeof body_path);
 	sku_cfg_init(&meta);
 	if (sku_cfg_load(&meta, meta_path) == SKU_OK && strcmp(sku_cfg_get_or(&meta, "url", ""), url) == 0 && sku_is_file(body_path)) {
@@ -252,7 +255,11 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 
 	/* remote cfg */
 	sku_cfg_free(&a->remote);
-	rc = fetch_text(a, h, SKU_F_CFG, true, &text, &r);
+	{
+		char now[32];
+		sku_snprintf(now, sizeof now, "%lld", (long long)sku_time_now());
+		rc = fetch_text(a, h, SKU_F_CFG, "t", now, true, &text, &r);
+	}
 	if (rc != SKU_OK) {
 		sku_addon_set_status(a, rc == SKU_ERR_CANCELLED ? SKU_ST_CANCELLED : SKU_ST_ERROR_NET, "Cannot retrieve the remote configuration", r.error);
 		goto out;
@@ -328,7 +335,7 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 			char cache[SKU_PATH_MAX];
 			sku_http_result dr;
 			if (!declared[d] && a->level < 2 && !remote_has(a, docs[d][1])) continue;
-			if (fetch_text(a, h, docs[d][1], false, &text, &dr) == SKU_OK) {
+			if (fetch_text(a, h, docs[d][1], "v", a->remote_version, false, &text, &dr) == SKU_OK) {
 				sku_addon_doc_cache_path(a, docs[d][0], cache, sizeof cache);
 				sku_write_file_atomic(cache, text, strlen(text));
 				free(text); text = NULL;

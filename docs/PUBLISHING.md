@@ -313,9 +313,14 @@ the depot is locked. It never creates a folder without asking (packs, 5.5).
 3. **Stale CDN cache**. After an upload, the lists and the configuration
    must be fresh, or clients compare new files against old lists and loop on
    "repair". `xp_depot` purges the Bunny cache itself; on another CDN, purge
-   or keep the TTL of the `.cfg` and `.txt` files short. The 4.0 client asks
-   the server whether a list changed (`ETag` / `Last-Modified`), which a
-   proper static host answers for free.
+   or keep the TTL of the `.cfg` and `.txt` files short. The 4.0 client helps:
+   it requests the configuration with a unique query string (`?t=...`) and
+   the lists, changelog and readme with the published version (`?v=...`), so
+   a CDN that keys its cache on the full URL always serves the configuration
+   fresh and never pairs a new version with old lists. A CDN configured to
+   ignore query strings still needs a purge. The lists are also requested
+   conditionally (`ETag` / `Last-Modified`), which a static host answers
+   for free.
 4. **Case and spelling of paths**. `Objects/Wing.obj` and `objects/wing.obj`
    are two different files on Linux and macOS. Generate the lists from the
    real files (xp_depot does), never type them.
