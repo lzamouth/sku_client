@@ -1,3 +1,6 @@
+4.0.0-beta13
+- Depot configuration and lists are requested so that a caching CDN cannot serve a stale copy (unique query for the configuration, version for the lists)
+
 4.0.0-beta12
 - Linux, program alone: the Update button now replaces the running program in place from the downloaded zip and offers to restart, like the AppImage
 
