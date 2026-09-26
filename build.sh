@@ -16,7 +16,13 @@ macos)   TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=$ROOT/cmake/toolchains/osxcross-unive
 *) echo "usage: $0 linux|windows|macos [cmake options]" >&2; exit 1 ;;
 esac
 
+# development builds are stamped "<last changelog version>-dev.<commit>" unless a version is given
+VERSION_OPT=""
+case " $* " in *" -DSKU_VERSION="*) ;; *)
+    VERSION_OPT="-DSKU_VERSION=$(head -1 "$ROOT/CHANGELOG.txt" | tr -d '\r')-dev.$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo local)" ;;
+esac
+
 cmake -S "$ROOT" -B "$OUT" -G Ninja -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_PREFIX_PATH="$PREFIX" -DSKU_DEPS_PREFIX="$PREFIX" $TOOLCHAIN "$@"
+    -DCMAKE_PREFIX_PATH="$PREFIX" -DSKU_DEPS_PREFIX="$PREFIX" $TOOLCHAIN $VERSION_OPT "$@"
 cmake --build "$OUT" -j "$(nproc)"
 echo "=== built: $OUT"
