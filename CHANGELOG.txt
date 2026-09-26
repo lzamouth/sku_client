@@ -1,3 +1,7 @@
+4.0.0-beta10
+- skunkcrafts_updater.cfg stays in place as the configuration file: aircraft and publishing tools read the version there. Folders converted by earlier betas are migrated back automatically
+- The skunkcrafts/ folder inside an add-on now holds only the CRC cache
+
 4.0.0-beta9
 - Linux AppImage: the Update button replaces the running AppImage in place and offers to restart, so menu entries and dock icons stay valid
 
