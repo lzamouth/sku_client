@@ -188,6 +188,8 @@ bool ui_button_hl(app *ap, const char *label, bool highlight);   /* accent colou
 bool ui_needs_update(sku_status st);                             /* update, repair or version mismatch */
 /* A text line made displayable: leading blanks dropped, tabs and control characters replaced by spaces. */
 const char *ui_tidy_line(const char *line, char *buf, size_t n);
+/* Height left in the current panel below the rows laid out so far, minus margin; at least min. */
+float ui_fill_height(app *ap, float margin, float min);
 bool ui_tab(app *ap, const char *label, bool active);
 int  ui_combo(app *ap, const char **items, int n, int selected, int item_height, float w, float h);
 struct nk_color;

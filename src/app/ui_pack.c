@@ -151,7 +151,7 @@ void ui_pack(app *ap)
 		static const char *titles[] = { "Channel", "Name", "Version", "Status" };
 		ui_column_header(ap, titles, ui_list_default_cols, ap->prefs.cols, 4, row - 4);
 	}
-	nk_layout_row_dynamic(ctx, nk_window_get_height(ctx) - (ap->nmissing ? 9 + ap->nmissing : 7) * row - 20, 1);
+	nk_layout_row_dynamic(ctx, ui_fill_height(ap, 8, 3 * row), 1);
 	if (nk_group_begin(ctx, "members", NK_WINDOW_BORDER)) {
 		for (int m = 0; m < p->nmembers; m++) {
 			app_item *it = &ap->items[p->members[m]];

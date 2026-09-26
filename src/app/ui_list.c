@@ -79,7 +79,7 @@ void ui_list(app *ap)
 	}
 
 	ui_column_header(ap, titles, ui_list_default_cols, cols, 4, row - 4);
-	nk_layout_row_dynamic(ctx, nk_window_get_height(ctx) - 4 * row - 40, 1);
+	nk_layout_row_dynamic(ctx, ui_fill_height(ap, 8, 3 * row), 1);
 	{
 		struct nk_list_view view;
 		struct nk_rect list_bounds = nk_widget_bounds(ctx);

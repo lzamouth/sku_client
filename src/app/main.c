@@ -134,6 +134,13 @@ void app_open_instance(app *ap, const char *root)
 	}
 	ap->inst_open = true;
 	sku_log_set_level(ap->prefs.verbose ? SKU_LOG_DEBUG : SKU_LOG_INFO);
+	{
+		int ww, wh, pw, ph;
+		SDL_GetWindowSize(ap->win, &ww, &wh);
+		SDL_GetWindowSizeInPixels(ap->win, &pw, &ph);
+		sku_info("window %dx%d, pixels %dx%d, display scale %.3f, video %s, renderer %s",
+			ww, wh, pw, ph, ap->scale, SDL_GetCurrentVideoDriver(), SDL_GetRendererName(ap->ren));
+	}
 	sku_strlcpy(ap->prefs.instance, ap->inst.root, sizeof ap->prefs.instance);
 	prefs_migrate_legacy(ap);
 	prefs_save(ap);
@@ -446,10 +453,14 @@ int main(int argc, char **argv)
 			do {
 				if (ev.type == SDL_EVENT_QUIT) ap.running = false;
 				if (ev.type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED) {
-					ap.scale = SDL_GetWindowDisplayScale(ap.win);
-					SDL_SetRenderScale(ap.ren, ap.scale, ap.scale);
-					load_fonts(&ap);
-					app_apply_theme(&ap);
+					float scale = SDL_GetWindowDisplayScale(ap.win);
+					if (scale > 0 && scale != ap.scale) {   /* the event can repeat during a resize: rebake only on a real change */
+						sku_info("display scale %.3f -> %.3f", ap.scale, scale);
+						ap.scale = scale;
+						SDL_SetRenderScale(ap.ren, ap.scale, ap.scale);
+						load_fonts(&ap);
+						app_apply_theme(&ap);
+					}
 				}
 				if (ev.type == SDL_EVENT_WINDOW_RESIZED) {
 					SDL_GetWindowSize(ap.win, &ap.prefs.window_w, &ap.prefs.window_h);

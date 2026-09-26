@@ -141,7 +141,7 @@ void ui_about(app *ap)
 	if (ui_button(ap, "Open skunkcrafts.com")) SDL_OpenURL("https://www.skunkcrafts.com/");
 	if (ap->about_mode == 2 && !news) ap->about_mode = 0;
 
-	nk_layout_row_dynamic(ctx, nk_window_get_height(ctx) - 3 * row, 1);
+	nk_layout_row_dynamic(ctx, ui_fill_height(ap, 8, 3 * row), 1);
 	if (nk_group_begin(ctx, "about", NK_WINDOW_BORDER)) {
 		if (ap->about_mode == 2) ui_client_news(ap);
 		else if (ap->about_mode == 1) {

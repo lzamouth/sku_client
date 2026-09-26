@@ -254,10 +254,7 @@ void ui_detail(app *ap)
 	if (nk_selectable_label(ctx, "Readme", NK_TEXT_CENTERED, &(nk_bool){ ap->detail_tab == 3 })) ap->detail_tab = 3;
 	nk_layout_row_end(ctx);
 	{
-		struct nk_rect r = nk_window_get_content_region(ctx);
-		float used = nk_window_get_content_region(ctx).y;
-		float height = r.h - (ctx->current->layout->at_y - used) - 10;
-		if (height < 3 * row) height = 3 * row;
+		float height = ui_fill_height(ap, 8, 3 * row);
 		if (ap->detail_tab == 0) {
 			if (busy) { nk_layout_row_dynamic(ctx, row, 1); nk_label(ctx, "Working...", NK_TEXT_LEFT); }
 			else files_tab(ap, it, row, height);

@@ -69,6 +69,15 @@ const char *ui_tidy_line(const char *line, char *buf, size_t n)
 	return buf;
 }
 
+float ui_fill_height(app *ap, float margin, float min)
+{
+	struct nk_context *ctx = ap->ctx;
+	struct nk_rect r = nk_window_get_content_region(ctx);
+	float used = ctx->current->layout->at_y - r.y;   /* rows already laid out, spacing included */
+	float h = r.h - used - margin;
+	return h < min ? min : h;
+}
+
 bool ui_needs_update(sku_status st)
 {
 	return st == SKU_ST_UPDATE || st == SKU_ST_REPAIR || st == SKU_ST_VERSION_MISMATCH;
