@@ -1,3 +1,6 @@
+4.0.0-beta16
+- User guide: a section on keeping the updater itself up to date, per installation mode
+
 4.0.0-beta15
 - macOS: the Update button swaps the running application bundle with the new one and offers to restart; the previous bundle is removed at the next start
 
