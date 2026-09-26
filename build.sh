@@ -19,7 +19,15 @@ esac
 # development builds are stamped "<last changelog version>-dev.<commit>" unless a version is given
 VERSION_OPT=""
 case " $* " in *" -DSKU_VERSION="*) ;; *)
-    VERSION_OPT="-DSKU_VERSION=$(head -1 "$ROOT/CHANGELOG.txt" | tr -d '\r')-dev.$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo local)" ;;
+    # the commit, without git when building in the container: follow .git/HEAD by hand
+    REV="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null)"
+    if [ -z "$REV" ] && [ -f "$ROOT/.git/HEAD" ]; then
+        REF="$(sed -n 's/^ref: //p' "$ROOT/.git/HEAD")"
+        if [ -n "$REF" ] && [ -f "$ROOT/.git/$REF" ]; then REV="$(cut -c1-7 "$ROOT/.git/$REF")"
+        elif [ -n "$REF" ] && [ -f "$ROOT/.git/packed-refs" ]; then REV="$(grep " $REF\$" "$ROOT/.git/packed-refs" | cut -c1-7)"
+        else REV="$(cut -c1-7 "$ROOT/.git/HEAD")"; fi
+    fi
+    VERSION_OPT="-DSKU_VERSION=$(head -1 "$ROOT/CHANGELOG.txt" | tr -d '\r')-dev.${REV:-local}" ;;
 esac
 
 cmake -S "$ROOT" -B "$OUT" -G Ninja -DCMAKE_BUILD_TYPE=Release \
