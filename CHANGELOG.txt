@@ -1,3 +1,6 @@
+4.0.0-beta17
+- Add-on details: the Files list fills its frame, and the last line of the Report, Changelog and Readme tabs is no longer cut off
+
 4.0.0-beta16
 - User guide: a section on keeping the updater itself up to date, per installation mode
 
