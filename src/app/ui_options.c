@@ -163,6 +163,7 @@ void ui_about(app *ap)
 			nk_style_set_font(ctx, &ap->font->handle);
 			free(text);
 		} else wrapped_text(ap, about_text);
+		ui_group_tail(ap);
 		nk_group_end(ctx);
 	}
 }
@@ -195,6 +196,7 @@ void ui_instance(app *ap)
 			nk_layout_row_dynamic(ctx, row - 4, 1);
 			if (nk_selectable_label(ctx, ap->known_instances.v[i], NK_TEXT_LEFT, &sel)) selected = i;
 		}
+		ui_group_tail(ap);
 		nk_group_end(ctx);
 	}
 	nk_layout_row_dynamic(ctx, row, 4);

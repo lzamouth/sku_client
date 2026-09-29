@@ -193,6 +193,8 @@ bool ui_needs_update(sku_status st);                             /* update, repa
 const char *ui_tidy_line(const char *line, char *buf, size_t n);
 /* Height left in the current panel below the rows laid out so far, minus margin; at least min. */
 float ui_fill_height(app *ap, float margin, float min);
+/* Last row of a scrolled group: Nuklear clips the bottom padding, this keeps the last real line visible. */
+void ui_group_tail(app *ap);
 bool ui_tab(app *ap, const char *label, bool active);
 int  ui_combo(app *ap, const char **items, int n, int selected, int item_height, float w, float h);
 struct nk_color;

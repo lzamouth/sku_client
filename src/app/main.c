@@ -251,7 +251,7 @@ void app_apply_theme(app *ap)
 
 /* ------------------------------------------------------------ test hook */
 
-/* SKU_AUTOPILOT=<file>: lines "<seq> click <x> <y>" or "<seq> drag <x> <y> <x2> <y2>" (pixels, as seen in a
+/* SKU_AUTOPILOT=<file>: lines "<seq> click <x> <y>", "<seq> drag <x> <y> <x2> <y2>" or "<seq> scroll <x> <y> <ticks>" (pixels, as seen in a
  * --screenshot frame) are fed straight into Nuklear's input, once each, over
  * three frames: hover (Nuklear activates a window only when it is hovered
  * with the button up), press (buttons trigger on press), release. Lets the
@@ -290,6 +290,13 @@ static void autopilot(app *ap)
 				last_seq = seq; cx = dx = x; cy = dy = y; phase = 1;
 				nk_input_motion(ap->ctx, (int)(x / ap->scale), (int)(y / ap->scale));
 				sku_info("autopilot: click %d %d", x, y);
+				break;
+			}
+			if (sscanf(line, "%d scroll %d %d %d", &seq, &x, &y, &x2) == 4 && seq > last_seq) {
+				last_seq = seq;
+				nk_input_motion(ap->ctx, (int)(x / ap->scale), (int)(y / ap->scale));
+				nk_input_scroll(ap->ctx, nk_vec2(0, (float)x2));
+				sku_info("autopilot: scroll %d %d by %d", x, y, x2);
 				break;
 			}
 			if (sscanf(line, "%d drag %d %d %d %d", &seq, &x, &y, &x2, &y2) == 5 && seq > last_seq) {

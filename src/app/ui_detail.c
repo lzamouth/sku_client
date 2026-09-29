@@ -45,7 +45,7 @@ static void files_tab(app *ap, app_item *it, float row, float height)
 	static sku_addon *sorted_for;
 	if (sorted_for != it->a) { qsort(p->v, (size_t)p->n, sizeof *p->v, plan_cmp); sorted_for = it->a; }
 	nk_layout_row_dynamic(ctx, height, 1);
-	if (nk_list_view_begin(ctx, &view, "files", NK_WINDOW_BORDER, (int)row, p->n ? p->n : 1)) {
+	if (nk_list_view_begin(ctx, &view, "files", NK_WINDOW_BORDER, (int)(row - 4), p->n ? p->n : 1)) {
 		if (!p->n) {
 			nk_layout_row_dynamic(ctx, row - 4, 1);
 			nk_label(ctx, it->checked ? "Nothing to do." : "Run a check to see which files would change.", NK_TEXT_LEFT);
@@ -91,6 +91,7 @@ static void report_tab(app *ap, int index, float height)
 		}
 		nk_style_set_font(ctx, &ap->font->handle);
 		free(copy);
+		ui_group_tail(ap);
 		nk_group_end(ctx);
 	}
 }
@@ -152,6 +153,7 @@ static void doc_tab(app *ap, int index, int kind, float height)
 			lineno++;
 		}
 		free(copy);
+		ui_group_tail(ap);
 		nk_group_end(ctx);
 	}
 	free(sec);

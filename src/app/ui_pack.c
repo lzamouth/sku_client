@@ -167,6 +167,7 @@ void ui_pack(app *ap)
 			nk_label_colored(ctx, it->st_text, NK_TEXT_LEFT, status_color(it->st, ap->dark));
 			if (clicked) { ap->selected = p->members[m]; ap->view = VIEW_DETAIL; ap->detail_tab = 0; ap->detail_from_pack = true; }
 		}
+		ui_group_tail(ap);
 		nk_group_end(ctx);
 	}
 }

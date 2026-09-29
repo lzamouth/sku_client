@@ -78,6 +78,13 @@ float ui_fill_height(app *ap, float margin, float min)
 	return h < min ? min : h;
 }
 
+void ui_group_tail(app *ap)
+{
+	struct nk_context *ctx = ap->ctx;
+	nk_layout_row_dynamic(ctx, ctx->style.window.padding.y + 2, 1);
+	nk_label(ctx, "", NK_TEXT_LEFT);
+}
+
 bool ui_needs_update(sku_status st)
 {
 	return st == SKU_ST_UPDATE || st == SKU_ST_REPAIR || st == SKU_ST_VERSION_MISMATCH;
