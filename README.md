@@ -1,102 +1,102 @@
 # SkunkCrafts Updater 4.0 (sku_client)
 
-Réécriture en C du client SkunkCrafts Updater pour X-Plane. Analyse et décisions : [ANALYSE.md](ANALYSE.md).
+C rewrite of the SkunkCrafts Updater client for X-Plane. Analysis and decisions: [ANALYSIS.md](ANALYSIS.md).
 
-## Arborescence
+## Layout
 
 ```
-src/core/     bibliothèque C11 sans GUI : plateforme (POSIX/Win32), chemins et sécurité, cfg v1/v4,
-              CRC32, log, strmap, http (curl), protocole (niveaux 1 et 2), cache CRC, pool de threads,
-              instance X-Plane, scan, addon (check / update, listes distantes en GET conditionnel), packs,
-              changelog/readme, rapport ; bundle CA embarqué
-src/cli/      sku : client en ligne de commande, même cœur que la future GUI
-src/app/      client graphique SDL3 + Nuklear : main (boucle, polices, instance), prefs, jobs (file de travaux),
-              theme, ui_list / ui_detail / ui_pack / ui_options (options, about, choix d'instance)
-tests/        tests unitaires + bout-en-bout (faux X-Plane, dépôt servi par python), exécutés dans le conteneur
-spike/        preuve de la chaîne de build (conservée, option SKU_BUILD_SPIKE)
-deps/         sources tierces figées et leurs builds (ignorés par git, voir deps/fetch.sh)
-cmake/, docker/, macos/, tools/   toolchains, image de build Linux, bundle .app, scripts utilitaires
+src/core/     C11 library without GUI: platform (POSIX/Win32), paths and safety, cfg v1/v4,
+              CRC32, log, strmap, http (curl), protocol (levels 1 and 2), CRC cache, thread pool,
+              X-Plane instance, scan, addon (check / update, remote lists by conditional GET), packs,
+              changelog/readme, report; embedded CA bundle
+src/cli/      sku: command-line client, same core as the GUI
+src/app/      SDL3 + Nuklear graphical client: main (loop, fonts, instance), prefs, jobs (work queue),
+              theme, ui_list / ui_detail / ui_pack / ui_options (options, about, instance picker)
+tests/        unit + end-to-end tests (fake X-Plane, depot served by python), run in the container
+spike/        proof of the build chain (kept, SKU_BUILD_SPIKE option)
+deps/         pinned third-party sources and their builds (ignored by git, see deps/fetch.sh)
+cmake/, docker/, macos/, tools/   toolchains, Linux build image, .app bundle, utility scripts
 ```
 
-## Apparence
+## Look
 
-Police d'interface Roboto (Apache 2.0), DejaVu Sans Mono pour le texte à chasse fixe, DejaVu Sans fusionnée pour les deux symboles ▶ et ▫ que Roboto n'a pas. Deux rendus au choix dans Options : plat (liséré fin autour des boutons, onglets et menus, fond des menus distinct) ou relief (préférence `relief`, biseaux à deux tons dessinés par `widgets.c` par-dessus les widgets Nuklear, qui ne connaît ni dégradés ni ombres). Les largeurs fixes sont exprimées pour un texte de 16 px et suivent la taille de texte (`UI_W`), les colonnes de la liste et les lignes d'Options sont proportionnelles à la fenêtre. Dans la liste, la première colonne est un menu déroulant de canal, présent seulement quand l'addon en déclare un autre que le principal ; le jeton interne `stable` s'affiche « Main » (`UI_MAIN_CHANNEL`). La liste et celle des membres de pack ont une ligne de titres de colonnes dont les frontières se tirent à la souris (double-clic : proportions par défaut), proportions mémorisées (`list_cols`). `SKU_FONT_FILE=<ttf>` essaie une autre police sans recompiler, `SKU_RELIEF=1` force le relief.
+Roboto interface font (Apache 2.0), DejaVu Sans Mono for fixed-width text, DejaVu Sans merged in for the two symbols ▶ and ▫ that Roboto lacks. Two renderings to choose from in Options: flat (thin outline around buttons, tabs and menus, distinct menu background) or relief (`relief` preference, two-tone bevels drawn by `widgets.c` over the Nuklear widgets, since Nuklear knows neither gradients nor shadows). Fixed widths are expressed for 16 px text and follow the text size (`UI_W`); list columns and Options rows are proportional to the window. In the list, the first column is a channel drop-down, present only when the addon declares a channel other than the main one; the internal token `stable` is displayed as "Main" (`UI_MAIN_CHANNEL`). The list and the pack member list have a header row whose boundaries can be dragged with the mouse (double click: default proportions), proportions remembered (`list_cols`). `SKU_FONT_FILE=<ttf>` tries another font without rebuilding, `SKU_RELIEF=1` forces relief.
 
-Système de fenêtrage sous Linux : X11 d'abord (XWayland sous un bureau Wayland), Wayland si aucun serveur X n'est joignable, préférence `video` dans Options. Raison : sur GNOME Wayland le redimensionnement interactif bloque par à-coups à travers la voie Wayland de SDL (la trace des images lentes montre des trous de 40 à 70 ms sans événement alors que nos images coûtent 1 à 2 ms), et il est fluide par XWayland, qui apporte en prime la barre de titre du bureau au lieu de celle de libdecor. Contrepartie : sur un écran en échelle fractionnaire, XWayland rend flou ; choisir Wayland dans ce cas. `SDL_VIDEO_DRIVER` dans l'environnement prime sur la préférence. En mode verbose, toute image lente ou attente d'événement anormale pendant un redimensionnement est tracée (`slow frame:`), `SKU_NOVSYNC=1` coupe la synchronisation verticale pour diagnostiquer.
+Window system on Linux: X11 first (XWayland under a Wayland desktop), Wayland if no X server can be reached, `video` preference in Options. Reason: on GNOME Wayland, interactive resizing stutters through SDL's Wayland path (the slow-frame trace shows 40 to 70 ms gaps without any event while our frames cost 1 to 2 ms), and it is smooth through XWayland, which also brings the desktop's title bar instead of libdecor's. Downside: on a fractional-scale display XWayland renders blurry; pick Wayland in that case. `SDL_VIDEO_DRIVER` in the environment overrides the preference. In verbose mode, any slow frame or abnormal event wait during a resize is traced (`slow frame:`), `SKU_NOVSYNC=1` turns vertical sync off for diagnosis.
 
 ## Documentation
 
-- [docs/USER_GUIDE.md](docs/USER_GUIDE.md) : guide utilisateur (anglais), livré dans chaque paquet.
-- [docs/PUBLISHING.md](docs/PUBLISHING.md) : guide de publication pour les développeurs (dépôts, betas, packs).
-- [docs/PUBLISH.md](docs/PUBLISH.md) : publier une version du client (interne).
+- [docs/USER_GUIDE.md](docs/USER_GUIDE.md): user guide, shipped in every package.
+- [docs/PUBLISHING.md](docs/PUBLISHING.md): publishing guide for developers (depots, betas, packs).
+- [docs/PUBLISH.md](docs/PUBLISH.md): publishing a version of the client (internal).
 
 ## Packs
 
-Guide de publication pour les développeurs dont le produit occupe plusieurs dossiers : [docs/PUBLISHING.md](docs/PUBLISHING.md) (anglais : dépôts, betas multiples, packs). Les clés de pack du cfg distant sont adoptées à la vérification, comme l'identité du dépôt.
+Publishing guide for developers whose product spans several folders: [docs/PUBLISHING.md](docs/PUBLISHING.md) (depots, multiple betas, packs). The pack keys of the remote cfg are adopted at check time, like the depot identity.
 
-## Données par instance
+## Per-instance data
 
-Dans chaque addon : `skunkcrafts_updater.cfg` reste **le** fichier de configuration, à sa place et en `clé|valeur` pur, parce que les avions y lisent leur version et que le 3.x et les outils de publication le lisent aussi ; le 4.0 y ajoute ses clés de canaux (`channel|`, `channel.<n>.module|`, `channel.<n>.zone|`) et absorbe les fichiers beta. `skunkcrafts_updater_ignore.txt` reste la liste d'exclusion de l'utilisateur. `skunkcrafts/crc_cache.txt` (cache CRC : `chemin|taille|mtime|crc32`, une ligne par fichier, invalidé par taille ou date) est le seul fichier du dossier privé `skunkcrafts/`, jamais publié ni supprimé par un dépôt. Les installations converties par les betas 1 à 9 (`skunkcrafts/updater.cfg`, `skunkcrafts/ignore.txt`) sont remigrées vers ces noms au premier chargement. `Output/skunkcrafts/updater/` dans le dossier X-Plane : `updater_log.txt` (rotation à 2 Mo), `cache/<dossier de l'addon>-<empreinte>.<liste>` et `.meta` (copies des listes distantes avec leurs validateurs HTTP), `cache/<…>.changelog.txt` / `.readme.txt`, `reports/<…>.txt` (dernier rapport), `custom_addons.txt`. L'empreinte est celle du chemin complet, deux addons de même nom ne se confondent donc pas.
+In each addon: `skunkcrafts_updater.cfg` remains **the** configuration file, in its place and in plain `key|value`, because aircraft read their version there and 3.x and the publishing tools read it too; 4.0 adds its channel keys to it (`channel|`, `channel.<n>.module|`, `channel.<n>.zone|`) and absorbs the beta files. `skunkcrafts_updater_ignore.txt` remains the user's exclusion list. `skunkcrafts/crc_cache.txt` (CRC cache: `path|size|mtime|crc32`, one line per file, invalidated by size or date) is the only file of the private `skunkcrafts/` folder, never published nor deleted by a depot. Installations converted by betas 1 to 9 (`skunkcrafts/updater.cfg`, `skunkcrafts/ignore.txt`) are migrated back to these names at first load. `Output/skunkcrafts/updater/` in the X-Plane folder: `updater_log.txt` (rotated at 2 MB), `cache/<addon folder>-<hash>.<list>` and `.meta` (copies of the remote lists with their HTTP validators), `cache/<…>.changelog.txt` / `.readme.txt`, `reports/<…>.txt` (last report), `custom_addons.txt`. The hash is that of the full path, so two addons with the same name are never confused.
 
-## Mise à jour du client lui-même
+## Updating the client itself
 
-Le client vérifie à chaque démarrage, au plus une fois par heure (préférence `client_check`, case dans Options) un dépôt au même protocole que les addons, `SKU_CLIENT_DEPOT_URL` à la compilation, `client_url` dans les préférences ensuite : si le cfg distant annonce un autre `module`, le client le suit, ce qui permet de déménager le dépôt sans recompiler. Le dépôt (`updater/depot/` sur le CDN du store, voir [docs/PUBLISH.md](docs/PUBLISH.md)) publie les livrables sous leur nom versionné, que le client déduit de la version annoncée (`SkunkcraftsUpdater-<v>-linux.zip`, …, `sku-cli-<v>.zip`), les noms fixes restant acceptés en repli ; `release.sh` les prépare dans `dist/<version>/depot/` avec le cfg et le changelog (`CHANGELOG.txt`, première ligne = version, comme un changelog d'avion). Quand une version plus récente existe, un bandeau au-dessus de toutes les vues propose « What's new » (changelog dans About, nouveautés en couleur), « Update » et « Later ». « Update » télécharge le paquet de la plateforme et du mode d'installation, vérifie son CRC, et l'installe en place selon le mode (`ui_client.c`, `client.c`) :
+At every start, at most once an hour (`client_check` preference, checkbox in Options), the client checks a depot using the same protocol as the addons, `SKU_CLIENT_DEPOT_URL` at build time, then `client_url` in the preferences: if the remote cfg announces another `module`, the client follows it, which lets the depot move without rebuilding. The depot (`updater/depot/` on the store CDN, see [docs/PUBLISH.md](docs/PUBLISH.md)) publishes the deliverables under their versioned name, which the client derives from the announced version (`SkunkcraftsUpdater-<v>-linux.zip`, …, `sku-cli-<v>.zip`), fixed names remaining accepted as a fallback; `release.sh` prepares them in `dist/<version>/depot/` with the cfg and the changelog (`CHANGELOG.txt`, first line = version, like an aircraft changelog). When a newer version exists, a banner above every view offers "What's new" (changelog in About, new entries in colour), "Update" and "Later". "Update" downloads the package for the platform and install mode, checks its CRC, and installs it in place according to the mode (`ui_client.c`, `client.c`):
 
-| Mode | Cible | Mécanisme |
+| Mode | Target | Mechanism |
 |---|---|---|
-| Linux AppImage | `$APPIMAGE` | copie à côté, `chmod`, `rename` par-dessus (l'inode en cours survit) |
-| Linux posé | `/proc/self/exe` | `SkunkcraftsUpdater_lin` extrait du zip (`zip.c`, zlib), même remplacement |
-| Windows posé | exécutable courant | `SkunkcraftsUpdater.exe` extrait du zip ; l'exécutable en cours est renommé `.exe.old` (irremplaçable mais renommable), le nouveau prend le nom, `.old` supprimé au démarrage suivant |
-| Windows installé | aucune | le setup est téléchargé, « Install now » le lance par `ShellExecuteEx` (élévation) et le client quitte ; la page finale du setup relance |
-| macOS | bundle de l'exécutable courant | zip extrait à côté (`sku_zip_extract_all`), bundle courant renommé `.app.old`, nouveau bundle à sa place, `.app.old` supprimé au démarrage suivant |
+| Linux AppImage | `$APPIMAGE` | copy next to it, `chmod`, `rename` over it (the running inode survives) |
+| Linux standalone | `/proc/self/exe` | `SkunkcraftsUpdater_lin` extracted from the zip (`zip.c`, zlib), same replacement |
+| Windows standalone | running executable | `SkunkcraftsUpdater.exe` extracted from the zip; the running executable is renamed `.exe.old` (cannot be replaced but can be renamed), the new one takes its name, `.old` deleted at the next start |
+| Windows installed | none | the setup is downloaded, "Install now" starts it through `ShellExecuteEx` (elevation) and the client quits; the setup's final page restarts it |
+| macOS | bundle of the running executable | zip extracted next to it (`sku_zip_extract_all`), current bundle renamed `.app.old`, new bundle in its place, `.app.old` deleted at the next start |
 
-Puis « Restart now » relance par `sku_spawn_detached` (`fork`/`execv`, `ShellExecuteEx`) avec les mêmes arguments. En cas d'échec du remplacement, le paquet reste dans `<config utilisateur>/downloads` avec un bouton pour l'ouvrir. Crochets de test : `SKU_NO_CLIENT_CHECK=1` (pas de vérification au démarrage), `SKU_INSTALL_TARGET=<fichier>` (installer ailleurs que sur soi-même).
+Then "Restart now" restarts through `sku_spawn_detached` (`fork`/`execv`, `ShellExecuteEx`) with the same arguments. If the replacement fails, the package stays in `<user config>/downloads` with a button to open it. Test hooks: `SKU_NO_CLIENT_CHECK=1` (no check at startup), `SKU_INSTALL_TARGET=<file>` (install somewhere other than over itself).
 
 ## CLI
 
 ```bash
-sku instances                        # installations connues de X-Plane (x-plane_install_12.txt / _11.txt)
-sku --xp DIR list                    # addons gérés
-sku --xp DIR --dry-run check [nom]   # vérification sans rien écrire (ni cache, ni log, ni conversion), liste prévisionnelle
-sku --xp DIR check --report [nom]    # vérification, cache CRC et rapport écrits dans Output/skunkcrafts/updater
-sku --xp DIR update [nom]            # vérification puis mise à jour / réparation, liste effective des fichiers
-sku --xp DIR report [nom]            # dernier rapport
-sku --xp DIR changelog [nom]         # changelog (sections plus récentes que la version installée marquées ">")
-sku --xp DIR readme [nom]            # readme
-sku client [download [DIR]]          # une version plus récente du client est-elle publiée ? (download : la récupère)
-# options : --full (ignore le cache CRC) --verbose (log de débogage sur stderr) --threads N --downloads N
-#           --create-members (update : crée les membres de pack déclarés mais absents)
+sku instances                        # known X-Plane installations (x-plane_install_12.txt / _11.txt)
+sku --xp DIR list                    # managed addons
+sku --xp DIR --dry-run check [name]  # check without writing anything (no cache, no log, no conversion), planned list
+sku --xp DIR check --report [name]   # check, CRC cache and report written to Output/skunkcrafts/updater
+sku --xp DIR update [name]           # check then update / repair, actual list of files
+sku --xp DIR report [name]           # last report
+sku --xp DIR changelog [name]        # changelog (sections newer than the installed version marked ">")
+sku --xp DIR readme [name]           # readme
+sku client [download [DIR]]          # is a newer version of the client published? (download: fetch it)
+# options: --full (ignore the CRC cache) --verbose (debug log on stderr) --threads N --downloads N
+#          --create-members (update: create pack members declared but missing)
 ```
 
-Sans `--xp`, l'instance est celle du dossier courant ou de l'exécutable. `nom` est une sous-chaîne du nom ou du dossier de l'addon, ou du nom/identifiant d'un pack (tous ses membres sont alors traités). `list` regroupe les membres sous leur pack et signale les membres déclarés absents.
+Without `--xp`, the instance is the one of the current folder or of the executable. `name` is a substring of the addon's name or folder, or of a pack's name/identifier (all its members are then processed). `list` groups members under their pack and reports declared members that are missing.
 
-## Client graphique
+## Graphical client
 
 ```bash
 ./docker/run.sh ./build.sh linux -DSKU_BUILD_APP=ON     # build/linux/src/app/SkunkcraftsUpdater_lin
 ./build.sh windows -DSKU_BUILD_APP=ON                   # build/windows/src/app/SkunkcraftsUpdater.exe
-./build.sh macos   -DSKU_BUILD_APP=ON                   # build/macos/src/app/SkunkcraftsUpdater (universel)
+./build.sh macos   -DSKU_BUILD_APP=ON                   # build/macos/src/app/SkunkcraftsUpdater (universal)
 ```
 
-`SkunkcraftsUpdater_lin [--xp DIR]` : sans `--xp`, l'instance vient du dossier courant/exécutable, puis de la dernière utilisée, puis de `x-plane_install_12.txt` ; sinon le sélecteur s'affiche. Préférences dans le dossier de config utilisateur (`prefs.cfg`), migration automatique de `skunkcrafts_updater_go.json`.
+`SkunkcraftsUpdater_lin [--xp DIR]`: without `--xp`, the instance comes from the current folder/executable, then from the last one used, then from `x-plane_install_12.txt`; otherwise the picker is shown. Preferences in the user config folder (`prefs.cfg`), automatic migration from `skunkcrafts_updater_go.json`.
 
-Aides de test : `--screenshot DIR` (une capture BMP par seconde) et `SKU_AUTOPILOT=fichier` (lignes `<n> click <x> <y>` en pixels de capture, injectées dans Nuklear sur trois images : survol, appui, relâchement, parce que Nuklear n'active une fenêtre que survolée bouton relâché). `SKU_NO_CLIENT_CHECK=1` évite la vérification réseau du client au démarrage. Voir `tests/` pour l'usage avec le faux X-Plane de `make_fixture.py`.
+Test helpers: `--screenshot DIR` (one BMP capture per second) and `SKU_AUTOPILOT=file` (lines `<n> click <x> <y>`, `<n> drag <x> <y> <x2> <y2>` or `<n> scroll <x> <y> <ticks>` in capture pixels, fed into Nuklear over three frames: hover, press, release, because Nuklear only activates a window that is hovered with the button up). `SKU_NO_CLIENT_CHECK=1` avoids the client's network check at startup. Without a display, `SDL_VIDEO_DRIVER=offscreen SDL_RENDER_DRIVER=software` runs the GUI headless, captures included. See `tests/` for use with the fake X-Plane of `make_fixture.py`.
 
 ## Release
 
-Publication d'une version empaquetée sur le dépôt du client et le CDN du store : `docs/publish.sh <version>`, décrit dans [docs/PUBLISH.md](docs/PUBLISH.md).
+Publishing a packaged version to the client depot and the store CDN: `docs/publish.sh <version>`, described in [docs/PUBLISH.md](docs/PUBLISH.md).
 
 ```bash
-./release.sh 4.0.0            # ou 4.0.0-beta1 : version estampillée dans les trois binaires
+./release.sh 4.0.0            # or 4.0.0-beta1: version stamped into the three binaries
 ```
 
-Produit dans `dist/<version>/`, un téléchargement par plateforme et mode d'installation : `SkunkcraftsUpdater-<v>-windows.zip` et `-linux.zip` (le programme seul, à poser dans X-Plane ou ailleurs), `SkunkcraftsUpdater-<v>-windows-setup.exe` (NSIS, `makensis` requis), `SkunkcraftsUpdater-<v>-macos.zip` (`.app` universel, arm64 signé ad hoc — jamais de `strip` après l'édition de liens, les symboles sont retirés par le linker), `SkunkcraftsUpdater-<v>-x86_64.AppImage` (runtime statique officiel + squashfs gzip fabriqué dans le conteneur, pas d'`appimagetool` ; gzip parce que libappimage, donc l'intégration AppImageLauncher, ne lit pas zstd), `sku-cli-<v>.zip`.
+Produces in `dist/<version>/` one download per platform and install mode: `SkunkcraftsUpdater-<v>-windows.zip` and `-linux.zip` (the program alone, to drop into X-Plane or elsewhere), `SkunkcraftsUpdater-<v>-windows-setup.exe` (NSIS, `makensis` required), `SkunkcraftsUpdater-<v>-macos.zip` (universal `.app`, arm64 signed ad hoc — never `strip` after linking, symbols are removed by the linker), `SkunkcraftsUpdater-<v>-x86_64.AppImage` (official static runtime + gzip squashfs made in the container, no `appimagetool`; gzip because libappimage, hence AppImageLauncher integration, does not read zstd), `sku-cli-<v>.zip`.
 
-Icônes : `packaging/icons/icon.png` → `.ico` (ImageMagick) et `.icns` (`tools/make_icns.py`). Ressource Windows (icône, infos de version) : `packaging/windows/app.rc.in`.
+Icons: `packaging/icons/icon.png` → `.ico` (ImageMagick) and `.icns` (`tools/make_icns.py`). Windows resource (icon, version info): `packaging/windows/app.rc.in`.
 
-Piège de test : cette machine a **AppImageLauncher**, qui intercepte toute exécution d'AppImage via `binfmt_misc` (y compris dans les conteneurs Docker, où l'exécution échoue alors avec « No such file or directory »). Pour tester une AppImage sans lui, mettre à zéro les 3 octets magiques à l'offset 8 d'une copie (`printf '\x00\x00\x00' | dd of=copie bs=1 seek=8 conv=notrunc`), puis l'exécuter normalement ou avec `APPIMAGE_EXTRACT_AND_RUN=1`.
+Testing trap: this machine has **AppImageLauncher**, which intercepts every AppImage execution through `binfmt_misc` (including inside Docker containers, where execution then fails with "No such file or directory"). To test an AppImage without it, zero the 3 magic bytes at offset 8 of a copy (`printf '\x00\x00\x00' | dd of=copy bs=1 seek=8 conv=notrunc`), then run it normally or with `APPIMAGE_EXTRACT_AND_RUN=1`.
 
-Incompatibilité connue : **AppImageLauncher 2.2.0** (dernière version stable, 2020, celle des dépôts et de cette machine) ne sait pas lancer les AppImages construites avec le runtime statique moderne, le nôtre comme celui d'`appimagetool` (« fuse: memory allocation failed », ticket amont AppImage/type2-runtime#121). L'intégration dans le menu marche, le lancement non. Corrigé seulement dans AppImageLauncher 3.0 alpha. Revenir à l'ancien runtime dynamique n'est pas une option : il exige libfuse2, absent d'Ubuntu 22.04 et suivants. Le zip avec `SkunkcraftsUpdater_lin` reste la solution universelle.
+Known incompatibility: **AppImageLauncher 2.2.0** (latest stable release, 2020, the one in the repositories and on this machine) cannot start AppImages built with the modern static runtime, ours as well as `appimagetool`'s ("fuse: memory allocation failed", upstream ticket AppImage/type2-runtime#121). Menu integration works, starting does not. Fixed only in AppImageLauncher 3.0 alpha. Going back to the old dynamic runtime is not an option: it requires libfuse2, absent from Ubuntu 22.04 and later. The zip with `SkunkcraftsUpdater_lin` remains the universal solution.
 
 ## Tests
 
@@ -104,46 +104,46 @@ Incompatibilité connue : **AppImageLauncher 2.2.0** (dernière version stable, 
 ./docker/run.sh bash -c './build.sh linux && cd build/linux && ctest --output-on-failure'
 ```
 
-## Chaîne de build
+## Build chain
 
-Tout se compile depuis la machine Linux de Lionel, pour les trois cibles :
+Everything is built from Lionel's Linux machine, for the three targets:
 
-| Cible | Compilateur | Où | Sortie |
+| Target | Compiler | Where | Output |
 |---|---|---|---|
-| Linux x86_64 | gcc d'Ubuntu 22.04 (glibc 2.35) | conteneur Docker `sku-build-linux` | binaire ne dépendant que de libc/libm |
-| Windows x86_64 | mingw-w64 (`-posix`), lien statique | hôte | exe n'important que des DLL système |
-| macOS universel | osxcross (o64-clang, SDK 11.3), `-arch x86_64 -arch arm64` | hôte | binaire fat, minos 10.15 (x86_64) / 11.0 (arm64), signé ad hoc |
+| Linux x86_64 | Ubuntu 22.04 gcc (glibc 2.35) | `sku-build-linux` Docker container | binary depending only on libc/libm |
+| Windows x86_64 | mingw-w64 (`-posix`), static link | host | exe importing system DLLs only |
+| macOS universal | osxcross (o64-clang, SDK 11.3), `-arch x86_64 -arch arm64` | host | fat binary, minos 10.15 (x86_64) / 11.0 (arm64), signed ad hoc |
 
-Bibliothèques (sources figées dans `deps/`, toutes en statique) : SDL3 (fenêtre, entrées, rendu, dialogues), Nuklear (UI), libcurl (HTTP/HTTPS), mbedTLS (TLS sur Linux et macOS ; Schannel sur Windows), zlib (compression de transport).
+Libraries (sources pinned in `deps/`, all static): SDL3 (window, input, rendering, dialogs), Nuklear (UI), libcurl (HTTP/HTTPS), mbedTLS (TLS on Linux and macOS; Schannel on Windows), zlib (transport compression, zip reader).
 
 ```bash
-./deps/fetch.sh                        # télécharge et dépaquette les sources (une fois)
-./deps/build.sh windows                # bibliothèques pour Windows
-./deps/build.sh macos                  # bibliothèques pour macOS (universel)
-./docker/run.sh deps/build.sh linux    # bibliothèques pour Linux, dans le conteneur
+./deps/fetch.sh                        # downloads and unpacks the sources (once)
+./deps/build.sh windows                # libraries for Windows
+./deps/build.sh macos                  # libraries for macOS (universal)
+./docker/run.sh deps/build.sh linux    # libraries for Linux, in the container
 
-./build.sh windows [projet]            # projet = spike (défaut) ou, plus tard, l'application
-./build.sh macos   [projet]
-./docker/run.sh ./build.sh linux [projet]
+./build.sh windows [cmake options]    # e.g. -DSKU_BUILD_APP=ON, -DSKU_BUILD_SPIKE=ON
+./build.sh macos   [cmake options]
+./docker/run.sh ./build.sh linux [cmake options]
 
-./check.sh linux   build/linux/spike/sku_spike       # glibc max, libs dynamiques
-./check.sh windows build/windows/spike/sku_spike.exe # DLL importées
+./check.sh linux   build/linux/spike/sku_spike       # max glibc, dynamic libs
+./check.sh windows build/windows/spike/sku_spike.exe # imported DLLs
 ./check.sh macos   build/macos/spike/sku_spike       # archs, minos, dylibs
 ```
 
-`docker/run.sh` construit l'image la première fois (Ubuntu 22.04 + paquets de développement X11/Wayland) et lance la commande avec l'UID de l'appelant.
+`docker/run.sh` builds the image the first time (Ubuntu 22.04 + X11/Wayland development packages) and runs the command with the caller's UID.
 
-## Particularités
+## Particulars
 
-- **compiler-rt absent d'osxcross** : les tests `@available` d'Objective-C dans SDL référencent `___isPlatformVersionAtLeast`. `spike/apple_compat.c` fournit cette fonction (version lue par `sysctl kern.osproductversion`) ; à lier dans tout build macOS.
-- **Schannel** : ne jamais lui passer de bundle CA (`CURLOPT_CAINFO*`), il utilise le magasin Windows. Sur Linux/macOS, mbedTLS reçoit le bundle Mozilla (`deps/dl/cacert.pem`, à embarquer dans l'application).
-- **zlib sur macOS** : CMake préfère `libz.tbd` du SDK (bibliothèque système présente sur tout macOS) à notre `libz.a` ; sans conséquence.
-- Windows : l'exe du spike est en sous-système console pour voir la sortie de `--cli`.
+- **compiler-rt missing from osxcross**: the Objective-C `@available` checks in SDL reference `___isPlatformVersionAtLeast`. `spike/apple_compat.c` provides that function (version read through `sysctl kern.osproductversion`); to link into every macOS build.
+- **Schannel**: never pass it a CA bundle (`CURLOPT_CAINFO*`), it uses the Windows store. On Linux/macOS, mbedTLS receives the Mozilla bundle (`deps/dl/cacert.pem`, embedded in the application).
+- **zlib on macOS**: CMake prefers the SDK's `libz.tbd` (a system library present on every macOS) over our `libz.a`; harmless.
+- Windows: the spike exe uses the console subsystem to show the output of `--cli`.
 
-## Spike (validation de la chaîne, 23/09/2026)
+## Spike (build chain validation, 23/09/2026)
 
-`spike/` : fenêtre SDL3 + Nuklear (thème sombre/clair), GET HTTPS dans un thread, mode `--cli [url]`. Résultats :
+`spike/`: SDL3 + Nuklear window (dark/light theme), HTTPS GET in a thread, `--cli [url]` mode. Results:
 
-- Linux : 5,4 Mo, GLIBC_2.34 max, NEEDED = libc, libm. GET HTTPS OK (mbedTLS) sur l'hôte et dans le conteneur 22.04. Fenêtre OK sous Wayland.
-- Windows : 6,0 Mo, DLL système uniquement. GET HTTPS OK (Schannel) sous wine.
-- macOS : 8,2 Mo universel, minos 10.15/11.0, frameworks système + libSystem/libz/libobjc, tranche arm64 signée ad hoc par ld64. À tester sur Mac.
+- Linux: 5.4 MB, GLIBC_2.34 max, NEEDED = libc, libm. HTTPS GET OK (mbedTLS) on the host and in the 22.04 container. Window OK under Wayland.
+- Windows: 6.0 MB, system DLLs only. HTTPS GET OK (Schannel) under wine.
+- macOS: 8.2 MB universal, minos 10.15/11.0, system frameworks + libSystem/libz/libobjc, arm64 slice signed ad hoc by ld64. Validated on a MacBook Pro M2.

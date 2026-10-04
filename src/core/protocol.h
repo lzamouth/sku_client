@@ -1,5 +1,5 @@
 /* The depot protocol: file names, URL rules and parsers for the remote lists.
- * Level 1 = what 3.x clients speak; level 2 adds the manifest (see ANALYSE.md). */
+ * Level 1 = what 3.x clients speak; level 2 adds the manifest (see ANALYSIS.md). */
 #ifndef SKU_PROTOCOL_H
 #define SKU_PROTOCOL_H
 
