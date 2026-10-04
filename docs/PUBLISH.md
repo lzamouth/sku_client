@@ -64,7 +64,8 @@ n'est pas monté. Puis :
   peuvent être servis périmés pendant la durée du cache. Les noms versionnés
   du dépôt rendent cela inoffensif pour les clients ; pour les liens fixes,
   un utilisateur peut recevoir la version précédente pendant ce délai.
-- Il ne pousse pas le dépôt git : le code reste local.
+- Il ne pousse pas le dépôt git : le push vers le miroir GitHub privé
+  (`lzamouth/sku_client`) se fait à part, à la main.
 - Il ne connaît aucun secret : le bucket est monté par s3fs avec ses propres
   identifiants.
 

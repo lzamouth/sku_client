@@ -40,9 +40,10 @@ SkunkcraftsUpdater_lin from the zip, which needs nothing at all.
 What it writes
 --------------
 
-Inside each add-on folder: a "skunkcrafts" sub-folder with its configuration
-(the old skunkcrafts_updater.cfg is converted the first time). Inside each
-X-Plane folder: Output/skunkcrafts/updater (log, cache, reports). Your own
+Inside each add-on folder: skunkcrafts_updater.cfg stays where it is and
+remains the add-on's configuration (aircraft read their version there); a
+"skunkcrafts" sub-folder holds only the cache that makes checks fast. Inside
+each X-Plane folder: Output/skunkcrafts/updater (log, cache, reports). Your own
 preferences: in your user profile (AppData on Windows, Library/Application
 Support on macOS, ~/.config on Linux).
 

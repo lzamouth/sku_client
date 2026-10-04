@@ -41,9 +41,8 @@ zone|custom
 | `zone`    | keep `custom`: it means `module` is a full URL. Other values are historical SkunkCrafts aliases |
 
 Ship this file inside your download package, so that a fresh install is
-recognised by the updater. The 4.0 client converts it to
-`skunkcrafts/updater.cfg` inside the folder the first time it saves settings;
-the 3.x client leaves it in place. Both read the same keys.
+recognised by the updater. Both the 3.x and the 4.0 clients leave it in
+place and read the same keys; 4.0 adds its channel keys to it (Part 3).
 
 This same file is uploaded to the depot as `skunkcrafts_updater.cfg`; there
 it is the **remote configuration**, the first thing a client reads. Its
