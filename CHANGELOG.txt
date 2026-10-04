@@ -1,74 +1,10 @@
-4.0.0-beta17
-- Add-on details: the Files list fills its frame, and the last line of the Report, Changelog and Readme tabs is no longer cut off
-
-4.0.0-beta16
-- User guide: a section on keeping the updater itself up to date, per installation mode
-
-4.0.0-beta15
-- macOS: the Update button swaps the running application bundle with the new one and offers to restart; the previous bundle is removed at the next start
-
-4.0.0-beta14
-- Windows, program alone: the Update button replaces the running program in place and offers to restart
-- Windows, installed: Update downloads the new setup and "Install now" runs it
-
-4.0.0-beta13
-- Depot configuration and lists are requested so that a caching CDN cannot serve a stale copy (unique query for the configuration, version for the lists)
-
-4.0.0-beta12
-- Linux, program alone: the Update button now replaces the running program in place from the downloaded zip and offers to restart, like the AppImage
-
-4.0.0-beta11
-- Linux: runs through X11 (XWayland) by default, which resizes smoothly and uses the desktop's title bar; "Window system" option to prefer Wayland on fractional-scale displays
-- The addon list fills its area to the bottom
-- Development builds are stamped with their commit
-
-4.0.0-beta10
-- skunkcrafts_updater.cfg stays in place as the configuration file: aircraft and publishing tools read the version there. Folders converted by earlier betas are migrated back automatically
-- The skunkcrafts/ folder inside an add-on now holds only the CRC cache
-
-4.0.0-beta9
-- Linux AppImage: the Update button replaces the running AppImage in place and offers to restart, so menu entries and dock icons stay valid
-
-4.0.0-beta8
-- User guide (USER_GUIDE.html) shipped with every package
-- The updater's own update depot moves to the store CDN; packages are looked up by version, older names still work
-- Changelog: bullets and bold version headers; tab-indented entries display cleanly
-- The main channel is shown as "Main"
-- A tester file with the same name replaces the beta channel it created, whatever its URL, and enabled|false returns to Main
-
-4.0.0-beta7
-- A tester file carrying the same depot URL under a new name renames the existing channel instead of adding one
-- On a beta channel the depot configuration never renames or moves anything: the production URL always stays
-
-4.0.0-beta6
-- The Update / repair buttons light up when an update or a repair is available
-- Column titles above the addon list, columns resizable from the header
-- The CRC cache moves into the addon folder (skunkcrafts/crc_cache.txt) and follows the addon
-- Per-addon files under Output/skunkcrafts/updater are named after the addon folder
-- One download per platform: windows.zip, windows-setup.exe, macos.zip, linux.zip, AppImage
-- The command-line client fetches its own package (sku-cli.zip)
-
-4.0.0-beta5
-- The check for a new version of the updater runs at every start (at most once an hour) and its banner shows on every page
-
-4.0.0-beta4
-- New look: Roboto font, optional bevelled (relief) theme, outlined buttons and tabs, distinct menu backgrounds
-- Addon list: column titles, columns resizable from the header, channel drop-down per addon (stable in blue, others in yellow)
-- Options page laid out proportionally to the window; widths follow the text size
-- Packs: members adopt the pack keys published by their depot, so an installed folder joins its pack without reinstalling
-- Depot changelog headers are bare version lines again (the aircraft read them)
-
-4.0.0-beta3
-- The updater checks daily whether a newer version of itself is published, shows what changed and downloads it
-
-4.0.0-beta2
-- Changelog and readme are fetched after the lock check, and from level 1 depots as soon as they publish them
-- The log tells why the scan stopped in each Aircraft folder, and lists every file downloaded or deleted
-- A 3.x config file put back next to the v4 layout is ignored, then removed; its ignore list is merged
-- The remote "locked" key is optional (absent means unlocked)
-- The AppImage integrates with AppImageLauncher (gzip squashfs, .DirIcon)
-
-4.0.0-beta1
-- First beta of the rewritten client: single C code base, Windows, macOS (universal) and Linux
-- Protocol level 2 (unified manifest, packs, changelog and readme, several beta channels)
-- CRC cache for fast checks, conditional downloads of the remote lists, per-instance reports
+4.0.0
+- First release of the rewritten SkunkCrafts Updater: one program for Windows, macOS (Intel and Apple Silicon) and Linux
+- No more copy per X-Plane installation: one updater, installed anywhere, finds your X-Plane installations and manages the one you pick
+- New interface: addon list with columns, channel per addon, details with files, report, changelog and readme
+- Several beta channels per addon, and packs: products made of several folders updated together
+- Fast checks thanks to a cache of file checksums; a report for every check and update
+- skunkcrafts_updater.cfg stays in place in every add-on; settings and beta files from 3.x are taken over automatically
+- The updater keeps itself up to date: a banner shows what changed, Update installs the new version and offers to restart
+- Command-line client (sku) for the three systems
+- User guide (USER_GUIDE.html) shipped with every download
