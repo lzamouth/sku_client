@@ -185,6 +185,7 @@ void ui_client_news(app *ap);             /* the published changelog, in About *
 /* widgets.c: the standard widgets, with a bevel when the relief theme is on */
 struct nk_rect;
 void ui_left_truncate(app *ap, const char *path, float width, char *out, size_t n);
+void ui_right_truncate(app *ap, const char *text, float width, char *out, size_t n);
 void ui_bevel(app *ap, const struct nk_rect *r, bool raised);
 bool ui_button(app *ap, const char *label);
 bool ui_button_hl(app *ap, const char *label, bool highlight);   /* accent colours when highlight: "this is what to do next" */

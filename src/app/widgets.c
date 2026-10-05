@@ -23,6 +23,26 @@ void ui_left_truncate(app *ap, const char *path, float width, char *out, size_t 
 	sku_strlcpy(out, ell, n);
 }
 
+/* The same from the other end: keeps the beginning of a message and ends it
+ * with an ellipsis when it is wider than width. */
+void ui_right_truncate(app *ap, const char *text, float width, char *out, size_t n)
+{
+	const struct nk_user_font *f = ap->ctx->style.font;
+	size_t len = strlen(text), end = len;
+	static const char ell[] = "\xE2\x80\xA6";   /* U+2026 */
+	if (f->width(f->userdata, f->height, text, (int)len) <= width) { sku_strlcpy(out, text, n); return; }
+	/* drop trailing characters (at UTF-8 boundaries) until it fits */
+	while (end > 0) {
+		float w;
+		end--;
+		while (end > 0 && ((unsigned char)text[end] & 0xC0) == 0x80) end--;
+		sku_snprintf(out, n, "%.*s%s", (int)end, text, ell);
+		w = f->width(f->userdata, f->height, out, (int)strlen(out));
+		if (w <= width) return;
+	}
+	sku_strlcpy(out, ell, n);
+}
+
 /* Two-tone frame: light on top/left and dark on bottom/right for a raised
  * widget, the other way round for a sunken one. Two pixels thick. */
 void ui_bevel(app *ap, const struct nk_rect *r, bool raised)

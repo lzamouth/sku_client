@@ -167,6 +167,14 @@ static void setup(sku_http *h, const char *url, struct xfer *x)
 	curl_easy_setopt(c, CURLOPT_XFERINFOFUNCTION, on_progress);
 	curl_easy_setopt(c, CURLOPT_XFERINFODATA, x);
 	curl_easy_setopt(c, CURLOPT_NOPROGRESS, 0L);
+#ifdef _WIN32
+	/* Schannel refuses the connection when it cannot reach the revocation
+	 * server (CRYPT_E_REVOCATION_OFFLINE), and Let's Encrypt certificates only
+	 * offer a CRL over plain HTTP, which firewalls and proxies often block.
+	 * Best effort: a revoked certificate is still refused, an unreachable
+	 * revocation server is not an error, as in browsers. */
+	curl_easy_setopt(c, CURLOPT_SSL_OPTIONS, (long)CURLSSLOPT_REVOKE_BEST_EFFORT);
+#endif
 	if (g_cacert) {
 		struct curl_blob blob = { g_cacert, g_cacert_len, CURL_BLOB_NOCOPY };
 		curl_easy_setopt(c, CURLOPT_CAINFO_BLOB, &blob);

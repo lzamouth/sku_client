@@ -237,7 +237,13 @@ bool ui_client_banner(app *ap)
 		if (ui_button(ap, "Later")) ap->client_dismissed = true;
 		break;
 	case CLIENT_FAILED:
-		sku_snprintf(buf, sizeof buf, "Updater update: %s", ap->client_err);
+		{
+			/* curl's messages can be long: cut to the label, whole on hover and in the log */
+			char full[sizeof buf];
+			sku_snprintf(full, sizeof full, "Updater update: %s", ap->client_err);
+			ui_right_truncate(ap, full, UI_W(ap, 520) - 8, buf, sizeof buf);
+			if (strcmp(buf, full) != 0 && nk_widget_is_hovered(ctx)) nk_tooltip(ctx, full);
+		}
 		nk_label_colored(ctx, buf, NK_TEXT_LEFT, nk_rgb(255, 80, 80));
 		nk_layout_row_push(ctx, UI_W(ap, 120));
 		if (ui_button(ap, "Close")) ap->client_dismissed = true;
