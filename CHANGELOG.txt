@@ -1,3 +1,7 @@
+4.0.1
+- Windows: connections no longer fail with CRYPT_E_REVOCATION_OFFLINE when the network blocks the certificate revocation server; a revoked certificate is still refused
+- A long error message in the updater banner is cut cleanly; hover over it to read it whole
+
 4.0.0
 - First release of the rewritten SkunkCrafts Updater: one program for Windows, macOS (Intel and Apple Silicon) and Linux
 - No more copy per X-Plane installation: one updater, installed anywhere, finds your X-Plane installations and manages the one you pick
