@@ -1,3 +1,10 @@
+4.1.0
+- Beta channels are kept in the add-on's own skunkcrafts folder; skunkcrafts_updater.cfg, which aircraft read, holds only its usual settings again. Channels set up by 4.0 move there automatically
+- A beta channel can be removed from the add-on's details ("Remove channel...", with a confirmation), or with sku remove-channel
+- Putting a developer's beta file back no longer adds the same channel twice: the channel already following that beta is updated
+- sku channels lists the beta channels of each add-on
+- A new log at each start, the three previous ones kept (updater_log.txt.1 to .3); a session's log is never cut, and log viewers following it (klogg, glogg) reload it
+
 4.0.2
 - Thranda aircraft whose configuration still names Thranda's former update server are checked and updated again, as with 3.x
 - Custom Scenery and Resources/plugins are scanned one level deep, as with 3.x: plugins moved into "(disabled)" are no longer listed
