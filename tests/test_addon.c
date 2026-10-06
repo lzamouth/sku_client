@@ -549,6 +549,51 @@ static void test_pack(void)
 	sku_instance_close(&in);
 }
 
+/* Scan depth as in 3.x: Custom Scenery and Resources/plugins are looked at one
+ * level deep; an unmanaged folder there gets a single debug line, its sub-folders
+ * (and plugins/(disabled)/...) are not explored. */
+static int count(const char *text, const char *needle)
+{
+	int n = 0;
+	for (const char *p = strstr(text, needle); p; p = strstr(p + 1, needle)) n++;
+	return n;
+}
+
+static void test_scan_depth(void)
+{
+	static const char *dirs[] = { "Aircraft", "Custom Scenery/Unmanaged/objects", "Custom Scenery/Unmanaged/Earth nav data",
+		"Custom Scenery/Hidden/objects/deep", "Custom Scenery/Managed", "Resources/plugins/(disabled)/Old", "Resources/plugins/Live",
+		"Output/preferences" };
+	static const char *cfgs[] = { "Custom Scenery/Managed", "Custom Scenery/Hidden/objects", "Resources/plugins/(disabled)/Old",
+		"Resources/plugins/Live" };
+	static const char cfg[] = "name|x\nmodule|http://127.0.0.1:1/x\nversion|1\n";
+	const char *level = getenv("SKU_TEST_LEVEL");
+	char root[SKU_PATH_MAX], p[SKU_PATH_MAX], q[SKU_PATH_MAX], *log = NULL;
+	sku_instance in;
+	sku_found_list found = {0};
+
+	sku_snprintf(root, sizeof root, "%s/../scan_%s", xp, level ? level : "level1");
+	for (size_t i = 0; i < sizeof dirs / sizeof *dirs; i++) { sku_path_join(p, sizeof p, root, dirs[i]); CHECK_EQ_INT(sku_mkdir_p(p), SKU_OK); }
+	for (size_t i = 0; i < sizeof cfgs / sizeof *cfgs; i++) {
+		sku_path_join(p, sizeof p, root, cfgs[i]);
+		sku_path_join(q, sizeof q, p, SKU_F_CFG);
+		CHECK_EQ_INT(sku_write_file_atomic(q, cfg, strlen(cfg)), SKU_OK);
+	}
+	CHECK_EQ_INT(sku_instance_open(&in, root, false), SKU_OK);
+	CHECK_EQ_INT(sku_scan_instance(&in, &found), SKU_OK);
+	CHECK_EQ_INT(found.n, 2);                       /* Managed and Live; not Hidden/objects nor (disabled)/Old */
+	sku_found_list_free(&found);
+	CHECK_EQ_INT(sku_read_file(in.log_path, &log, NULL), SKU_OK);
+	if (!log) return;
+	CHECK_EQ_INT(count(log, "Custom Scenery/Unmanaged: not managed by the updater"), 1);
+	CHECK_EQ_INT(count(log, "Custom Scenery/Hidden: not managed by the updater"), 1);
+	CHECK_EQ_INT(count(log, "plugins/(disabled): not managed by the updater"), 1);
+	CHECK_EQ_INT(count(log, "max depth"), 0);
+	CHECK_EQ_INT(count(log, "3.x config"), 0);
+	CHECK_EQ_INT(count(log, "Custom Scenery/Managed: managed addon found\n"), 1);
+	free(log);
+}
+
 int main(void)
 {
 	xp = getenv("SKU_TEST_XP"); url = getenv("SKU_TEST_URL");
@@ -559,6 +604,7 @@ int main(void)
 	test_level(getenv("SKU_TEST_LEVEL") ? getenv("SKU_TEST_LEVEL") : "level1", true);
 	test_errors();
 	test_pack();
+	test_scan_depth();
 	sku_http_global_cleanup();
 	TEST_MAIN_END();
 }

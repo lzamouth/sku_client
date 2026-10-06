@@ -84,8 +84,11 @@ void ui_list(app *ap)
 		struct nk_list_view view;
 		struct nk_rect list_bounds = nk_widget_bounds(ctx);
 		/* rows are laid out at row - 4 (+ spacing, which Nuklear adds itself): telling the view a
-		 * bigger pitch made it count fewer visible rows and leave a blank band at the bottom */
-		if (nk_list_view_begin(ctx, &view, "addons", NK_WINDOW_BORDER, (int)(row - 4), nvisible)) {
+		 * bigger pitch made it count fewer visible rows and leave a blank band at the bottom.
+		 * One blank row more than drawn: the view always puts its first row at the top (the
+		 * scroll remainder is dropped) and leaves the group padding out of its height, so
+		 * scrolled to the end the last row could fall half under the frame */
+		if (nk_list_view_begin(ctx, &view, "addons", NK_WINDOW_BORDER, (int)(row - 4), nvisible + 1)) {
 			for (int k = view.begin; k < view.end && k < nvisible; k++) {
 				app_item *it;
 				bool clicked = false;

@@ -73,16 +73,28 @@ static void stop_reason(sku_genre genre, const char *dir, const char *why)
 	sku_log(genre == SKU_GENRE_AIRCRAFT ? SKU_LOG_INFO : SKU_LOG_DEBUG, "scan: %s: %s", dir, why);
 }
 
+/* " (...)" after "managed ... found" for a folder still in the layout of betas 1 to 9 */
+static const char *layout_note(bool v4)
+{
+	return v4 ? " (4.0 beta 1-9 layout, to migrate back to " SKU_F_CFG ")" : "";
+}
+
+/* depth counts the levels examined, dir included, as in 3.x: 11 for Aircraft,
+ * 2 for Custom Scenery and Resources/plugins (the folder and its children). */
 static void walk(sku_found_list *out, const char *dir, int depth, sku_genre genre)
 {
 	struct walk w = { out, genre, dir, depth, false, {0} };
 	bool v4;
 	if (sku_scan_is_addon(dir, &v4)) {
 		add(out, dir, genre, v4);
-		sku_info("scan: %s: managed %s found (%s config)", dir, genre == SKU_GENRE_AIRCRAFT ? "aircraft" : "addon", v4 ? "4.0-beta layout, to migrate" : "3.x");
+		sku_info("scan: %s: managed %s found%s", dir, genre == SKU_GENRE_AIRCRAFT ? "aircraft" : "addon", layout_note(v4));
 		return;
 	}
-	if (depth <= 0) { stop_reason(genre, dir, "max depth reached, not explored"); return; }
+	if (depth <= 1) {
+		/* outside Aircraft the last level is a scenery or plugin folder of its own */
+		stop_reason(genre, dir, genre == SKU_GENRE_AIRCRAFT ? "max depth reached, not explored" : "not managed by the updater");
+		return;
+	}
 	if (sku_list_dir(dir, walk_cb, &w) != SKU_OK) { sku_warn("scan: cannot read %s", dir); return; }
 	if (w.found_acf) stop_reason(genre, dir, "unmanaged aircraft found (.acf without updater config), not explored further");
 	else {
@@ -107,7 +119,7 @@ static int root_cb(const char *name, bool is_dir, bool is_symlink, void *user)
 	sku_path_join(full, sizeof full, w->dir, name);
 	if (sku_is_dir(full) && sku_scan_is_addon(full, &v4)) {
 		add(w->out, full, SKU_GENRE_OTHER, v4);
-		sku_info("scan: %s: managed addon found at the X-Plane root (%s config)", full, v4 ? "4.0-beta layout, to migrate" : "3.x");
+		sku_info("scan: %s: managed addon found at the X-Plane root%s", full, layout_note(v4));
 	}
 	return 0;
 }
@@ -127,7 +139,7 @@ int sku_scan_instance(const sku_instance *in, sku_found_list *out)
 	sku_scan_custom_load(in, &custom);
 	for (int i = 0; i < custom.n; i++) {
 		bool v4;
-		if (sku_scan_is_addon(custom.v[i], &v4)) { add(out, custom.v[i], SKU_GENRE_CUSTOM, v4); sku_info("scan: %s: custom addon folder (%s config)", custom.v[i], v4 ? "4.0-beta layout, to migrate" : "3.x"); }
+		if (sku_scan_is_addon(custom.v[i], &v4)) { add(out, custom.v[i], SKU_GENRE_CUSTOM, v4); sku_info("scan: %s: custom addon folder%s", custom.v[i], layout_note(v4)); }
 		else sku_warn("custom addon folder not found or no longer an addon: %s", custom.v[i]);
 	}
 	sku_strlist_free(&custom);
