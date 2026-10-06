@@ -91,6 +91,7 @@ typedef struct app {
 	app_item *items;
 	int nitems;
 	int selected;                     /* index or -1 */
+	char remove_channel[64];          /* detail view: channel of the selected addon awaiting confirmation of its removal, or "" */
 	sku_pack_list packs;
 	int selected_pack;                /* index into packs, or -1 */
 	bool detail_from_pack;            /* "Back" from a member returns to its pack */

@@ -1,10 +1,11 @@
 /* Addon: local configuration (skunkcrafts_updater.cfg, kept where 3.x, aircraft and other
- * tools read it; the 4.0 channel keys live in the same file), status, settings. */
+ * tools read it; the beta channels in the addon's private skunkcrafts/ folder), status, settings. */
 #include "addon.h"
 #include "platform.h"
 #include "paths.h"
 #include "log.h"
 #include <curl/curl.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -108,6 +109,13 @@ void sku_url_add_query(char *url, size_t n, const char *key, const char *value)
 
 /* ------------------------------------------------------------ channels */
 
+/* Beta channels are the client's own business and live in the addon's private
+ * folder: one file per channel, skunkcrafts/channels/<file>.cfg (channel|,
+ * module|, zone|, the tester file's format), and the active channel in
+ * skunkcrafts/channel.cfg. skunkcrafts_updater.cfg stays the public file that
+ * 3.x, aircraft and publishing tools read. Saving never deletes a channel file:
+ * only sku_addon_remove_channel does, and it keeps the file as <file>.removed. */
+
 static void channels_clear(sku_addon *a)
 {
 	free(a->channels);
@@ -132,80 +140,204 @@ static sku_channel *channel_put(sku_addon *a, const char *name)
 	return c;
 }
 
-/* Reads "channel.<name>.module|..." style keys from the unified cfg. */
-static void channels_from_cfg(sku_addon *a)
+static bool valid_channel_name(const char *name)
 {
-	channels_clear(a);
-	for (int i = 0; i < a->local.n; i++) {
-		const char *k = a->local.v[i].key, *dot;
-		char name[64];
-		size_t len;
-		if (!k || strncmp(k, "channel.", 8) != 0) continue;
-		dot = strchr(k + 8, '.');
-		if (!dot) continue;
-		len = (size_t)(dot - (k + 8));
-		if (len == 0 || len >= sizeof name) continue;
-		memcpy(name, k + 8, len); name[len] = 0;
-		if (strcmp(dot + 1, "module") == 0) sku_strlcpy(channel_put(a, name)->module, a->local.v[i].value, SKU_URL_MAX);
-		else if (strcmp(dot + 1, "zone") == 0) sku_strlcpy(channel_put(a, name)->zone, a->local.v[i].value, 64);
+	return name && *name && strlen(name) < sizeof ((sku_channel *)0)->name && strcmp(name, "stable") != 0
+		&& !strchr(name, '|') && !strchr(name, '\n') && !strchr(name, '\r');
+}
+
+/* Same depot: compared on the base URL the client would use (zone, rewrites, trailing slashes). */
+static bool same_depot(const char *zone_a, const char *module_a, const char *zone_b, const char *module_b)
+{
+	char ua[SKU_URL_MAX], ub[SKU_URL_MAX];
+	sku_protocol_base_url(ua, sizeof ua, zone_a, module_a);
+	sku_protocol_base_url(ub, sizeof ub, zone_b, module_b);
+	return strcmp(ua, ub) == 0;
+}
+
+static int channel_cmp(const void *x, const void *y)
+{
+	return strcmp(((const sku_channel *)x)->name, ((const sku_channel *)y)->name);
+}
+
+/* A file name for a channel saved for the first time: its name with the unsafe
+ * characters replaced, never the name of another channel's file or of a file
+ * already there (an unreadable channel file is left alone, not overwritten). */
+static void channel_file_assign(sku_addon *a, sku_channel *c)
+{
+	char base[48], dir[SKU_PATH_MAX], p[SKU_PATH_MAX];
+	size_t k = 0;
+	if (c->file[0]) return;
+	for (const char *s = c->name; *s && k < 40; s++) base[k++] = (isalnum((unsigned char)*s) || *s == '-' || *s == '_') ? *s : '_';
+	base[k] = 0;
+	if (!k) sku_strlcpy(base, "channel", sizeof base);
+	sku_path_join(dir, sizeof dir, a->dir, SKU_D_CHANNELS);
+	for (int n = 1; ; n++) {
+		bool taken = false;
+		if (n == 1) sku_snprintf(c->file, sizeof c->file, "%s.cfg", base);
+		else sku_snprintf(c->file, sizeof c->file, "%s-%d.cfg", base, n);
+		for (int i = 0; i < a->nchannels; i++) if (&a->channels[i] != c && strcmp(a->channels[i].file, c->file) == 0) taken = true;
+		sku_path_join(p, sizeof p, dir, c->file);
+		if (!taken && !sku_exists(p)) return;
 	}
 }
 
-/* Same depot URL, trailing slashes aside. */
-static bool same_url(const char *a, const char *b)
+struct chan_scan { sku_addon *a; char dir[SKU_PATH_MAX]; };
+
+static int chan_cb(const char *name, bool is_dir, bool is_symlink, void *user)
 {
-	size_t la = strlen(a), lb = strlen(b);
-	while (la && a[la - 1] == '/') la--;
-	while (lb && b[lb - 1] == '/') lb--;
-	return la == lb && strncmp(a, b, la) == 0;
+	struct chan_scan *s = user;
+	char file[SKU_PATH_MAX], stem[64];
+	const char *cname, *module;
+	size_t len = strlen(name);
+	sku_cfg c;
+	(void)is_symlink;
+	if (is_dir || !sku_str_ends(name, ".cfg") || len >= sizeof ((sku_channel *)0)->file) return 0;
+	sku_path_join(file, sizeof file, s->dir, name);
+	sku_strlcpy(stem, name, sizeof stem);
+	if (len - 4 < sizeof stem) stem[len - 4] = 0;
+	sku_cfg_init(&c);
+	if (sku_cfg_load(&c, file) == SKU_OK) {
+		cname = sku_cfg_get_or(&c, "channel", stem);
+		module = sku_cfg_get(&c, "module");
+		if (!module || !*module || !valid_channel_name(cname)) sku_warn("%s: channel file %s has no module or an unusable name, ignored", s->a->dir, name);
+		else if (channel_get(s->a, cname)) sku_warn("%s: channel file %s repeats the channel \"%s\", ignored", s->a->dir, name, cname);
+		else {
+			sku_channel *ch = channel_put(s->a, cname);
+			sku_strlcpy(ch->module, module, sizeof ch->module);
+			sku_strlcpy(ch->zone, sku_cfg_get_or(&c, "zone", "custom"), sizeof ch->zone);
+			sku_strlcpy(ch->file, name, sizeof ch->file);
+		}
+	}
+	sku_cfg_free(&c);
+	return 0;
 }
 
-/* A 3.x beta file: skunkcrafts_updater_beta*.cfg -> channel keys, then the file is dropped on save. */
+/* The channels and the active one, from the private folder. Returns whether
+ * an active channel was recorded there. */
+static bool channels_load(sku_addon *a)
+{
+	struct chan_scan s;
+	char p[SKU_PATH_MAX];
+	sku_cfg c;
+	bool known = false;
+	s.a = a;
+	sku_path_join(s.dir, sizeof s.dir, a->dir, SKU_D_CHANNELS);
+	if (sku_is_dir(s.dir)) sku_list_dir(s.dir, chan_cb, &s);
+	sku_strlcpy(a->channel, "stable", sizeof a->channel);
+	sku_path_join(p, sizeof p, a->dir, SKU_F_CHANNEL);
+	sku_cfg_init(&c);
+	if (sku_is_file(p) && sku_cfg_load(&c, p) == SKU_OK && sku_cfg_has(&c, "channel")) {
+		sku_strlcpy(a->channel, sku_cfg_get(&c, "channel"), sizeof a->channel);
+		known = true;
+	}
+	sku_cfg_free(&c);
+	return known;
+}
+
+/* 4.0.0 to 4.0.2 kept the channels in skunkcrafts_updater.cfg ("channel|<active>",
+ * "channel.<name>.module|", "channel.<name>.zone|"): they move to the private
+ * folder, the keys leave the public file. A channel already in the folder wins. */
+static void channels_from_root_cfg(sku_addon *a, bool active_known)
+{
+	sku_strlist drop = {0};
+	for (int i = 0; i < a->local.n; i++) {
+		const char *k = a->local.v[i].key, *v = a->local.v[i].value, *dot;
+		char name[64];
+		size_t len;
+		if (!k) continue;
+		if (strcmp(k, "channel") == 0) {
+			if (!active_known && v) sku_strlcpy(a->channel, v, sizeof a->channel);
+			sku_strlist_push(&drop, k);
+			continue;
+		}
+		if (strncmp(k, "channel.", 8) != 0 || !(dot = strrchr(k, '.')) || dot < k + 8) continue;
+		sku_strlist_push(&drop, k);
+		len = (size_t)(dot - (k + 8));
+		if (len == 0 || len >= sizeof name || !v) continue;
+		memcpy(name, k + 8, len); name[len] = 0;
+		if (!valid_channel_name(name)) continue;
+		if (strcmp(dot + 1, "module") == 0) {
+			sku_channel *c = channel_get(a, name);
+			if (!c) { c = channel_put(a, name); c->migrated = true; }
+			if (c->migrated) sku_strlcpy(c->module, v, sizeof c->module);
+		} else if (strcmp(dot + 1, "zone") == 0) {
+			sku_channel *c = channel_get(a, name);
+			if (!c) { c = channel_put(a, name); c->migrated = true; }
+			if (c->migrated) sku_strlcpy(c->zone, v, sizeof c->zone);
+		}
+	}
+	if (drop.n) {
+		for (int i = 0; i < drop.n; i++) sku_cfg_remove(&a->local, drop.v[i]);
+		for (int i = 0; i < a->nchannels; ) {   /* a zone without a module is no channel */
+			if (!a->channels[i].module[0]) { memmove(&a->channels[i], &a->channels[i + 1], (size_t)(a->nchannels - i - 1) * sizeof *a->channels); a->nchannels--; }
+			else i++;
+		}
+		{
+			int moved = 0;
+			for (int i = 0; i < a->nchannels; i++) moved += a->channels[i].migrated;
+			if (moved) sku_info("%s: %d beta channel(s) moved from %s to %s/", a->dir, moved, SKU_F_CFG, SKU_D_CHANNELS);
+			else sku_debug("%s: channel key removed from %s", a->dir, SKU_F_CFG);
+		}
+		a->dirty = true;
+	}
+	sku_strlist_free(&drop);
+}
+
+/* A tester file, skunkcrafts_updater_beta*.cfg, dropped into the addon: it becomes a
+ * channel, then the file is absorbed at the next save. Users put the same file back
+ * when they see it gone, so a file never adds a second channel for a depot already
+ * followed: that channel is updated, and renamed only when the file names it
+ * explicitly ("channel|<name>"). A file pointing at the main depot adds nothing. */
 static void merge_beta_file(sku_addon *a, const char *file, const char *default_name)
 {
 	sku_cfg b;
-	char key[128];
-	const char *name, *module;
+	const char *name, *module, *zone, *base = sku_path_basename(file);
+	bool explicit_name;
+	sku_channel *c = NULL;
 	sku_cfg_init(&b);
 	if (sku_cfg_load(&b, file) != SKU_OK) { sku_cfg_free(&b); return; }
-	name = sku_cfg_get_or(&b, "channel", default_name);
+	a->dirty = true;   /* absorbed at the next save, whatever it holds */
+	explicit_name = sku_cfg_has(&b, "channel") && *sku_cfg_get(&b, "channel");
+	name = explicit_name ? sku_cfg_get(&b, "channel") : default_name;
 	module = sku_cfg_get(&b, "module");
-	if (module && *name && !strchr(name, '.') && !strchr(name, '|') && strcmp(name, "stable") != 0) {
-		/* A file REPLACES a channel rather than adding one (3.x semantics: one beta file, one beta):
-		 * the channel it would have created without a "channel|" line (its default name), or the
-		 * channel already pointing at the same depot under another name. */
-		const char *old = NULL;
-		char found[64];
-		sku_snprintf(key, sizeof key, "channel.%s.module", default_name);
-		if (strcmp(name, default_name) != 0 && sku_cfg_has(&a->local, key)) old = default_name;
-		for (int i = 0; !old && i < a->local.n; i++) {
-			const char *k = a->local.v[i].key, *dot;
-			size_t len;
-			if (!k || strncmp(k, "channel.", 8) != 0 || !a->local.v[i].value) continue;
-			dot = strrchr(k, '.');
-			if (!dot || strcmp(dot + 1, "module") != 0 || !same_url(a->local.v[i].value, module)) continue;
-			len = (size_t)(dot - (k + 8));
-			if (len == 0 || len >= sizeof found) continue;
-			memcpy(found, k + 8, len); found[len] = 0;
-			if (strcmp(found, name) != 0) old = found;
-		}
-		if (old) {
-			sku_snprintf(key, sizeof key, "channel.%s.module", old); sku_cfg_remove(&a->local, key);
-			sku_snprintf(key, sizeof key, "channel.%s.zone", old);   sku_cfg_remove(&a->local, key);
-			if (strcmp(sku_cfg_get_or(&a->local, "channel", "stable"), old) == 0) sku_cfg_set(&a->local, "channel", name);
-			sku_info("%s: channel \"%s\" replaced by \"%s\" from %s", a->dir, old, name, sku_path_basename(file));
-		}
-		sku_snprintf(key, sizeof key, "channel.%s.module", name); sku_cfg_set(&a->local, key, module);
-		sku_snprintf(key, sizeof key, "channel.%s.zone", name);   sku_cfg_set(&a->local, key, sku_cfg_get_or(&b, "zone", "custom"));
-		/* the legacy "enabled" flag selects the active channel: true = follow this channel, false = production */
-		if (sku_cfg_get_bool(&b, "enabled", true)) sku_cfg_set(&a->local, "channel", name);
-		else if (strcmp(sku_cfg_get_or(&a->local, "channel", "stable"), name) == 0) sku_cfg_set(&a->local, "channel", "stable");
-		sku_info("%s: merged beta channel \"%s\" from %s", a->dir, name, sku_path_basename(file));
-	} else {
-		sku_warn("%s: beta file %s has no module, ignored", a->dir, sku_path_basename(file));
+	zone = sku_cfg_get_or(&b, "zone", "custom");
+	if (!module || !*module || !valid_channel_name(name)) {
+		sku_warn("%s: beta file %s has no module or an unusable channel name, ignored", a->dir, base);
+		sku_cfg_free(&b);
+		return;
 	}
+	if (same_depot(zone, module, a->zone, a->module)) {
+		sku_info("%s: %s points at the main depot, no channel added", a->dir, base);
+		sku_cfg_free(&b);
+		return;
+	}
+	for (int i = 0; i < a->nchannels && !c; i++) if (same_depot(a->channels[i].zone, a->channels[i].module, zone, module)) c = &a->channels[i];
+	if (c) {
+		/* this depot is already followed: the same channel */
+		if (explicit_name && strcmp(c->name, name) != 0 && !channel_get(a, name)) {
+			sku_info("%s: channel \"%s\" renamed \"%s\" by %s", a->dir, c->name, name, base);
+			if (strcmp(a->channel, c->name) == 0) sku_strlcpy(a->channel, name, sizeof a->channel);
+			sku_strlcpy(c->name, name, sizeof c->name);
+		} else sku_info("%s: %s: channel \"%s\" already follows this depot, nothing added", a->dir, base, c->name);
+	} else {
+		/* a new depot: the channel of that name moves to it, as does the one the file would
+		 * have created without "channel|" (3.x: one file, one beta); otherwise a new channel */
+		c = channel_get(a, name);
+		if (!c && explicit_name && strcmp(name, default_name) != 0 && (c = channel_get(a, default_name)) != NULL) {
+			sku_info("%s: channel \"%s\" renamed \"%s\" by %s", a->dir, c->name, name, base);
+			if (strcmp(a->channel, c->name) == 0) sku_strlcpy(a->channel, name, sizeof a->channel);
+			sku_strlcpy(c->name, name, sizeof c->name);
+		}
+		if (c) sku_info("%s: channel \"%s\" now follows %s (from %s)", a->dir, c->name, module, base);
+		else { c = channel_put(a, name); sku_info("%s: new beta channel \"%s\" from %s", a->dir, name, base); }
+		sku_strlcpy(c->module, module, sizeof c->module);
+	}
+	sku_strlcpy(c->zone, zone, sizeof c->zone);
+	/* the legacy "enabled" flag selects the active channel: true = follow this channel, false = production */
+	if (sku_cfg_get_bool(&b, "enabled", true)) sku_strlcpy(a->channel, c->name, sizeof a->channel);
+	else if (strcmp(a->channel, c->name) == 0) sku_strlcpy(a->channel, "stable", sizeof a->channel);
 	sku_cfg_free(&b);
-	a->dirty = true;
 }
 
 struct beta_scan { sku_addon *a; };
@@ -230,6 +362,33 @@ static int beta_cb(const char *name, bool is_dir, bool is_symlink, void *user)
 	return 0;
 }
 
+/* Writes every channel file and the active channel. Nothing is deleted here. */
+static int channels_save(sku_addon *a)
+{
+	char dir[SKU_PATH_MAX], p[SKU_PATH_MAX];
+	sku_path_join(p, sizeof p, a->dir, SKU_F_CHANNEL);
+	if (!a->nchannels && !sku_is_file(p)) return SKU_OK;   /* no channel ever: nothing to write */
+	sku_path_join(dir, sizeof dir, a->dir, SKU_D_CHANNELS);
+	if (sku_mkdir_p(dir) != SKU_OK) { sku_error("%s: cannot create %s", a->dir, dir); return SKU_ERR_IO; }
+	for (int i = 0; i < a->nchannels; i++) {
+		sku_channel *c = &a->channels[i];
+		char text[SKU_URL_MAX + 256];
+		int n;
+		channel_file_assign(a, c);
+		n = sku_snprintf(text, sizeof text, "channel|%s\nmodule|%s\nzone|%s\n", c->name, c->module, c->zone);
+		sku_path_join(p, sizeof p, dir, c->file);
+		if (sku_write_file_atomic(p, text, (size_t)n) != SKU_OK) { sku_error("%s: cannot write %s", a->dir, p); return SKU_ERR_IO; }
+		c->migrated = false;
+	}
+	{
+		char text[128];
+		int n = sku_snprintf(text, sizeof text, "channel|%s\n", a->channel);
+		sku_path_join(p, sizeof p, a->dir, SKU_F_CHANNEL);
+		if (sku_write_file_atomic(p, text, (size_t)n) != SKU_OK) { sku_error("%s: cannot write %s", a->dir, p); return SKU_ERR_IO; }
+	}
+	return SKU_OK;
+}
+
 /* ------------------------------------------------------------ load / save */
 
 static void fields_from_cfg(sku_addon *a)
@@ -241,16 +400,13 @@ static void fields_from_cfg(sku_addon *a)
 	sku_strlcpy(a->zone,    sku_cfg_get_or(&a->local, "zone", "custom"), sizeof a->zone);
 	a->disabled = sku_cfg_get_bool(&a->local, "disabled", false);
 	a->liveries = sku_cfg_get_bool(&a->local, "liveries", true);
-	sku_strlcpy(a->channel, sku_cfg_get_or(&a->local, "channel", "stable"), sizeof a->channel);
 	sku_strlcpy(a->pack_id,   sku_cfg_get_or(&a->local, "pack", ""), sizeof a->pack_id);
 	sku_strlcpy(a->member_id, sku_cfg_get_or(&a->local, "member", ""), sizeof a->member_id);
 	sku_strlcpy(a->pack_name, sku_cfg_get_or(&a->local, "pack_name", ""), sizeof a->pack_name);
-	channels_from_cfg(a);
 	/* an active channel that no longer exists falls back to stable */
 	if (strcmp(a->channel, "stable") != 0 && !channel_get(a, a->channel)) {
 		sku_warn("%s: channel \"%s\" is not defined, using stable", a->dir, a->channel);
 		sku_strlcpy(a->channel, "stable", sizeof a->channel);
-		sku_cfg_set(&a->local, "channel", "stable");
 		a->dirty = true;
 	}
 	c = strcmp(a->channel, "stable") == 0 ? NULL : channel_get(a, a->channel);
@@ -299,7 +455,6 @@ int sku_addon_reload(sku_addon *a)
 	}
 	sku_cfg_set_default(&a->local, "zone", "custom");
 	sku_cfg_set_default(&a->local, "disabled", "false");
-	sku_cfg_set_default(&a->local, "channel", "stable");
 	if (a->genre == SKU_GENRE_AIRCRAFT) sku_cfg_set_default(&a->local, "liveries", "true");
 
 	sku_path_join(p, sizeof p, a->dir, SKU_F_IGNORE);
@@ -307,10 +462,16 @@ int sku_addon_reload(sku_addon *a)
 	sku_path_join(p, sizeof p, a->dir, SKU_F_V4_IGNORE);
 	if (sku_is_file(p)) { load_ignore(a, p); a->legacy_v4 = true; }   /* folded into the 3.x file at the next save */
 	if (a->legacy_v4) a->dirty = true;
-	/* beta files (skunkcrafts_updater_beta*.cfg) become channel keys of the configuration */
+	/* channels: the private folder, then the keys of 4.0.0-4.0.2 still in the public file,
+	 * then the tester files (skunkcrafts_updater_beta*.cfg) dropped into the addon */
 	{
 		struct beta_scan s = { a };
+		bool active_known = channels_load(a);
+		sku_strlcpy(a->zone, sku_cfg_get_or(&a->local, "zone", "custom"), sizeof a->zone);     /* main depot, for the comparisons */
+		sku_strlcpy(a->module, sku_cfg_get_or(&a->local, "module", ""), sizeof a->module);
+		channels_from_root_cfg(a, active_known);
 		sku_list_dir(a->dir, beta_cb, &s);
+		qsort(a->channels, (size_t)a->nchannels, sizeof *a->channels, channel_cmp);
 		fields_from_cfg(a);
 		/* allowed to write: absorb beta files and the legacy layout now rather than at the next save */
 		if (a->dirty && !a->inst->read_only) sku_addon_save(a);
@@ -407,6 +568,9 @@ int sku_addon_save(sku_addon *a)
 	sku_path_join(p, sizeof p, a->dir, SKU_F_CFG);
 	rc = sku_cfg_save_v1(&a->local, p);
 	if (rc != SKU_OK) { sku_error("%s: cannot write %s", a->dir, p); return rc; }
+	/* the channels first: a tester file is only absorbed once its channel is on disk */
+	rc = channels_save(a);
+	if (rc != SKU_OK) return rc;
 	sku_list_dir(a->dir, absorb_cb, &c);
 	if (a->legacy_v4) {
 		/* the 4.0-beta layout: configuration now rewritten above, ignore list folded, files removed */
@@ -455,7 +619,28 @@ int sku_addon_set_liveries(sku_addon *a, bool liveries, bool dry_run)
 int sku_addon_set_channel(sku_addon *a, const char *channel, bool dry_run)
 {
 	if (strcmp(channel, "stable") != 0 && !channel_get(a, channel)) return SKU_ERR_NOTFOUND;
-	sku_cfg_set(&a->local, "channel", channel);
+	sku_strlcpy(a->channel, channel, sizeof a->channel);
 	sku_info("%s: channel = %s", a->dir, channel);
+	return apply(a, dry_run);
+}
+
+int sku_addon_remove_channel(sku_addon *a, const char *channel, bool dry_run)
+{
+	sku_channel *c = channel_get(a, channel);
+	int i;
+	if (!c) return SKU_ERR_NOTFOUND;
+	if (!dry_run && c->file[0]) {
+		/* kept aside, not deleted: <file>.removed (the previous one of that name is replaced) */
+		char from[SKU_PATH_MAX], to[SKU_PATH_MAX], rel[SKU_PATH_MAX];
+		sku_snprintf(rel, sizeof rel, "%s/%s", SKU_D_CHANNELS, c->file);
+		sku_path_join(from, sizeof from, a->dir, rel);
+		sku_snprintf(to, sizeof to, "%s.removed", from);
+		if (sku_is_file(from) && sku_rename(from, to) != SKU_OK) { sku_error("%s: cannot set %s aside", a->dir, from); return SKU_ERR_IO; }
+	}
+	sku_info("%s: channel \"%s\" removed (%s)", a->dir, channel, c->module);
+	if (strcmp(a->channel, channel) == 0) sku_strlcpy(a->channel, "stable", sizeof a->channel);
+	i = (int)(c - a->channels);
+	memmove(&a->channels[i], &a->channels[i + 1], (size_t)(a->nchannels - i - 1) * sizeof *a->channels);
+	a->nchannels--;
 	return apply(a, dry_run);
 }

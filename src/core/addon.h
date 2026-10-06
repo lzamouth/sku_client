@@ -60,6 +60,8 @@ typedef struct {
 	char name[64];
 	char module[SKU_URL_MAX];
 	char zone[64];
+	char file[128];      /* its file in skunkcrafts/channels/, "" until first saved */
+	bool migrated;       /* read from the keys of 4.0.0-4.0.2 in skunkcrafts_updater.cfg, not saved yet */
 } sku_channel;
 
 typedef struct {
@@ -77,7 +79,7 @@ typedef struct {
 	char       zone[64];
 	bool       disabled;
 	bool       liveries;         /* aircraft only */
-	char       channel[64];      /* "stable" or a channel name */
+	char       channel[64];      /* "stable" or a channel name (skunkcrafts/channel.cfg) */
 	sku_channel *channels;
 	int        nchannels;
 	char       pack_id[64], member_id[64], pack_name[SKU_NAME_MAX];
@@ -121,7 +123,7 @@ typedef struct {
 sku_addon *sku_addon_open(const sku_instance *in, const char *dir, sku_genre genre);
 void       sku_addon_close(sku_addon *a);
 int        sku_addon_reload(sku_addon *a);       /* re-reads the local files */
-int        sku_addon_save(sku_addon *a);         /* writes skunkcrafts_updater.cfg (3.x readable), absorbs beta files and the legacy layout */
+int        sku_addon_save(sku_addon *a);         /* writes skunkcrafts_updater.cfg (3.x readable) and the channel files, absorbs beta files and the legacy layout */
 
 int        sku_addon_check(sku_addon *a, const sku_check_opts *opts);
 int        sku_addon_update(sku_addon *a, const sku_update_opts *opts);
@@ -131,6 +133,8 @@ void       sku_addon_cancel(sku_addon *a);
 int        sku_addon_set_disabled(sku_addon *a, bool disabled, bool dry_run);
 int        sku_addon_set_liveries(sku_addon *a, bool liveries, bool dry_run);
 int        sku_addon_set_channel(sku_addon *a, const char *channel, bool dry_run);
+/* The only way a channel file goes: set aside as <file>.removed; the addon falls back to stable if it was active. */
+int        sku_addon_remove_channel(sku_addon *a, const char *channel, bool dry_run);
 
 /* Thread-safe status snapshot. */
 sku_status sku_addon_status(sku_addon *a, char *text, size_t tn, char *detail, size_t dn);

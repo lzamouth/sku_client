@@ -165,7 +165,7 @@ void ui_pack(app *ap)
 			nk_label(ctx, it->version, NK_TEXT_LEFT);
 			clicked |= nk_widget_has_mouse_click_down(ctx, NK_BUTTON_LEFT, nk_true);
 			nk_label_colored(ctx, it->st_text, NK_TEXT_LEFT, status_color(it->st, ap->dark));
-			if (clicked) { ap->selected = p->members[m]; ap->view = VIEW_DETAIL; ap->detail_tab = 0; ap->detail_from_pack = true; }
+			if (clicked) { ap->selected = p->members[m]; ap->remove_channel[0] = 0; ap->view = VIEW_DETAIL; ap->detail_tab = 0; ap->detail_from_pack = true; }
 		}
 		ui_group_tail(ap);
 		nk_group_end(ctx);

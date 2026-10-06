@@ -42,7 +42,8 @@ What it writes
 
 Inside each add-on folder: skunkcrafts_updater.cfg stays where it is and
 remains the add-on's configuration (aircraft read their version there); a
-"skunkcrafts" sub-folder holds only the cache that makes checks fast. Inside
+"skunkcrafts" sub-folder holds the cache that makes checks fast and your beta
+channels (leave the "channels" folder and channel.cfg alone). Inside
 each X-Plane folder: Output/skunkcrafts/updater (log, cache, reports). Your own
 preferences: in your user profile (AppData on Windows, Library/Application
 Support on macOS, ~/.config on Linux).
@@ -68,6 +69,7 @@ Command line
      sku --xp DIR update [name]       update / repair
      sku --xp DIR report [name]       last report
      sku --xp DIR changelog [name]    what changed
+     sku --xp DIR channels [name]     beta channels of each add-on
      sku client [download [DIR]]      is a newer updater published?
 
 The full user guide is USER_GUIDE.html, next to this file: open it in any browser.

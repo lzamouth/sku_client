@@ -42,7 +42,8 @@ zone|custom
 
 Ship this file inside your download package, so that a fresh install is
 recognised by the updater. Both the 3.x and the 4.0 clients leave it in
-place and read the same keys; 4.0 adds its channel keys to it (Part 3).
+place and read the same keys; the 4.1 client keeps its beta channels apart, in its
+own sub-folder (Part 3).
 
 This same file is uploaded to the depot as `skunkcrafts_updater.cfg`; there
 it is the **remote configuration**, the first thing a client reads. Its
@@ -198,7 +199,7 @@ with the production depot and "repairs" the folder to the production build.
 
 The 3.x client shows a "beta" toggle for a folder that has this file; the 4.0
 client shows a channel drop-down (`Main` / `beta`) in the addon list, and
-converts the file into its own settings at the first save.
+absorbs the file into its own list of channels when it loads the folder.
 
 ### 2.3 Several betas at once (4.0 client)
 
@@ -225,13 +226,23 @@ zone|custom
 channel|Private beta
 ```
 
+What a client does with a tester's file, in this order:
+
+1. A file pointing at your production depot adds nothing.
+2. A channel already following the same depot (compared on the URL the
+   client really uses: zone, trailing slashes) stays the same channel: it
+   is renamed only if the file carries a `channel|` line with another name.
+   Testers who put the same file back after seeing it disappear (it is
+   absorbed) therefore never get a second channel.
+3. Otherwise, as in 3.x where one beta file means one beta, the file moves
+   to its new URL the channel of the same name, or the channel it would have
+   been named after without the `channel|` line (`beta` for that file name,
+   `<x>` for `skunkcrafts_updater_beta_<x>.cfg`), renaming it.
+4. Otherwise it adds a channel.
+
 To rename a channel your testers already have, hand them a new
-`skunkcrafts_updater_beta.cfg` with the new name (and the current URL). As
-in 3.x, one beta file means one beta: the file replaces the channel it would
-have created without the `channel|` line (`beta` for that file name, `<x>`
-for `skunkcrafts_updater_beta_<x>.cfg`), or the channel already pointing at
-the same URL, whichever exists. A client that has neither adds it. The file
-is absorbed as soon as the client loads the folder. Nothing goes through the depot: the configuration uploaded there is
+`skunkcrafts_updater_beta.cfg` with the new name and the current URL. The
+file is absorbed as soon as the client loads the folder. Nothing goes through the depot: the configuration uploaded there is
 the production one, identical on every channel, and a channel only ever
 substitutes its own URL for the production one. Clients on the production channel
 ignore the key, so if you run a single beta depot the line can simply live in
@@ -261,18 +272,29 @@ skunkcrafts_updater_beta.cfg         the tester's beta file, until the 4.0 clien
 ```
 
 This matters beyond the updater: aircraft read `skunkcrafts_updater.cfg` to
-show their version string, and publishing tools read it too. The 4.0 client
-therefore never moves or renames it. What it adds is a few `key|value` lines
-of its own in that file, for the channels (`channel|beta`,
-`channel.beta.module|...`); the 3.x client ignores them. The beta file is
-absorbed into those lines and removed the first time the 4.0 client loads
-the folder, so a folder managed by 4.0 shows no beta file any more; the 3.x
-client then sees only the production channel there.
+show their version string, and publishing tools read it too. The client
+therefore never moves or renames it, and from 4.1 writes nothing of its own
+in it: it holds the keys of the 3.x format only, and `version` is always the
+installed version. That is the file, and the key, your aircraft may rely on.
 
-The 4.0 client's own sub-folder `skunkcrafts/` holds nothing but its CRC
-cache (`crc_cache.txt`). Early 4.0 betas (up to beta9) moved the
-configuration into that folder; the current client migrates such folders
-back to the names above on first load.
+The client's own sub-folder `skunkcrafts/` holds:
+
+```
+skunkcrafts/crc_cache.txt            the cache that makes checks fast (rebuilt if deleted)
+skunkcrafts/channels/<name>.cfg      one file per beta channel: channel|, module|, zone|
+skunkcrafts/channel.cfg              the channel followed: channel|<name> (stable = Main)
+```
+
+The beta file is absorbed into `skunkcrafts/channels/` and removed the first
+time the client loads the folder, so a folder managed by 4.0 shows no beta
+file any more; the 3.x client then sees only the production channel there.
+Clients 4.0.0 to 4.0.2 kept the channels as extra `channel...` lines in
+`skunkcrafts_updater.cfg`; 4.1 moves them to the sub-folder on first load.
+Early 4.0 betas (up to beta9) had moved the whole configuration into
+`skunkcrafts/updater.cfg`; such folders are migrated back on first load too.
+A user removes a channel from the add-on's details (the client asks for a
+confirmation and keeps the file aside as `<name>.cfg.removed`), or with
+`sku remove-channel`.
 
 The `skunkcrafts/` sub-folder is the client's own. A depot cannot publish
 into it nor delete from it (such lines are ignored), and `xp_depot` never

@@ -23,6 +23,8 @@
 #define SKU_F_V4_CFG     "skunkcrafts/updater.cfg"    /* legacy, migrated back to skunkcrafts_updater.cfg */
 #define SKU_F_V4_IGNORE  "skunkcrafts/ignore.txt"     /* legacy, folded into skunkcrafts_updater_ignore.txt */
 #define SKU_F_V4_CRC     "skunkcrafts/crc_cache.txt"   /* CRC cache: moves and dies with the addon */
+#define SKU_D_CHANNELS   "skunkcrafts/channels"        /* one <name>.cfg per beta channel: channel|, module|, zone| */
+#define SKU_F_CHANNEL    "skunkcrafts/channel.cfg"     /* the active channel: channel|<name>, "stable" for the main one */
 
 typedef struct {
 	char    *path;        /* relative, normalized, validated */

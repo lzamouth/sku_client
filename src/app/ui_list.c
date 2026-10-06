@@ -140,6 +140,8 @@ void ui_list(app *ap)
 
 				if (clicked) {
 					ap->selected = idx[k];
+					ap->remove_channel[0] = 0;
+					ap->remove_channel[0] = 0;
 					ap->view = VIEW_DETAIL;
 					ap->detail_tab = 0;
 				}

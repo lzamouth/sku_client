@@ -131,7 +131,6 @@ int sku_pack_create_member(const sku_instance *in, const sku_pack *p, const sku_
 	sku_cfg_set(&c, "version", "none");
 	sku_cfg_set(&c, "zone", "custom");
 	sku_cfg_set(&c, "disabled", "false");
-	sku_cfg_set(&c, "channel", "stable");
 	sku_cfg_set(&c, "pack", p->id);
 	sku_cfg_set(&c, "member", d->member_id);
 	if (p->name[0] && strcmp(p->name, p->id) != 0) sku_cfg_set(&c, "pack_name", p->name);

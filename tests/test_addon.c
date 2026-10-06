@@ -173,7 +173,7 @@ static void test_level(const char *level, bool second_run_uses_cache)
 	sku_addon *a;
 	sku_check_opts co = { false, false, 2 };
 	sku_update_opts uo = { false, 3, 1 };
-	char addon_dir[SKU_PATH_MAX], p[SKU_PATH_MAX];
+	char addon_dir[SKU_PATH_MAX], p[SKU_PATH_MAX], q_channel_file[SKU_PATH_MAX];
 	int ndl = 0;
 
 	sku_path_join(addon_dir, sizeof addon_dir, xp, "Aircraft/Test/Plane");
@@ -286,25 +286,32 @@ static void test_level(const char *level, bool second_run_uses_cache)
 	/* the CRC cache lives in the addon's private folder */
 	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/crc_cache.txt"); CHECK(sku_is_file(p));
 
-	/* the configuration stayed where 3.x, aircraft and tools read it, as plain key|value lines,
-	 * with the channel keys added; the beta file was absorbed; nothing else in skunkcrafts/ */
+	/* the configuration stayed where 3.x, aircraft and tools read it, as plain key|value lines
+	 * without any channel key; the beta file became skunkcrafts/channels/beta.cfg and was absorbed */
 	CHECK_EQ_STR(a->version, "2.0");
 	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater.cfg");        CHECK(sku_is_file(p));
 	{
-		char *cfg_text, beta[SKU_URL_MAX];
+		char *cfg_text, beta[SKU_URL_MAX + 64];
 		CHECK_EQ_INT(sku_read_file(p, &cfg_text, NULL), SKU_OK);
 		CHECK(strstr(cfg_text, "version|2.0\n") != NULL);
-		CHECK(strstr(cfg_text, "channel.beta.module|") != NULL);
+		CHECK(strstr(cfg_text, "channel") == NULL);
 		CHECK(strchr(cfg_text, '#') == NULL);                          /* no comment lines for 3.x parsers */
 		free(cfg_text);
-		sku_snprintf(beta, sizeof beta, "%s/beta", url);
-		CHECK_EQ_STR(sku_cfg_get_or(&a->local, "channel.beta.module", "?"), beta);
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/channels/beta.cfg");
+		CHECK_EQ_INT(sku_read_file(p, &cfg_text, NULL), SKU_OK);
+		sku_snprintf(beta, sizeof beta, "channel|beta\nmodule|%s/beta\nzone|custom\n", url);
+		CHECK_EQ_STR(cfg_text, beta);
+		free(cfg_text);
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/channel.cfg");
+		CHECK_EQ_INT(sku_read_file(p, &cfg_text, NULL), SKU_OK);
+		CHECK_EQ_STR(cfg_text, "channel|stable\n");
+		free(cfg_text);
 	}
 	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_ignore.txt"); CHECK(sku_is_file(p));
 	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater_beta.cfg");   CHECK(!sku_exists(p));
 	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/updater.cfg");        CHECK(!sku_exists(p));
 	sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/ignore.txt");         CHECK(!sku_exists(p));
-	CHECK_EQ_STR(sku_cfg_get_or(&a->local, "channel", "?"), "stable");
+	CHECK_EQ_STR(a->channel, "stable");
 
 	/* --- an install converted by a 4.0 beta (configuration and ignore list moved into skunkcrafts/,
 	 * root files removed) is migrated back on load: settings kept, ignore lists folded, folder emptied */
@@ -339,11 +346,16 @@ static void test_level(const char *level, bool second_run_uses_cache)
 		free(cfg_text);
 		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
 		CHECK_EQ_INT(a->ignore.n, 2);
-		/* drop the rc channel again for the rest of the test */
-		sku_cfg_remove(&a->local, "channel.rc.module"); sku_cfg_remove(&a->local, "channel.rc.zone");
-		CHECK_EQ_INT(sku_addon_save(a), SKU_OK);
+		/* the rc keys moved to skunkcrafts/channels/rc.cfg; remove the channel again for the rest
+		 * of the test: its file is set aside, not deleted, and does not come back */
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/channels/rc.cfg");    CHECK(sku_is_file(p));
+		CHECK_EQ_INT(sku_addon_remove_channel(a, "rc", false), SKU_OK);
+		CHECK(!sku_exists(p));
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/channels/rc.cfg.removed"); CHECK(sku_is_file(p));
 		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
 		CHECK_EQ_INT(a->nchannels, 1);
+		CHECK_EQ_INT(sku_addon_remove_channel(a, "stable", false), SKU_ERR_NOTFOUND);
+		CHECK_EQ_INT(sku_addon_remove_channel(a, "nope", false), SKU_ERR_NOTFOUND);
 	}
 
 	/* --- a new beta file with the same depot URL and another name renames the channel (no second channel) */
@@ -377,6 +389,68 @@ static void test_level(const char *level, bool second_run_uses_cache)
 		CHECK_EQ_STR(a->channels[0].name, "beta");
 		CHECK_EQ_STR(a->channel, "stable");
 		CHECK(!sku_exists(p));
+	}
+
+	/* --- users put the tester file back when they see it gone: never a second channel for a
+	 * depot already followed, and the name given by the developer stays unless the file names another */
+	{
+		char text[SKU_URL_MAX + 64], beta_file[SKU_PATH_MAX];
+		sku_path_join(beta_file, sizeof beta_file, addon_dir, "skunkcrafts_updater_beta.cfg");
+		sku_snprintf(text, sizeof text, "module|%s/beta/\nzone|custom\nchannel|Private beta\nenabled|false\n", url);
+		CHECK_EQ_INT(sku_write_file_atomic(beta_file, text, strlen(text)), SKU_OK);
+		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+		CHECK_EQ_INT(a->nchannels, 1);
+		CHECK_EQ_STR(a->channels[0].name, "Private beta");
+		for (int i = 0; i < 3; i++) {                                   /* the plain 3.x file, again and again */
+			sku_snprintf(text, sizeof text, "module|%s/beta\nzone|custom\nenabled|true\n", url);
+			CHECK_EQ_INT(sku_write_file_atomic(beta_file, text, strlen(text)), SKU_OK);
+			CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+			CHECK_EQ_INT(a->nchannels, 1);
+			CHECK_EQ_STR(a->channels[0].name, "Private beta");
+			CHECK_EQ_STR(a->channel, "Private beta");                    /* enabled|true follows it */
+			CHECK(!sku_exists(beta_file));
+		}
+		/* a file pointing at the main depot adds nothing */
+		sku_snprintf(text, sizeof text, "module|%s\nzone|custom\nchannel|Main again\n", sku_cfg_get(&a->local, "module"));
+		CHECK_EQ_INT(sku_write_file_atomic(beta_file, text, strlen(text)), SKU_OK);
+		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+		CHECK_EQ_INT(a->nchannels, 1);
+		CHECK(!sku_exists(beta_file));
+		/* saving never deletes a channel file it cannot read */
+		sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/channels/broken.cfg");
+		CHECK_EQ_INT(sku_write_file_atomic(p, "zone|custom\n", 12), SKU_OK);
+		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+		CHECK_EQ_INT(sku_addon_save(a), SKU_OK);
+		CHECK(sku_is_file(p));
+		sku_remove_file(p);
+		/* the channels of 4.0.0-4.0.2, kept in skunkcrafts_updater.cfg, move to the private folder */
+		{
+			char *cfg_text, *with;
+			sku_path_join(p, sizeof p, addon_dir, "skunkcrafts_updater.cfg");
+			CHECK_EQ_INT(sku_read_file(p, &cfg_text, NULL), SKU_OK);
+			with = sku_xmalloc(strlen(cfg_text) + 256);
+			sprintf(with, "%schannel|old rc\nchannel.old rc.module|%s/rc\nchannel.old rc.zone|custom\n", cfg_text, url);
+			CHECK_EQ_INT(sku_write_file_atomic(p, with, strlen(with)), SKU_OK);
+			free(with); free(cfg_text);
+			sku_path_join(q_channel_file, sizeof q_channel_file, addon_dir, "skunkcrafts/channel.cfg");
+			sku_remove_file(q_channel_file);                            /* as left by 4.0.2: no private file */
+			CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+			CHECK_EQ_INT(a->nchannels, 2);
+			CHECK_EQ_STR(a->channel, "old rc");
+			CHECK_EQ_INT(sku_read_file(p, &cfg_text, NULL), SKU_OK);
+			CHECK(strstr(cfg_text, "channel") == NULL);
+			free(cfg_text);
+			sku_path_join(p, sizeof p, addon_dir, "skunkcrafts/channels/old_rc.cfg"); CHECK(sku_is_file(p));
+		}
+		/* back to a single "beta" channel on the beta depot, production active, for the rest of the test */
+		CHECK_EQ_INT(sku_addon_remove_channel(a, "old rc", false), SKU_OK);
+		CHECK_EQ_STR(a->channel, "stable");
+		sku_snprintf(text, sizeof text, "module|%s/beta\nzone|custom\nchannel|beta\nenabled|false\n", url);
+		CHECK_EQ_INT(sku_write_file_atomic(beta_file, text, strlen(text)), SKU_OK);
+		CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+		CHECK_EQ_INT(a->nchannels, 1);
+		CHECK_EQ_STR(a->channels[0].name, "beta");
+		CHECK_EQ_STR(a->channel, "stable");
 	}
 
 	/* --- second check: everything up to date, hashes come from the cache,

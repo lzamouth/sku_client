@@ -144,6 +144,12 @@ appears, with the beta in yellow. Pick the beta and update to get the beta
 build; pick Main and update to go back to the release. A developer may offer
 several channels; each comes with its own file.
 
+Putting the same file back does no harm: a channel already following that
+beta is updated, never added twice. To get rid of a beta, pick it, press
+"Remove channel..." next to the drop-down and confirm with "Remove": the
+add-on goes back to Main. Only the developer's file can bring that channel
+back.
+
 ## 8. Options
 
 - **Automatic action on startup**: nothing, check everything, or check and
@@ -193,9 +199,11 @@ by hand.
 Inside each managed add-on folder, the updater keeps the same files as the
 previous versions did: `skunkcrafts_updater.cfg` (the add-on's settings,
 which the aircraft itself may also read) and `skunkcrafts_updater_ignore.txt`.
-A beta file you dropped there is absorbed into the settings and removed.
-The updater's own `skunkcrafts` sub-folder holds only the cache that makes
-checks fast; it can be deleted at any time, the next check rebuilds it.
+A beta file you dropped there is absorbed and removed. The updater's own
+`skunkcrafts` sub-folder holds the cache that makes checks fast
+(`crc_cache.txt`, which can be deleted at any time: the next check rebuilds
+it) and your beta channels (`channels/` and `channel.cfg`): deleting those
+loses the channels, so leave them alone.
 
 To keep a file the way you changed it, list its path, relative to the
 add-on folder, one per line, in `skunkcrafts_updater_ignore.txt`; the
@@ -241,6 +249,8 @@ sku --xp DIR check [name]        check for updates
 sku --xp DIR update [name]       update / repair
 sku --xp DIR report [name]       last report
 sku --xp DIR changelog [name]    what changed
+sku --xp DIR channels [name]     beta channels, the followed one marked *
+sku --xp DIR remove-channel CHANNEL name   remove one add-on's beta channel
 sku client                       is a newer updater published?
 ```
 

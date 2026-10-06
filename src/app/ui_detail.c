@@ -225,14 +225,39 @@ void ui_detail(app *ap)
 		int sel = 0, n = 0;
 		names[n] = "stable"; labels[n] = UI_MAIN_CHANNEL; colors[n] = ui_channel_color(ap, "stable"); n++;
 		for (int i = 0; i < it->nchannels; i++) { if (strcmp(it->channels[i], it->channel) == 0) sel = n; colors[n] = ui_channel_color(ap, it->channels[i]); labels[n] = it->channels[i]; names[n++] = it->channels[i]; }
-		nk_layout_row_begin(ctx, NK_STATIC, row, 2);
+		nk_layout_row_begin(ctx, NK_STATIC, row, 3);
 		nk_layout_row_push(ctx, UI_W(ap, 170)); nk_label(ctx, "Channel:", NK_TEXT_RIGHT);
 		nk_layout_row_push(ctx, UI_W(ap, 250));
 		{
 			int now = ui_combo_ex(ap, labels, colors, n, sel, (int)row, UI_W(ap, 250), (float)(n + 1) * row);
 			if (now != sel && !busy) { sku_addon_set_channel(it->a, names[now], false); app_refresh_item(it); }
 		}
+		/* removing a channel takes two clicks: this one, then the confirmation below */
+		nk_layout_row_push(ctx, UI_W(ap, 170));
+		if (strcmp(it->channel, "stable") != 0 && !busy) {
+			if (ui_button(ap, "Remove channel...")) sku_strlcpy(ap->remove_channel, it->channel, sizeof ap->remove_channel);
+		} else nk_label(ctx, "", NK_TEXT_LEFT);
 		nk_layout_row_end(ctx);
+		if (ap->remove_channel[0] && (strcmp(ap->remove_channel, it->channel) != 0 || busy)) ap->remove_channel[0] = 0;   /* moved on */
+		if (ap->remove_channel[0]) {
+			char q[256], cut[256];
+			sku_snprintf(q, sizeof q, "Remove the channel \"%s\"? The addon goes back to Main.", ap->remove_channel);
+			ui_right_truncate(ap, q, UI_W(ap, 420) - 8, cut, sizeof cut);
+			nk_layout_row_begin(ctx, NK_STATIC, row, 4);
+			nk_layout_row_push(ctx, UI_W(ap, 170)); nk_label(ctx, "", NK_TEXT_LEFT);
+			nk_layout_row_push(ctx, UI_W(ap, 420));
+			if (strcmp(cut, q) != 0 && nk_widget_is_hovered(ctx)) nk_tooltip(ctx, q);
+			nk_label_colored(ctx, cut, NK_TEXT_LEFT, nk_rgb(255, 170, 60));
+			nk_layout_row_push(ctx, UI_W(ap, 120));
+			if (ui_button(ap, "Keep it")) ap->remove_channel[0] = 0;
+			nk_layout_row_push(ctx, UI_W(ap, 120));
+			if (ui_button(ap, "Remove")) {
+				sku_addon_remove_channel(it->a, ap->remove_channel, false);
+				ap->remove_channel[0] = 0;
+				app_refresh_item(it);
+			}
+			nk_layout_row_end(ctx);
+		}
 	}
 
 	/* counters */

@@ -39,6 +39,7 @@ static void usage(void)
 {
 	fputs("usage: sku [--xp DIR] [--full] [--dry-run] [--verbose] [--threads N] [--downloads N] [--report] [--create-members]\n"
 	      "           instances | list | check [name...] | update [name...] | report [name...] | changelog [name...] | readme [name...]\n"
+	      "           channels [name...] | remove-channel CHANNEL name...\n"
 	      "       sku client [download [DIR]]     (SKU_CLIENT_URL overrides the depot)\n", stderr);
 }
 
@@ -83,6 +84,30 @@ static bool name_matches(const char *name, const char *dir, char **names, int n)
 	for (int i = 0; i < n; i++)
 		if (sku_str_istarts(name, names[i]) || strstr(name, names[i]) || (dir && strstr(dir, names[i]))) return true;
 	return false;
+}
+
+/* remove-channel CHANNEL name...: only when the names designate exactly one addon having
+ * that channel, so that a vague name never removes channels from several addons. */
+static int cmd_remove_channel(sku_addon **addons, int naddons, char **names, int nnames, bool dry_run)
+{
+	sku_addon *target = NULL;
+	int n = 0;
+	if (nnames < 2) { fprintf(stderr, "remove-channel needs the channel and the addon: sku remove-channel CHANNEL NAME\n"); return 2; }
+	for (int i = 0; i < naddons; i++) {
+		bool has = false;
+		if (!name_matches(addons[i]->name, addons[i]->dir, names + 1, nnames - 1)) continue;
+		for (int c = 0; c < addons[i]->nchannels; c++) has |= strcmp(addons[i]->channels[c].name, names[0]) == 0;
+		if (!has) continue;
+		printf("  %s (%s)\n", addons[i]->name, addons[i]->dir);
+		target = addons[i];
+		n++;
+	}
+	if (n == 0) { fprintf(stderr, "no addon matching the name(s) given has a channel \"%s\" (see \"sku channels\")\n", names[0]); return 1; }
+	if (n > 1) { fprintf(stderr, "%d addons above have a channel \"%s\": give a name that designates only one\n", n, names[0]); return 1; }
+	if (sku_addon_remove_channel(target, names[0], dry_run) != SKU_OK) { fprintf(stderr, "cannot remove the channel \"%s\"\n", names[0]); return 1; }
+	printf("channel \"%s\" removed%s; its file is kept in %s/ as .removed, the addon follows %s\n", names[0], dry_run ? " (dry run: nothing written)" : "",
+		SKU_D_CHANNELS, strcmp(target->channel, "stable") == 0 ? "Main" : target->channel);
+	return 0;
 }
 
 static void print_addon(sku_addon *a, const char *indent)
@@ -143,6 +168,12 @@ static int run_command(const char *cmd, sku_addon *a, const struct opts *o, cons
 			free(copy); free(sec);
 		} else printf("%s\n", text);
 		free(text);
+	} else if (strcmp(cmd, "channels") == 0) {
+		if (!a->nchannels) return 0;
+		printf("%s%-8s %s\n", indent, sku_genre_name(a->genre), a->name);
+		printf("%s    %s %-20s %s\n", indent, strcmp(a->channel, "stable") == 0 ? "*" : " ", "Main", a->module);
+		for (int i = 0; i < a->nchannels; i++)
+			printf("%s    %s %-20s %s\n", indent, strcmp(a->channel, a->channels[i].name) == 0 ? "*" : " ", a->channels[i].name, a->channels[i].module);
 	} else if (strcmp(cmd, "report") == 0) {
 		char path[SKU_PATH_MAX], *text;
 		sku_instance_report_path(in, a->dir, path, sizeof path);
@@ -164,7 +195,7 @@ int main(int argc, char **argv)
 	sku_addon **addons = NULL;
 	int naddons = 0;
 	sku_pack_list packs = {0};
-	bool *in_pack;
+	bool *in_pack, per_addon;
 
 	for (i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--xp") == 0 && i + 1 < argc) o.xp = argv[++i];
@@ -190,7 +221,8 @@ int main(int argc, char **argv)
 		sku_http_global_cleanup();
 		return rc;
 	}
-	if (strcmp(cmd, "list") && strcmp(cmd, "check") && strcmp(cmd, "update") && strcmp(cmd, "report") && strcmp(cmd, "changelog") && strcmp(cmd, "readme")) { usage(); return 2; }
+	if (strcmp(cmd, "list") && strcmp(cmd, "check") && strcmp(cmd, "update") && strcmp(cmd, "report") && strcmp(cmd, "changelog") && strcmp(cmd, "readme")
+	    && strcmp(cmd, "channels") && strcmp(cmd, "remove-channel")) { usage(); return 2; }
 
 	if (o.xp) sku_strlcpy(root, o.xp, sizeof root);
 	else if (sku_instance_detect(root, sizeof root) != SKU_OK) {
@@ -211,19 +243,26 @@ int main(int argc, char **argv)
 	in_pack = sku_xcalloc((size_t)naddons + 1, sizeof *in_pack);
 	for (i = 0; i < packs.n; i++) for (int m = 0; m < packs.v[i].nmembers; m++) in_pack[packs.v[i].members[m]] = true;
 
+	/* remove-channel acts on one addon; every other command runs on each addon matched */
+	per_addon = strcmp(cmd, "remove-channel") != 0;
+	if (!per_addon) rc = cmd_remove_channel(addons, naddons, names, nnames, o.dry_run);
 	/* standalone addons */
-	for (i = 0; i < naddons; i++) {
+	for (i = 0; per_addon && i < naddons; i++) {
 		if (in_pack[i] || !name_matches(addons[i]->name, addons[i]->dir, names, nnames)) continue;
 		if (run_command(cmd, addons[i], &o, &in, "")) rc = 1;
 	}
 	/* packs: matched by their own name/id or by a member's name */
-	for (i = 0; i < packs.n; i++) {
+	for (i = 0; per_addon && i < packs.n; i++) {
 		sku_pack *p = &packs.v[i];
 		sku_pack_member_decl *missing = NULL;
 		int nmissing;
 		bool match = name_matches(p->name, p->id, names, nnames);
 		for (int m = 0; m < p->nmembers && !match; m++) match = name_matches(addons[p->members[m]]->name, addons[p->members[m]]->dir, names, nnames);
 		if (!match) continue;
+		if (strcmp(cmd, "channels") == 0) {   /* only the members' channels */
+			for (int m = 0; m < p->nmembers; m++) run_command(cmd, addons[p->members[m]], &o, &in, "");
+			continue;
+		}
 		printf("%-8s %-16s %-36s %d member(s)\n", "Pack", "", p->name, p->nmembers);
 		nmissing = sku_pack_missing(p, addons, &missing);
 		for (int k = 0; k < nmissing; k++) {
