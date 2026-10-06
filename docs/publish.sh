@@ -2,13 +2,15 @@
 # Publishes a version already packaged by release.sh, on the store CDN (S3 bucket mounted with s3fs):
 #   1. the client's own update depot, <bucket>/updater/depot/: versioned packages, lists, changelog, guide, cfg
 #      (lists generated here: path|crc32 and path|size; locked cfg first, unlocked cfg last, like xp_depot)
-#   2. the five downloads under their fixed names in <bucket>/updater/, for permanent links, plus the guide
+#   2. the five downloads under their fixed names in <bucket>/updater/, for permanent links, plus the user
+#      guide and the developers' guide (PUBLISHING.html / .md, made from docs/PUBLISHING.md as it is now)
 #   3. checks: the fixed URLs and the depot cfg answer 200, the depot announces the version
 # Usage: docs/publish.sh <version> [--dry-run]     e.g. docs/publish.sh 4.0.0-beta8
+#        docs/publish.sh --dev-guide [--dry-run]    the developers' guide only (it changes between versions)
 # See docs/PUBLISH.md. Nothing here is secret: the bucket is mounted with its own credentials.
 set -e
 VER="$1"; DRY=""
-[ -n "$VER" ] || { echo "usage: $0 <version> [--dry-run]" >&2; exit 1; }
+[ -n "$VER" ] || { echo "usage: $0 <version>|--dev-guide [--dry-run]" >&2; exit 1; }
 [ "$2" = "--dry-run" ] && DRY="echo [dry-run]"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -18,6 +20,28 @@ CDN_BASE=https://1228098873.rsc.cdn77.org/updater   # what serves that folder
 DEPOT_NAME=depot                              # sub-folder holding the client's update depot
 DEPOT_URL="$CDN_BASE/$DEPOT_NAME"
 SUFFIXES="windows.zip windows-setup.exe macos.zip linux.zip x86_64.AppImage"
+
+# The developers' guide, HTML (same converter as the user guide) and Markdown, under permanent names.
+publish_dev_guide() {
+	python3 "$ROOT/tools/md2html.py" "$ROOT/docs/PUBLISHING.md" "$ROOT/dist/PUBLISHING.html"
+	$DRY cp "$ROOT/dist/PUBLISHING.html" "$ROOT/docs/PUBLISHING.md" "$S3_DIR/"
+}
+check_url() {
+	code=$(curl -sIL --max-time 30 -o /dev/null -w '%{http_code}' "$1")
+	echo "$code  $1"
+}
+
+if [ "$VER" = "--dev-guide" ]; then
+	mountpoint -q "$(dirname "$S3_DIR")" || { echo "$(dirname "$S3_DIR") is not mounted" >&2; exit 1; }
+	mkdir -p "$ROOT/dist"
+	echo "=== developers' guide -> $S3_DIR"
+	publish_dev_guide
+	[ -n "$DRY" ] && exit 0
+	sleep 2
+	check_url "$CDN_BASE/PUBLISHING.html"; check_url "$CDN_BASE/PUBLISHING.md"
+	echo "Permanent links: $CDN_BASE/PUBLISHING.html, $CDN_BASE/PUBLISHING.md"
+	exit 0
+fi
 
 [ -d "$DIST/depot" ] || { echo "$DIST/depot not found: run ./release.sh $VER first" >&2; exit 1; }
 for s in $SUFFIXES; do [ -f "$DIST/SkunkcraftsUpdater-$VER-$s" ] || { echo "missing $DIST/SkunkcraftsUpdater-$VER-$s" >&2; exit 1; }; done
@@ -58,6 +82,7 @@ fi
 echo "=== 2. fixed-name downloads -> $S3_DIR (permanent links)"
 for s in $SUFFIXES; do $DRY cp "$DIST/SkunkcraftsUpdater-$VER-$s" "$S3_DIR/SkunkcraftsUpdater-$s"; done
 $DRY cp "$DIST/depot/USER_GUIDE.html" "$DIST/depot/USER_GUIDE.md" "$S3_DIR/"
+publish_dev_guide
 $DRY cp "$DIST/sku-cli-$VER.zip" "$S3_DIR/sku-cli.zip"
 
 echo "=== 3. checks"
@@ -68,9 +93,10 @@ for s in $SUFFIXES; do
 	echo "$code  $CDN_BASE/SkunkcraftsUpdater-$s"
 	[ "$code" = 200 ] || { echo "not served yet" >&2; exit 1; }
 done
-echo "$(curl -sIL --max-time 30 -o /dev/null -w '%{http_code}' "$CDN_BASE/USER_GUIDE.html")  $CDN_BASE/USER_GUIDE.html"
+check_url "$CDN_BASE/USER_GUIDE.html"
+check_url "$CDN_BASE/PUBLISHING.html"
 echo "$(curl -sIL --max-time 30 -o /dev/null -w '%{http_code}' "$DEPOT_URL/skunkcrafts_updater.cfg")  $DEPOT_URL/skunkcrafts_updater.cfg"
 SKU_CLIENT_URL="$DEPOT_URL" "$ROOT/build/linux/src/cli/sku" client | grep -E "published|package"
 echo "=== done: $VER published"
-echo "Permanent links: $CDN_BASE/SkunkcraftsUpdater-<windows.zip|windows-setup.exe|macos.zip|linux.zip|x86_64.AppImage>, $CDN_BASE/USER_GUIDE.html"
+echo "Permanent links: $CDN_BASE/SkunkcraftsUpdater-<windows.zip|windows-setup.exe|macos.zip|linux.zip|x86_64.AppImage>, $CDN_BASE/USER_GUIDE.html, $CDN_BASE/PUBLISHING.html"
 [ -f "$S3_DIR/urls to updater v4.txt" ] && echo "Links file (unchanged, the names are permanent): $S3_DIR/urls to updater v4.txt"
