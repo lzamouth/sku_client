@@ -1,3 +1,9 @@
+4.0.2
+- Thranda aircraft whose configuration still names Thranda's former update server are checked and updated again, as with 3.x
+- Custom Scenery and Resources/plugins are scanned one level deep, as with 3.x: plugins moved into "(disabled)" are no longer listed
+- The add-on list no longer cuts its last row when scrolled to the bottom
+- Lighter log: one line per scenery or plugin folder not managed by the updater, no display timing traces
+
 4.0.1
 - Windows: connections no longer fail with CRYPT_E_REVOCATION_OFFLINE when the network blocks the certificate revocation server; a revoked certificate is still refused
 - A long error message in the updater banner is cut cleanly; hover over it to read it whole
