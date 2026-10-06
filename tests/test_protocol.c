@@ -64,6 +64,15 @@ static void test_parsers(void)
 	CHECK_EQ_STR(url, "http://eu-ccd.kxcdn.com/vendor/plane/");
 	sku_protocol_base_url(url, sizeof url, NULL, "https://x/");
 	CHECK_EQ_STR(url, "https://x/");
+	/* Thranda's former servers, rewritten as 3.x does */
+	sku_protocol_base_url(url, sizeof url, "custom", "http://72.2.11.3:8080/updates/Kodiak");
+	CHECK_EQ_STR(url, "http://updates.thranda.org/updates/Kodiak/");
+	sku_protocol_base_url(url, sizeof url, "custom", "http://72.2.11.34:8080/x/");
+	CHECK_EQ_STR(url, "http://updates.thranda.org/x/");
+	sku_protocol_base_url(url, sizeof url, "eu", "72.2.11.3:8080/y");
+	CHECK_EQ_STR(url, "http://eu-ccd.kxcdn.com/updates.thranda.org/y/");
+	sku_protocol_base_url(url, sizeof url, "custom", "http://72.2.11.30:8080/z");   /* another address: untouched */
+	CHECK_EQ_STR(url, "http://72.2.11.30:8080/z/");
 
 	{
 		sku_cfg c; char err[128];

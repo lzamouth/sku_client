@@ -191,11 +191,34 @@ int sku_protocol_parse_pathlist(const char *text, sku_strlist *out, int *rejecte
 	return SKU_OK;
 }
 
+/* Replaces every occurrence of from in s (capacity n) by to. */
+static void replace_all(char *s, size_t n, const char *from, const char *to)
+{
+	char tmp[SKU_URL_MAX * 2];
+	size_t lf = strlen(from), k = 0;
+	const char *p = s, *hit;
+	if (!strstr(s, from)) return;
+	tmp[0] = 0;
+	while ((hit = strstr(p, from)) != NULL) {
+		k += sku_snprintf(tmp + k, sizeof tmp - k, "%.*s%s", (int)(hit - p), p, to);
+		if (k >= sizeof tmp) return;
+		p = hit + lf;
+	}
+	sku_snprintf(tmp + k, sizeof tmp - k, "%s", p);
+	sku_strlcpy(s, tmp, n);
+}
+
 void sku_protocol_base_url(char *out, size_t n, const char *zone, const char *module)
 {
+	char m[SKU_URL_MAX];
 	size_t k;
-	if (!zone || !*zone || strcmp(zone, "custom") == 0) sku_strlcpy(out, module, n);
-	else sku_snprintf(out, n, "http://%s-ccd.kxcdn.com/%s", zone, module);
+	/* Thranda's former servers, still named in installed aircraft: rewritten as
+	 * 3.x does (addon.go, select_data_source); the old addresses no longer answer */
+	sku_strlcpy(m, module ? module : "", sizeof m);
+	replace_all(m, sizeof m, "72.2.11.3:8080", "updates.thranda.org");
+	replace_all(m, sizeof m, "72.2.11.34:8080", "updates.thranda.org");
+	if (!zone || !*zone || strcmp(zone, "custom") == 0) sku_strlcpy(out, m, n);
+	else sku_snprintf(out, n, "http://%s-ccd.kxcdn.com/%s", zone, m);
 	k = strlen(out);
 	while (k && out[k - 1] == '/') out[--k] = 0;
 	sku_strlcat(out, "/", n);
