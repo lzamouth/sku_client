@@ -1,5 +1,7 @@
 /* Unit tests: util, paths, cfg, crc32, platform file helpers. */
 #include "test.h"
+#include "log.h"
+#include <sys/stat.h>
 #include "sku.h"
 #include "paths.h"
 #include "cfg.h"
@@ -153,11 +155,63 @@ static void test_crc_and_files(void)
 	CHECK_EQ_STR(sku_os_name(), "linux");
 }
 
+/* Log rotation: once per launch and per path, four versions kept, the current
+ * log emptied in place (same inode) so that klogg and glogg reload it; never on size. */
+static void test_log_rotation(void)
+{
+	char dir[SKU_PATH_MAX], log[SKU_PATH_MAX], p[SKU_PATH_MAX], *text;
+	struct stat before, after;
+	sku_snprintf(dir, sizeof dir, "/tmp/sku_test3_%d", (int)sku_time_now());
+	CHECK_EQ_INT(sku_mkdir_p(dir), SKU_OK);
+	sku_path_join(log, sizeof log, dir, "updater_log.txt");
+
+	/* the CLI: no rotation at open, the log grows */
+	CHECK_EQ_INT(sku_log_open(log), SKU_OK); sku_info("cli one"); sku_log_close();
+	CHECK_EQ_INT(sku_log_open(log), SKU_OK); sku_info("cli two"); sku_log_close();
+	sku_snprintf(p, sizeof p, "%s.1", log); CHECK(!sku_exists(p));
+
+	/* the application: one rotation per path, however often the log is reopened */
+	sku_log_rotate_at_open(true);
+	CHECK_EQ_INT(stat(log, &before), 0);
+	CHECK_EQ_INT(sku_log_open(log), SKU_OK); sku_info("launch 1");
+	CHECK_EQ_INT(stat(log, &after), 0);
+	CHECK(before.st_ino == after.st_ino);                       /* emptied in place, not replaced */
+	sku_log_close();
+	CHECK_EQ_INT(sku_log_open(log), SKU_OK); sku_info("launch 1, instance reopened"); sku_log_close();
+	CHECK_EQ_INT(sku_read_file(p, &text, NULL), SKU_OK);
+	CHECK(strstr(text, "cli one") && strstr(text, "cli two")); free(text);
+	CHECK_EQ_INT(sku_read_file(log, &text, NULL), SKU_OK);
+	CHECK(strstr(text, "launch 1") && strstr(text, "instance reopened") && !strstr(text, "cli")); free(text);
+
+	/* five more launches (a new process each time: forget the paths already rotated) */
+	for (int i = 2; i <= 6; i++) {
+		sku_log_rotate_reset_for_tests();
+		CHECK_EQ_INT(sku_log_open(log), SKU_OK); sku_info("launch %d", i); sku_log_close();
+	}
+	CHECK_EQ_INT(sku_read_file(log, &text, NULL), SKU_OK); CHECK(strstr(text, "launch 6") != NULL); free(text);
+	sku_snprintf(p, sizeof p, "%s.1", log); CHECK_EQ_INT(sku_read_file(p, &text, NULL), SKU_OK); CHECK(strstr(text, "launch 5") != NULL); free(text);
+	sku_snprintf(p, sizeof p, "%s.3", log); CHECK_EQ_INT(sku_read_file(p, &text, NULL), SKU_OK); CHECK(strstr(text, "launch 3") != NULL); free(text);
+	sku_snprintf(p, sizeof p, "%s.4", log); CHECK(!sku_exists(p));
+
+	/* a long session is never cut: no rotation on size */
+	sku_log_rotate_reset_for_tests();
+	sku_log_rotate_at_open(false);
+	CHECK_EQ_INT(sku_log_open(log), SKU_OK);
+	for (int i = 0; i < 3000; i++) sku_info("long session line %d ......................................", i);
+	sku_log_close();
+	CHECK_EQ_INT(sku_read_file(log, &text, NULL), SKU_OK);
+	CHECK(strstr(text, "launch 6") && strstr(text, "long session line 0 ") && strstr(text, "long session line 2999")); free(text);
+	for (int i = 1; i <= 3; i++) { sku_snprintf(p, sizeof p, "%s.%d", log, i); sku_remove_file(p); }
+	sku_remove_file(log);
+	sku_remove_dir(dir);
+}
+
 int main(void)
 {
 	test_util();
 	test_paths();
 	test_cfg();
 	test_crc_and_files();
+	test_log_rotation();
 	TEST_MAIN_END();
 }

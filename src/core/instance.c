@@ -6,7 +6,6 @@
 #include <string.h>
 #include <ctype.h>
 
-#define LOG_ROTATE_BYTES (2 * 1024 * 1024)
 
 bool sku_instance_is_root(const char *dir)
 {
@@ -44,7 +43,7 @@ int sku_instance_open(sku_instance *in, const char *dir, bool read_only)
 		if (sku_mkdir_p(in->data_dir) != SKU_OK) return SKU_ERR_IO;
 		sku_path_join(sub, sizeof sub, in->data_dir, "cache");   sku_mkdir_p(sub); sku_list_dir(sub, drop_legacy_cb, sub);
 		sku_path_join(sub, sizeof sub, in->data_dir, "reports"); sku_mkdir_p(sub);
-		if (sku_log_open(in->log_path, LOG_ROTATE_BYTES) != SKU_OK) return SKU_ERR_IO;
+		if (sku_log_open(in->log_path) != SKU_OK) return SKU_ERR_IO;
 	}
 	sku_info("---- SkunkCrafts Updater %s (%s) on %s%s", SKU_VERSION, sku_os_name(), in->root, read_only ? " [read-only]" : "");
 	return SKU_OK;

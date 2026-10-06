@@ -421,6 +421,7 @@ int main(int argc, char **argv)
 	ap.selected = -1; ap.report_for = -1; ap.selected_pack = -1; ap.missing_for = -1; ap.doc_for = -1;
 	ap.filter_aircraft = ap.filter_scenery = ap.filter_plugins = ap.filter_other = true;
 	prefs_load(&ap);
+	sku_log_rotate_at_open(true);   /* one log per launch: the previous ones become .1 to .3 */
 	ap.relief = ap.prefs.relief || getenv("SKU_RELIEF") != NULL;
 	sku_log_set_level(ap.prefs.verbose ? SKU_LOG_DEBUG : SKU_LOG_INFO);
 	{

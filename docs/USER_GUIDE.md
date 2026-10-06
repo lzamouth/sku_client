@@ -212,7 +212,8 @@ never touched: the updater only deletes what the developer explicitly
 removed.
 
 In the X-Plane folder, `Output/skunkcrafts/updater/` holds the log
-(`updater_log.txt`), the last report of each add-on, and copies of the
+(`updater_log.txt`, a new one at each start of the updater, the three
+previous ones kept as `updater_log.txt.1` to `.3`), the last report of each add-on, and copies of the
 servers' lists. Your own preferences live in your user profile: `AppData`
 on Windows, `Library/Application Support` on macOS, `~/.config` on Linux.
 

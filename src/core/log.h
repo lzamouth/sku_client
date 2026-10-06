@@ -6,7 +6,13 @@
 
 enum sku_log_level { SKU_LOG_ERROR, SKU_LOG_WARN, SKU_LOG_INFO, SKU_LOG_DEBUG };
 
-int  sku_log_open(const char *path, int64_t rotate_bytes);  /* rotates path -> path.1 when too big */
+/* Rotation keeps path.1 (the last) to path.3. It happens once per path, at the first open,
+ * when sku_log_rotate_at_open(true) was called (the application, at each launch; the CLI
+ * appends), never on size: a session's log stays whole. The current log is copied then
+ * emptied in place, so viewers following it (klogg, glogg) reload it. */
+int  sku_log_open(const char *path);
+void sku_log_rotate_at_open(bool on);
+void sku_log_rotate_reset_for_tests(void);                  /* forgets the paths rotated: a new launch */
 void sku_log_close(void);
 void sku_log_set_level(int level);                          /* default SKU_LOG_INFO */
 void sku_log_set_stderr(bool mirror);                       /* also print to stderr (CLI) */
