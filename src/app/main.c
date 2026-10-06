@@ -353,8 +353,11 @@ static void draw(app *ap)
 	nk_end(ctx);
 
 	{
-		/* slow frames go to the debug log: build (Nuklear), render, present */
+		/* SKU_TRACE_FRAMES=1, for diagnosis only: slow frames go to the debug log
+		 * with their parts: build (Nuklear), render, present */
+		static int trace = -1;
 		int64_t t0 = sku_time_ms(), t1, t2, t3;
+		if (trace < 0) trace = getenv("SKU_TRACE_FRAMES") != NULL;
 		if (ap->dark) SDL_SetRenderDrawColor(ap->ren, 32, 32, 32, 255); else SDL_SetRenderDrawColor(ap->ren, 240, 240, 240, 255);
 		SDL_RenderClear(ap->ren);
 		t1 = sku_time_ms();
@@ -364,7 +367,7 @@ static void draw(app *ap)
 		SDL_RenderPresent(ap->ren);
 		t3 = sku_time_ms();
 		/* while resizing, a long wait for the next event is a stall upstream (compositor / SDL), worth a trace */
-		if (t3 - ap->frame_start > 40 || (ap->resizing && ap->events_ms > 30))
+		if (trace && (t3 - ap->frame_start > 40 || (ap->resizing && ap->events_ms > 30)))
 			sku_debug("slow frame: %lld ms (events %lld%s, ui %lld, clear %lld, render %lld, present %lld) at %dx%d",
 				(long long)(t3 - ap->frame_start), (long long)ap->events_ms, ap->resizing ? " while resizing" : "", (long long)(t0 - ap->frame_start), (long long)(t1 - t0), (long long)(t2 - t1), (long long)(t3 - t2), w, h);
 		ap->resizing = false;
