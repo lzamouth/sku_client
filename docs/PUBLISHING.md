@@ -2,8 +2,8 @@
 
 Guide for developers: how to build an update depot, how to run beta depots
 next to the production one, and how to group several folders into a pack.
-Applies to the 4.0 client and to the 3.x clients still in use; the few
-4.0-only features are marked as such.
+Applies to the 4.x client and to the 3.x clients still in use; the few
+4.x-only features are marked as such.
 
 ## Part 1 - A depot
 
@@ -22,7 +22,21 @@ A depot is a plain folder served over HTTP or HTTPS. Any static hosting works
 ### 1.2 The configuration file
 
 At the root of your product folder lives `skunkcrafts_updater.cfg`, one
-`key|value` per line:
+`key|value` per line. The clients find it by scanning the X-Plane folder, as
+3.x always did:
+
+- under `Aircraft`, down to ten levels deep; the search stops in a folder
+  that holds a `.acf` without a configuration (an aircraft not managed);
+- in a folder directly inside `Custom Scenery` or `Resources/plugins`, and
+  not deeper: `Custom Scenery/<your scenery>/skunkcrafts_updater.cfg` is
+  found, `Custom Scenery/<your scenery>/<sub-folder>/...` is not, and
+  neither is a plugin a user parked in `Resources/plugins/(disabled)/`;
+- in a folder directly at the X-Plane root (4.x).
+
+A product installed anywhere else is only managed if the user adds its
+folder by hand ("Add folder..." in the 4.x Options).
+
+The file itself:
 
 ```
 name|Aerobask Dassault Falcon 8X
@@ -41,7 +55,7 @@ zone|custom
 | `zone`    | keep `custom`: it means `module` is a full URL. Other values are historical SkunkCrafts aliases |
 
 Ship this file inside your download package, so that a fresh install is
-recognised by the updater. Both the 3.x and the 4.0 clients leave it in
+recognised by the updater. Both the 3.x and the 4.x clients leave it in
 place and read the same keys; the 4.1 client keeps its beta channels apart, in its
 own sub-folder (Part 3).
 
@@ -193,17 +207,24 @@ enabled|true
 Give this file to your testers (a zip with the file inside, or the three
 lines to paste). When it is present and enabled, the client checks and
 updates from the beta depot; the user's main configuration keeps the
-production URL and is left alone. Removing the file, or setting
-`enabled|false`, puts the tester back on production: the next check compares
-with the production depot and "repairs" the folder to the production build.
+production URL and is left alone.
 
-The 3.x client shows a "beta" toggle for a folder that has this file; the 4.0
-client shows a channel drop-down (`Main` / `beta`) in the addon list, and
-absorbs the file into its own list of channels when it loads the folder.
+The 3.x client shows a "beta" toggle for a folder that has this file;
+removing the file, or setting `enabled|false`, puts the tester back on
+production: the next check compares with the production depot and "repairs"
+the folder to the production build.
 
-### 2.3 Several betas at once (4.0 client)
+The 4.x client absorbs the file into its own list of channels as soon as it
+loads the folder: the file disappears, and a channel drop-down (`Main` /
+`beta`) appears in the addon list. Testers who put the file back get the
+same channel, not a second one. They go back to production by picking
+`Main`, or remove the channel altogether ("Remove channel..." in the
+add-on's details); a new file with `enabled|false` makes them follow `Main`
+too, the channel staying available.
 
-The 4.0 client supports any number of channels. Each additional file
+### 2.3 Several betas at once (4.x client)
+
+The 4.x client supports any number of channels. Each additional file
 `skunkcrafts_updater_beta_<channel>.cfg` declares one: for example
 `skunkcrafts_updater_beta_rc.cfg` declares the channel `rc`,
 `skunkcrafts_updater_beta_experimental.cfg` the channel `experimental`. Same
@@ -214,7 +235,7 @@ named `beta`.
 The 3.x client only knows `skunkcrafts_updater_beta.cfg`; testers on 3.x see
 that one channel only.
 
-### 2.4 Naming a channel (4.0 client)
+### 2.4 Naming a channel (4.x client)
 
 The channel is named after the tester's file (`beta`, or `<x>` for
 `skunkcrafts_updater_beta_<x>.cfg`), or after the `channel|` line inside it
@@ -262,13 +283,13 @@ an unreachable depot shows as an error in their list.
 
 ### 3.1 What the client writes
 
-Inside the product folder, both the 3.x and the 4.0 clients keep the same
+Inside the product folder, both the 3.x and the 4.x clients keep the same
 files, at the same names:
 
 ```
 skunkcrafts_updater.cfg              the configuration (yours, then maintained by the client)
 skunkcrafts_updater_ignore.txt       the user's own list of paths the updater must never touch
-skunkcrafts_updater_beta.cfg         the tester's beta file, until the 4.0 client absorbs it
+skunkcrafts_updater_beta.cfg         the tester's beta file, until the 4.x client absorbs it
 ```
 
 This matters beyond the updater: aircraft read `skunkcrafts_updater.cfg` to
@@ -286,7 +307,7 @@ skunkcrafts/channel.cfg              the channel followed: channel|<name> (stabl
 ```
 
 The beta file is absorbed into `skunkcrafts/channels/` and removed the first
-time the client loads the folder, so a folder managed by 4.0 shows no beta
+time the client loads the folder, so a folder managed by 4.x shows no beta
 file any more; the 3.x client then sees only the production channel there.
 Clients 4.0.0 to 4.0.2 kept the channels as extra `channel...` lines in
 `skunkcrafts_updater.cfg`; 4.1 moves them to the sub-folder on first load.
@@ -307,7 +328,7 @@ Consequences for you:
   a fresh install recognised, by both clients.
 - When a user reports a problem, the configuration to ask for is
   `skunkcrafts_updater.cfg`, and the log is
-  `Output/skunkcrafts/updater/updater_log.txt` in the X-Plane folder (4.0) or
+  `Output/skunkcrafts/updater/updater_log.txt` in the X-Plane folder (4.x) or
   `skunkcrafts_updater_log.txt` at the X-Plane root (3.x).
 - The configuration file is never part of the whitelist, so an update never
   overwrites the user's settings; only `name`, `zone`, `module` and
@@ -334,7 +355,7 @@ the depot is locked. It never creates a folder without asking (packs, 5.5).
 3. **Stale CDN cache**. After an upload, the lists and the configuration
    must be fresh, or clients compare new files against old lists and loop on
    "repair". `xp_depot` purges the Bunny cache itself; on another CDN, purge
-   or keep the TTL of the `.cfg` and `.txt` files short. The 4.0 client helps:
+   or keep the TTL of the `.cfg` and `.txt` files short. The 4.x client helps:
    it requests the configuration with a unique query string (`?t=...`) and
    the lists, changelog and readme with the published version (`?v=...`), so
    a CDN that keys its cache on the full URL always serves the configuration
@@ -354,7 +375,9 @@ the depot is locked. It never creates a folder without asking (packs, 5.5).
    returned a web page instead of ...") and shows an error; check the URL in
    a browser, it must display the raw configuration text. The certificate
    must be valid for HTTPS: the client trusts the system store on Windows,
-   the Mozilla bundle elsewhere.
+   the Mozilla bundle elsewhere. On Windows, revocation is checked when the
+   revocation server can be reached (since 4.0.1, a network that blocks it no
+   longer makes every connection fail).
 7. **Changing `module` in the remote configuration** moves every user at
    their next check, one way. A typo there breaks everyone until you fix it
    at the old URL. Test with `xp_depot ... check` and a copy of the product
@@ -377,7 +400,7 @@ the depot is locked. It never creates a folder without asking (packs, 5.5).
 
 ## Part 5 - Packs: a product made of several folders
 
-SkunkCrafts Updater 4.0 - guide for developers whose product is installed as
+SkunkCrafts Updater 4.x - guide for developers whose product is installed as
 several folders (for example a scenery library plus several regional scenery
 folders). Applies to any developer whose product installs as several folders.
 
