@@ -1,3 +1,8 @@
+4.1.2
+- A developer's beta file published through the updater is offered as a channel, followed only if you pick it; it no longer asks for an update at every check
+- Updates never replace or delete the add-on's own settings file or your ignore list, even if a server lists them
+- The status bar tells which channel a beta file became, and has room for longer messages
+
 4.1.1
 - Some developers' servers refused the updater: it presents itself as 3.x did again, and asks again without the cache-busting parameters a server rejects (Colimata aircraft, avitab-browser)
 - A depot file is no longer refused because the server labels it as a web page; only a real web page is
