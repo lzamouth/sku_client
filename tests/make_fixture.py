@@ -118,6 +118,20 @@ write(os.path.join(base, "skunkcrafts_updater_whitelist.txt"), "\n".join(wl) + "
 write(os.path.join(base, "skunkcrafts_updater.cfg"), cfg)
 write(os.path.join(base, "skunkcrafts_updater_blacklist.txt"), "skunkcrafts_updater_ignore.txt\nskunkcrafts_updater.cfg\n")
 
+# "public": a level-1 depot whose cfg declares public channels (4.2), with the traps a hand-written
+# cfg may hold: spaces around a name, the old local "channel.<n>.module" form, a channel named Main
+base = os.path.join(depot, "public")
+wl = []
+for rel, data in files.items():
+	write(os.path.join(base, rel), data)
+	wl.append("%s|%d" % (rel, -1 if rel == "data/OptionSave.prf" else crc(data)))
+write(os.path.join(base, "skunkcrafts_updater_whitelist.txt"), "\n".join(wl) + "\n")
+write(os.path.join(base, "skunkcrafts_updater.cfg"), "name|Test plane\nmodule|http://127.0.0.1:" + port + "/public\nversion|2.0\nlocked|false\nzone|custom\n"
+	"channel.Beta|http://127.0.0.1:" + port + "/beta\n"
+	"channel. Release candidate |http://127.0.0.1:" + port + "/level1\n"
+	"channel.old.module|http://127.0.0.1:" + port + "/x\n"
+	"channel.Main|http://127.0.0.1:" + port + "/y\n")
+
 # the updater's own depot: fixed package names, at two versions
 packages = ["SkunkcraftsUpdater-windows-setup.exe", "SkunkcraftsUpdater-windows.zip", "SkunkcraftsUpdater-macos.zip",
             "SkunkcraftsUpdater-linux.zip", "SkunkcraftsUpdater-x86_64.AppImage", "sku-cli.zip"]

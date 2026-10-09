@@ -702,6 +702,95 @@ static void test_depot_client_files(void)
 	sku_instance_close(&in);
 }
 
+/* Writes the cfg of the "public" fixture depot with these channel lines. */
+static void public_depot_cfg(const char *channels)
+{
+	char p[SKU_PATH_MAX], text[4096];
+	sku_snprintf(p, sizeof p, "%s/../depot/public/skunkcrafts_updater.cfg", xp);
+	sku_snprintf(text, sizeof text, "name|Test plane\nmodule|%s/public\nversion|2.0\nlocked|false\nzone|custom\n%s", url, channels);
+	CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+}
+
+/* Public channels (4.2): declared by the depot's cfg as "channel.<name>|<url>", offered and
+ * never followed on their own, renamed or moved by the cfg, not offered again once removed by
+ * the user, withdrawn by the main depot's cfg unless followed. */
+static void test_public_channels(void)
+{
+	sku_instance in;
+	sku_addon *a;
+	sku_check_opts co = { false, false, 2 };
+	char dir[SKU_PATH_MAX], p[SKU_PATH_MAX], text[SKU_URL_MAX + 256], *body;
+
+	sku_path_join(dir, sizeof dir, xp, "Aircraft/Public/Plane");
+	CHECK_EQ_INT(sku_mkdir_p(dir), SKU_OK);
+	sku_snprintf(text, sizeof text, "name|Test plane\nmodule|%s/public\nversion|1.0\nzone|custom\n", url);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater.cfg");
+	CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+	CHECK_EQ_INT(sku_instance_open(&in, xp, false), SKU_OK);
+	a = sku_addon_open(&in, dir, SKU_GENRE_AIRCRAFT);
+
+	/* offered, trimmed, the traps ignored, nothing followed, nothing in the public cfg */
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_INT(a->nchannels, 2);
+	CHECK_EQ_STR(a->channels[0].name, "Beta");
+	CHECK_EQ_STR(a->channels[1].name, "Release candidate");
+	CHECK(a->channels[0].is_public && a->channels[1].is_public);
+	CHECK_EQ_STR(a->channel, "stable");
+	CHECK(a->notice[0] != 0);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channels/Release_candidate.cfg");
+	CHECK_EQ_INT(sku_read_file(p, &body, NULL), SKU_OK); CHECK(strstr(body, "public|true") != NULL); free(body);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater.cfg");
+	CHECK_EQ_INT(sku_read_file(p, &body, NULL), SKU_OK); CHECK(strstr(body, "channel") == NULL); free(body);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);                 /* again: nothing changes */
+	CHECK_EQ_INT(a->nchannels, 2);
+
+	/* removed by the user: never offered again */
+	CHECK_EQ_INT(sku_addon_remove_channel(a, "Beta", false), SKU_OK);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_INT(a->nchannels, 1);
+
+	/* renamed by the cfg (same depot), then withdrawn, then declared again */
+	sku_snprintf(text, sizeof text, "channel.Beta|%s/beta\nchannel.RC 2|%s/level1\n", url, url);
+	public_depot_cfg(text);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_INT(a->nchannels, 1);
+	CHECK_EQ_STR(a->channels[0].name, "RC 2");
+	public_depot_cfg("");
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_INT(a->nchannels, 0);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channels/Release_candidate.cfg.withdrawn"); CHECK(sku_is_file(p));
+	public_depot_cfg(text);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);                 /* a withdrawal does not block a comeback */
+	CHECK_EQ_INT(a->nchannels, 1);
+
+	/* followed, it stays while the user is on it, and goes once back on Main */
+	CHECK_EQ_INT(sku_addon_set_channel(a, "RC 2", false), SKU_OK);
+	public_depot_cfg("");
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);                 /* checks the RC depot: the main cfg is not read */
+	CHECK_EQ_INT(a->nchannels, 1);
+	CHECK_EQ_INT(sku_addon_set_channel(a, "stable", false), SKU_OK);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_INT(a->nchannels, 0);
+
+	/* a private channel (a tester file) on a depot also declared public stays private */
+	sku_snprintf(text, sizeof text, "module|%s/level1\nchannel|My RC\nenabled|false\n", url);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater_beta.cfg");
+	CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+	CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+	sku_snprintf(text, sizeof text, "channel.RC 2|%s/level1\n", url);
+	public_depot_cfg(text);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_INT(a->nchannels, 1);
+	CHECK_EQ_STR(a->channels[0].name, "My RC");
+	CHECK(!a->channels[0].is_public);
+	public_depot_cfg("");
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);                 /* never withdrawn by the depot */
+	CHECK_EQ_INT(a->nchannels, 1);
+
+	sku_addon_close(a);
+	sku_instance_close(&in);
+}
+
 static int count(const char *text, const char *needle)
 {
 	int n = 0;
@@ -756,6 +845,7 @@ int main(void)
 	test_pack();
 	test_no_query_depot();
 	test_depot_client_files();
+	test_public_channels();
 	test_scan_depth();
 	sku_http_global_cleanup();
 	TEST_MAIN_END();

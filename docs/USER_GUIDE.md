@@ -146,8 +146,10 @@ several channels; each comes with its own file.
 
 Putting the same file back does no harm: a channel already following that
 beta is updated, never added twice, and the status bar says which channel it
-is. A developer may also offer a beta through the updater itself: it then
-appears in the drop-down without being followed until you pick it. To get rid of a beta, pick it, press
+is. A developer may also offer a beta through the updater itself, to every
+user: it then appears in the drop-down without being followed until you
+pick it, and goes away when the developer withdraws it, unless you follow
+it. To get rid of a beta, pick it, press
 "Remove channel..." next to the drop-down and confirm with "Remove": the
 add-on goes back to Main. Only the developer's file can bring that channel
 back.

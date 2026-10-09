@@ -279,6 +279,48 @@ following the beta depot: either publish the release there too, or tell them
 to switch back to Main. Do not delete a beta depot while testers are on it:
 an unreachable depot shows as an error in their list.
 
+### 2.6 Public channels (4.2 client)
+
+A beta open to everyone needs no file to hand out: declare it in the
+configuration of your production depot, one line per channel,
+`channel.<name>|<URL of its depot>`:
+
+```
+name|Aerobask Dassault Falcon 8X
+module|https://cdn.example.com/updater/aerobask/F8X_XP12
+version|12.0b3
+locked|false
+zone|custom
+channel.Public beta|https://cdn.example.com/updater/aerobask/F8XBeta
+channel.Release candidate|https://cdn.example.com/updater/aerobask/F8XRC
+```
+
+- The name may contain spaces (spaces at both ends are ignored). It cannot
+  be `Main` nor `stable`, and must not end with `.module` or `.zone`.
+- The URL is a full one (zone `custom`).
+- The 3.x client ignores these lines; they follow its rules (one value per
+  key, no `|` in a value), so keep one line per channel.
+
+What the 4.2 client does with them, at every check:
+
+- It adds each channel to the user's drop-down, **without following it**:
+  the user stays on `Main` until picking the channel.
+- Renaming a line (same URL) renames the channel; changing the URL of a
+  name moves the channel, for those who follow it too.
+- A user who removes the channel ("Remove channel...") does not get it back.
+- When the line disappears from the production configuration, the channel
+  disappears for users who do not follow it; those who follow it keep it
+  until they go back to `Main`. Publish the release on the beta depot too,
+  or keep the line until your testers have moved back.
+- A tester who already follows the same depot through a tester file keeps
+  that private channel, under its own name.
+
+Private betas stay with tester files (2.2): a channel declared in the
+configuration is visible to every user of the product. The configuration
+is the same on every channel's depot; the client reads the public channels
+from whichever depot it checks, but only the production depot's
+configuration can withdraw one.
+
 ## Part 3 - On the user's side: local files and the 4.0 migration
 
 ### 3.1 What the client writes

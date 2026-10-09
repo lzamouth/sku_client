@@ -333,6 +333,9 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 		}
 	}
 
+	/* public channels: offered by the depot's cfg, withdrawn only by the main depot's */
+	sku_addon_public_channels(a, &a->remote, strcmp(a->channel, "stable") == 0, opts->dry_run);
+
 	if (sku_cfg_get_bool(&a->remote, "locked", false)) {
 		sku_addon_set_status(a, SKU_ST_LOCKED, "Update repository locked for maintenance", "Updates are not possible until the developer removes the lock.");
 		rc = SKU_OK;

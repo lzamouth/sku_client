@@ -62,6 +62,7 @@ typedef struct {
 	char zone[64];
 	char file[128];      /* its file in skunkcrafts/channels/, "" until first saved */
 	bool migrated;       /* read from the keys of 4.0.0-4.0.2 in skunkcrafts_updater.cfg, not saved yet */
+	bool is_public;      /* declared by the main depot's cfg ("channel.<name>|<url>"): follows its changes */
 } sku_channel;
 
 typedef struct {
@@ -138,6 +139,11 @@ int        sku_addon_set_channel(sku_addon *a, const char *channel, bool dry_run
 /* A tester file published by the depot itself (its text): offered as a channel, never followed
  * on its own, not offered again once the user removed it. Saved unless dry_run. */
 void       sku_addon_channel_offer(sku_addon *a, const char *text, const char *file, bool dry_run);
+/* The public channels the depot's cfg declares ("channel.<name>|<url>"): offered, never followed on
+ * their own, renamed or moved as the cfg says, not offered again once the user removed them; read
+ * from the main depot (from_main), a public channel no longer declared is withdrawn unless followed.
+ * Saved unless dry_run. */
+void       sku_addon_public_channels(sku_addon *a, const sku_cfg *remote, bool from_main, bool dry_run);
 /* The only way a channel file goes: set aside as <file>.removed; the addon falls back to stable if it was active. */
 int        sku_addon_remove_channel(sku_addon *a, const char *channel, bool dry_run);
 

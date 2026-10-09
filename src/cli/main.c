@@ -173,7 +173,8 @@ static int run_command(const char *cmd, sku_addon *a, const struct opts *o, cons
 		printf("%s%-8s %s\n", indent, sku_genre_name(a->genre), a->name);
 		printf("%s    %s %-20s %s\n", indent, strcmp(a->channel, "stable") == 0 ? "*" : " ", "Main", a->module);
 		for (int i = 0; i < a->nchannels; i++)
-			printf("%s    %s %-20s %s\n", indent, strcmp(a->channel, a->channels[i].name) == 0 ? "*" : " ", a->channels[i].name, a->channels[i].module);
+			printf("%s    %s %-20s %s%s\n", indent, strcmp(a->channel, a->channels[i].name) == 0 ? "*" : " ", a->channels[i].name, a->channels[i].module,
+				a->channels[i].is_public ? "  (public)" : "");
 	} else if (strcmp(cmd, "report") == 0) {
 		char path[SKU_PATH_MAX], *text;
 		sku_instance_report_path(in, a->dir, path, sizeof path);

@@ -210,6 +210,7 @@ static int chan_cb(const char *name, bool is_dir, bool is_symlink, void *user)
 			sku_strlcpy(ch->module, module, sizeof ch->module);
 			sku_strlcpy(ch->zone, sku_cfg_get_or(&c, "zone", "custom"), sizeof ch->zone);
 			sku_strlcpy(ch->file, name, sizeof ch->file);
+			ch->is_public = sku_cfg_get_bool(&c, "public", false);
 		}
 	}
 	sku_cfg_free(&c);
@@ -440,7 +441,7 @@ static int channels_save(sku_addon *a)
 		char text[SKU_URL_MAX + 256];
 		int n;
 		channel_file_assign(a, c);
-		n = sku_snprintf(text, sizeof text, "channel|%s\nmodule|%s\nzone|%s\n", c->name, c->module, c->zone);
+		n = sku_snprintf(text, sizeof text, "channel|%s\nmodule|%s\nzone|%s\n%s", c->name, c->module, c->zone, c->is_public ? "public|true\n" : "");
 		sku_path_join(p, sizeof p, dir, c->file);
 		if (sku_write_file_atomic(p, text, (size_t)n) != SKU_OK) { sku_error("%s: cannot write %s", a->dir, p); return SKU_ERR_IO; }
 		c->migrated = false;
@@ -689,23 +690,117 @@ int sku_addon_set_channel(sku_addon *a, const char *channel, bool dry_run)
 	return apply(a, dry_run);
 }
 
-int sku_addon_remove_channel(sku_addon *a, const char *channel, bool dry_run)
+/* A channel file is never deleted: set aside as <file>.<suffix> ("removed" by the user,
+ * "withdrawn" by the developer; the previous one of that name is replaced), then the
+ * channel leaves the list. */
+static int channel_set_aside(sku_addon *a, sku_channel *c, const char *suffix, bool dry_run)
 {
-	sku_channel *c = channel_get(a, channel);
 	int i;
-	if (!c) return SKU_ERR_NOTFOUND;
 	if (!dry_run && c->file[0]) {
-		/* kept aside, not deleted: <file>.removed (the previous one of that name is replaced) */
 		char from[SKU_PATH_MAX], to[SKU_PATH_MAX], rel[SKU_PATH_MAX];
 		sku_snprintf(rel, sizeof rel, "%s/%s", SKU_D_CHANNELS, c->file);
 		sku_path_join(from, sizeof from, a->dir, rel);
-		sku_snprintf(to, sizeof to, "%s.removed", from);
+		sku_snprintf(to, sizeof to, "%s.%s", from, suffix);
 		if (sku_is_file(from) && sku_rename(from, to) != SKU_OK) { sku_error("%s: cannot set %s aside", a->dir, from); return SKU_ERR_IO; }
 	}
-	sku_info("%s: channel \"%s\" removed (%s)", a->dir, channel, c->module);
-	if (strcmp(a->channel, channel) == 0) sku_strlcpy(a->channel, "stable", sizeof a->channel);
+	if (strcmp(a->channel, c->name) == 0) sku_strlcpy(a->channel, "stable", sizeof a->channel);
 	i = (int)(c - a->channels);
 	memmove(&a->channels[i], &a->channels[i + 1], (size_t)(a->nchannels - i - 1) * sizeof *a->channels);
 	a->nchannels--;
+	return SKU_OK;
+}
+
+int sku_addon_remove_channel(sku_addon *a, const char *channel, bool dry_run)
+{
+	sku_channel *c = channel_get(a, channel);
+	char module[SKU_URL_MAX];
+	if (!c) return SKU_ERR_NOTFOUND;
+	sku_strlcpy(module, c->module, sizeof module);
+	if (channel_set_aside(a, c, "removed", dry_run) != SKU_OK) return SKU_ERR_IO;
+	sku_info("%s: channel \"%s\" removed (%s)", a->dir, channel, module);
 	return apply(a, dry_run);
+}
+
+/* A public channel name: "channel.<name>" with the spaces at both ends trimmed; not empty,
+ * not one of the main channel's names, not the "channel.<n>.module" keys of 4.0.0-4.0.2. */
+static bool public_channel_name(const char *key, char *name, size_t n)
+{
+	const char *p = key + 8, *e = key + strlen(key);
+	while (*p == ' ' || *p == '\t') p++;
+	while (e > p && (e[-1] == ' ' || e[-1] == '\t')) e--;
+	if ((size_t)(e - p) >= n) return false;
+	memcpy(name, p, (size_t)(e - p)); name[e - p] = 0;
+	if (!valid_channel_name(name) || strcasecmp(name, "main") == 0) return false;
+	if (sku_str_ends(name, ".module") || sku_str_ends(name, ".zone")) return false;
+	return true;
+}
+
+void sku_addon_public_channels(sku_addon *a, const sku_cfg *remote, bool from_main, bool dry_run)
+{
+	sku_strlist names = {0};
+	bool changed = false;
+	for (int i = 0; i < remote->n; i++) {
+		const char *k = remote->v[i].key, *v = remote->v[i].value;
+		char name[64], url[SKU_URL_MAX], dir[SKU_PATH_MAX];
+		sku_channel *c = NULL;
+		if (!k || !v || strncmp(k, "channel.", 8) != 0) continue;
+		if (!public_channel_name(k, name, sizeof name)) { sku_warn("%s: the depot declares the channel key \"%s\", not a usable channel name: ignored", a->name, k); continue; }
+		sku_strlcpy(url, v, sizeof url);
+		{
+			char *t = sku_str_trim(url);
+			if (t != url) memmove(url, t, strlen(t) + 1);
+		}
+		if (!*url || same_depot("custom", url, a->zone, a->module) || sku_strlist_has(&names, name)) continue;
+		sku_strlist_push(&names, name);
+		/* a channel already following that depot: a public one takes the declared name,
+		 * a private one (a tester file) stays as it is */
+		for (int j = 0; j < a->nchannels && !c; j++) if (same_depot(a->channels[j].zone, a->channels[j].module, "custom", url)) c = &a->channels[j];
+		if (c) {
+			if (c->is_public && strcmp(c->name, name) != 0 && !channel_get(a, name)) {
+				sku_info("%s: public channel \"%s\" renamed \"%s\" by the depot", a->name, c->name, name);
+				if (strcmp(a->channel, c->name) == 0) sku_strlcpy(a->channel, name, sizeof a->channel);
+				sku_strlcpy(c->name, name, sizeof c->name);
+				changed = true;
+			}
+			continue;
+		}
+		/* a public channel of that name moved by the developer */
+		c = channel_get(a, name);
+		if (c) {
+			if (c->is_public) {
+				sku_info("%s: public channel \"%s\" now follows %s", a->name, name, url);
+				sku_strlcpy(c->module, url, sizeof c->module);
+				sku_strlcpy(c->zone, "custom", sizeof c->zone);
+				changed = true;
+			} else sku_debug("%s: the depot declares the channel \"%s\", a private channel of that name exists: left as it is", a->name, name);
+			continue;
+		}
+		/* new to this addon, unless the user removed it */
+		{
+			struct removed_scan rs;
+			sku_path_join(dir, sizeof dir, a->dir, SKU_D_CHANNELS);
+			rs.dir = dir; rs.zone = "custom"; rs.module = url; rs.found = false;
+			if (sku_is_dir(dir)) sku_list_dir(dir, removed_cb, &rs);
+			if (rs.found) { sku_debug("%s: public channel \"%s\" removed by the user: not offered again", a->name, name); continue; }
+		}
+		c = channel_put(a, name);
+		sku_strlcpy(c->module, url, sizeof c->module);
+		c->is_public = true;
+		sku_info("%s: the depot offers the public channel \"%s\" (%s): added, not followed", a->name, name, url);
+		sku_snprintf(a->notice, sizeof a->notice, "%s: new beta channel \"%s\" offered by the developer, pick it in the Channel column to follow it", a->name, name);
+		changed = true;
+	}
+	/* withdrawn: only the main depot's cfg says which public channels exist; one still
+	 * followed stays until the user goes back to Main */
+	for (int j = a->nchannels - 1; from_main && j >= 0; j--) {
+		sku_channel *c = &a->channels[j];
+		if (!c->is_public || sku_strlist_has(&names, c->name) || strcmp(a->channel, c->name) == 0) continue;
+		sku_info("%s: public channel \"%s\" withdrawn by the depot", a->name, c->name);
+		channel_set_aside(a, c, "withdrawn", dry_run);
+		changed = true;
+	}
+	sku_strlist_free(&names);
+	if (!changed) return;
+	qsort(a->channels, (size_t)a->nchannels, sizeof *a->channels, channel_cmp);
+	if (!dry_run) channels_save(a);
 }
