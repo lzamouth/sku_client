@@ -217,12 +217,28 @@ void ui_statusbar(app *ap)
 		app_item *it = &ap->items[i];
 		if (atomic_load(&it->busy) && it->prog_total > it->prog_done) remaining += it->prog_total - it->prog_done;
 	}
-	nk_layout_row_dynamic(ctx, row, 3);
-	sku_snprintf(buf, sizeof buf, "Jobs running: %d, queued: %d", running, queued);
-	nk_label(ctx, buf, NK_TEXT_LEFT);
-	sku_snprintf(buf, sizeof buf, "Files remaining: %d", remaining);
-	nk_label(ctx, buf, NK_TEXT_LEFT);
-	if (ap->message[0] && sku_time_ms() < ap->message_until) nk_label(ctx, ap->message, NK_TEXT_LEFT);
-	else if (running) nk_label(ctx, "Working...", NK_TEXT_LEFT);
-	else nk_label(ctx, "", NK_TEXT_LEFT);
+	bool message = ap->message[0] && sku_time_ms() < ap->message_until;
+	if (running || queued) {
+		nk_layout_row_dynamic(ctx, row, 3);
+		sku_snprintf(buf, sizeof buf, "Jobs running: %d, queued: %d", running, queued);
+		nk_label(ctx, buf, NK_TEXT_LEFT);
+		sku_snprintf(buf, sizeof buf, "Files remaining: %d", remaining);
+		nk_label(ctx, buf, NK_TEXT_LEFT);
+		nk_label(ctx, message ? ap->message : "Working...", NK_TEXT_LEFT);
+		return;
+	}
+	/* idle: no file count to show, the message gets the room (long ones are cut, whole on hover) */
+	{
+		static const float ratio[] = { 0.25f, 0.75f };
+		char cut[sizeof ap->message];
+		struct nk_rect r;
+		nk_layout_row(ctx, NK_DYNAMIC, row, 2, ratio);
+		sku_snprintf(buf, sizeof buf, "Jobs running: %d, queued: %d", running, queued);
+		nk_label(ctx, buf, NK_TEXT_LEFT);
+		if (!message) { nk_label(ctx, "", NK_TEXT_LEFT); return; }
+		r = nk_widget_bounds(ctx);
+		ui_right_truncate(ap, ap->message, r.w - 8, cut, sizeof cut);
+		if (strcmp(cut, ap->message) != 0 && nk_widget_is_hovered(ctx)) nk_tooltip(ctx, ap->message);
+		nk_label(ctx, cut, NK_TEXT_LEFT);
+	}
 }

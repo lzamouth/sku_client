@@ -656,6 +656,52 @@ static void test_no_query_depot(void)
 	sku_instance_close(&in);
 }
 
+/* A depot that lists the client's own files at the addon root: its cfg and an ignore list
+ * are left alone (never downloaded, never deleted by its blacklist), its tester file becomes
+ * a channel offered but not followed, and is not offered again once the user removed it. */
+static void test_depot_client_files(void)
+{
+	sku_instance in;
+	sku_addon *a;
+	sku_check_opts co = { false, false, 2 };
+	sku_update_opts uo = { false, 3, 1 };
+	char dir[SKU_PATH_MAX], p[SKU_PATH_MAX], text[SKU_URL_MAX + 128], *body;
+
+	sku_path_join(dir, sizeof dir, xp, "Aircraft/ClientFiles/Plane");
+	CHECK_EQ_INT(sku_mkdir_p(dir), SKU_OK);
+	sku_snprintf(text, sizeof text, "name|Test plane\nmodule|%s/clientfiles\nversion|1.0\nzone|custom\nliveries|true\n", url);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater.cfg");
+	CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater_ignore.txt");
+	CHECK_EQ_INT(sku_write_file_atomic(p, "data/user.prf\n", 14), SKU_OK);
+	CHECK_EQ_INT(sku_instance_open(&in, xp, false), SKU_OK);
+	a = sku_addon_open(&in, dir, SKU_GENRE_AIRCRAFT);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_INT(a->files.n, 9);                     /* the 9 files of the product, none of the client's */
+	CHECK_EQ_INT(a->blacklist.n, 0);
+	CHECK_EQ_INT(a->nchannels, 1);                   /* the tester file: offered... */
+	CHECK_EQ_STR(a->channels[0].name, "Release candidate");
+	CHECK_EQ_STR(a->channel, "stable");              /* ...not followed, despite enabled|true */
+	CHECK(a->notice[0] != 0);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channels/Release_candidate.cfg"); CHECK(sku_is_file(p));
+	CHECK_EQ_INT(sku_addon_update(a, &uo), SKU_OK);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater_ignore.txt");          /* the user's list, untouched */
+	CHECK_EQ_INT(sku_read_file(p, &body, NULL), SKU_OK); CHECK_EQ_STR(body, "data/user.prf\n"); free(body);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater_beta_rc.cfg"); CHECK(!sku_exists(p));
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater.cfg");                 /* the local cfg, kept and updated by the client */
+	CHECK_EQ_INT(sku_read_file(p, &body, NULL), SKU_OK); CHECK(strstr(body, "version|2.0") && strstr(body, "liveries|true")); free(body);
+	/* up to date, and stays so: no file of the client wanted again at every check */
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_INT(sku_addon_status(a, NULL, 0, NULL, 0), SKU_ST_UP_TO_DATE);
+	CHECK_EQ_INT(a->nchannels, 1);
+	/* removed by the user: not offered again */
+	CHECK_EQ_INT(sku_addon_remove_channel(a, "Release candidate", false), SKU_OK);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_INT(a->nchannels, 0);
+	sku_addon_close(a);
+	sku_instance_close(&in);
+}
+
 static int count(const char *text, const char *needle)
 {
 	int n = 0;
@@ -709,6 +755,7 @@ int main(void)
 	test_errors();
 	test_pack();
 	test_no_query_depot();
+	test_depot_client_files();
 	test_scan_depth();
 	sku_http_global_cleanup();
 	TEST_MAIN_END();

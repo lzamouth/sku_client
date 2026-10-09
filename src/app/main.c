@@ -100,6 +100,26 @@ void app_rescan(app *ap)
 	qsort(ap->items, (size_t)ap->nitems, sizeof *ap->items, item_cmp);
 	app_packs_rebuild(ap);
 	app_message(ap, "%d addon(s) found, %d pack(s)", ap->nitems, ap->packs.n);
+	app_post_notices(ap);
+}
+
+/* Notices left by the core (a beta file absorbed, a channel offered by a depot): users
+ * who never read the log see them in the status bar, a little longer than a message. */
+void app_post_notices(app *ap)
+{
+	int n = 0;
+	char first[256] = "";
+	for (int i = 0; i < ap->nitems; i++) {
+		sku_addon *a = ap->items[i].a;
+		if (atomic_load(&ap->items[i].busy) || !a->notice[0]) continue;
+		if (!n) sku_strlcpy(first, a->notice, sizeof first);
+		a->notice[0] = 0;
+		n++;
+	}
+	if (!n) return;
+	if (n == 1) app_message(ap, "%s", first);
+	else app_message(ap, "%s (and %d more addon(s))", first, n - 1);
+	ap->message_until = sku_time_ms() + 20000;
 }
 
 bool app_any_busy(app *ap)
@@ -503,6 +523,7 @@ int main(int argc, char **argv)
 		if (jobs_done(ap.jobs) != ap.last_jobs_done) {
 			ap.last_jobs_done = jobs_done(ap.jobs);
 			for (int i = 0; i < ap.nitems; i++) app_refresh_item(&ap.items[i]);
+			app_post_notices(&ap);
 		} else {
 			for (int i = 0; i < ap.nitems; i++) app_refresh_live(&ap.items[i]);
 		}

@@ -100,6 +100,24 @@ for level in ("level1", "level2", "noquery"):   # noquery: level 1, served witho
 	write(os.path.join(base, "skunkcrafts_updater.cfg"), cfg)
 	write(os.path.join(base, "skunkcrafts_updater_blacklist.txt"), "objects/obsolete.png\r\n../../etc/passwd\r\n")
 
+# "clientfiles": a level-1 depot that also lists the files of the client and of the user at the
+# addon root (its own cfg, an ignore list, a tester file) and blacklists them: the client must
+# leave the first two alone and read the tester file as a channel offer
+base = os.path.join(depot, "clientfiles")
+extra = {
+	"skunkcrafts_updater_beta_rc.cfg": ("module|http://127.0.0.1:" + port + "/beta\nzone|custom\nchannel|Release candidate\nenabled|true\n").encode(),
+	"skunkcrafts_updater_ignore.txt": b"objects/new.obj\n",
+}
+cfg = "name|Test plane\nmodule|http://127.0.0.1:" + port + "/clientfiles\nversion|2.0\nlocked|false\nzone|custom\n"
+wl = []
+for rel, data in list(files.items()) + list(extra.items()):
+	write(os.path.join(base, rel), data)
+	wl.append("%s|%d" % (rel, -1 if rel == "data/OptionSave.prf" else crc(data)))
+wl.append("skunkcrafts_updater.cfg|%d" % crc(cfg.encode()))
+write(os.path.join(base, "skunkcrafts_updater_whitelist.txt"), "\n".join(wl) + "\n")
+write(os.path.join(base, "skunkcrafts_updater.cfg"), cfg)
+write(os.path.join(base, "skunkcrafts_updater_blacklist.txt"), "skunkcrafts_updater_ignore.txt\nskunkcrafts_updater.cfg\n")
+
 # the updater's own depot: fixed package names, at two versions
 packages = ["SkunkcraftsUpdater-windows-setup.exe", "SkunkcraftsUpdater-windows.zip", "SkunkcraftsUpdater-macos.zip",
             "SkunkcraftsUpdater-linux.zip", "SkunkcraftsUpdater-x86_64.AppImage", "sku-cli.zip"]

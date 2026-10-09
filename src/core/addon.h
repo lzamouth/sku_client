@@ -96,6 +96,7 @@ typedef struct {
 	sku_plan   plan;
 	int        lists_from_cache;         /* remote lists answered 304 at the last check */
 	bool       no_query;                 /* the depot refuses URLs with a query string: none sent any more */
+	char       notice[256];              /* for the user (status bar), then cleared by the application: a beta file absorbed, a channel offered */
 	char       changelog[SKU_PATH_MAX];  /* relative path declared by the depot, or "" */
 	char       readme[SKU_PATH_MAX];
 
@@ -134,6 +135,9 @@ void       sku_addon_cancel(sku_addon *a);
 int        sku_addon_set_disabled(sku_addon *a, bool disabled, bool dry_run);
 int        sku_addon_set_liveries(sku_addon *a, bool liveries, bool dry_run);
 int        sku_addon_set_channel(sku_addon *a, const char *channel, bool dry_run);
+/* A tester file published by the depot itself (its text): offered as a channel, never followed
+ * on its own, not offered again once the user removed it. Saved unless dry_run. */
+void       sku_addon_channel_offer(sku_addon *a, const char *text, const char *file, bool dry_run);
 /* The only way a channel file goes: set aside as <file>.removed; the addon falls back to stable if it was active. */
 int        sku_addon_remove_channel(sku_addon *a, const char *channel, bool dry_run);
 

@@ -47,6 +47,10 @@ int  sku_protocol_parse_manifest(const char *text, sku_remote_files *out, int *r
 int  sku_protocol_parse_pathlist(const char *text, sku_strlist *out, int *rejected);        /* blacklist, ignore list */
 
 /* Base URL from zone + module, always ending with '/'. */
+/* Files at the addon root that belong to the client or the user, whatever a depot lists:
+ * 1 = skunkcrafts_updater.cfg and skunkcrafts_updater_ignore.txt (never downloaded nor deleted),
+ * 2 = a tester file skunkcrafts_updater_beta*.cfg (read as a channel offer), 0 = an ordinary file. */
+int  sku_protocol_client_file(const char *rel);
 void sku_protocol_base_url(char *out, size_t n, const char *zone, const char *module);
 
 /* Validates a remote cfg (mandatory keys); fills err on failure. */

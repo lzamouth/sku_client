@@ -4,12 +4,22 @@
 #include "log.h"
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <errno.h>
 
 /* "skunkcrafts/..." belongs to the client (config, CRC cache): a depot may not publish or delete it. */
 static bool private_path(const char *rel)
 {
 	return sku_str_istarts(rel, SKU_DIR_V4 "/");
+}
+
+int sku_protocol_client_file(const char *rel)
+{
+	size_t n = strlen(rel);
+	if (strchr(rel, '/') || strchr(rel, '\\')) return 0;
+	if (strcasecmp(rel, SKU_F_CFG) == 0 || strcasecmp(rel, SKU_F_IGNORE) == 0) return 1;
+	if (sku_str_istarts(rel, "skunkcrafts_updater_beta") && n > 4 && strcasecmp(rel + n - 4, ".cfg") == 0) return 2;
+	return 0;
 }
 
 

@@ -151,6 +151,7 @@ void app_rescan(app *ap);
 void app_refresh_item(app_item *it);      /* snapshot, only when idle */
 void app_refresh_live(app_item *it);      /* status + progress */
 void app_message(app *ap, const char *fmt, ...);
+void app_post_notices(app *ap);   /* the core's notices (beta file absorbed, channel offered) in the status bar */
 void app_set_text_size(app *ap, int size);
 void app_apply_theme(app *ap);
 bool app_any_busy(app *ap);

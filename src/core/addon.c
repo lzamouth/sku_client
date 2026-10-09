@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 const char *sku_status_name(sku_status s)
 {
@@ -115,6 +116,8 @@ void sku_url_add_query(char *url, size_t n, const char *key, const char *value)
  * skunkcrafts/channel.cfg. skunkcrafts_updater.cfg stays the public file that
  * 3.x, aircraft and publishing tools read. Saving never deletes a channel file:
  * only sku_addon_remove_channel does, and it keeps the file as <file>.removed. */
+
+static int channels_save(sku_addon *a);
 
 static void channels_clear(sku_addon *a)
 {
@@ -320,6 +323,7 @@ static void merge_beta_file(sku_addon *a, const char *file, const char *default_
 			if (strcmp(a->channel, c->name) == 0) sku_strlcpy(a->channel, name, sizeof a->channel);
 			sku_strlcpy(c->name, name, sizeof c->name);
 		} else sku_info("%s: %s: channel \"%s\" already follows this depot, nothing added", a->dir, base, c->name);
+		sku_snprintf(a->notice, sizeof a->notice, "%s: the beta file is the channel \"%s\", pick it in the Channel column", sku_cfg_get_or(&a->local, "name", base), c->name);
 	} else {
 		/* a new depot: the channel of that name moves to it, as does the one the file would
 		 * have created without "channel|" (3.x: one file, one beta); otherwise a new channel */
@@ -332,12 +336,24 @@ static void merge_beta_file(sku_addon *a, const char *file, const char *default_
 		if (c) sku_info("%s: channel \"%s\" now follows %s (from %s)", a->dir, c->name, module, base);
 		else { c = channel_put(a, name); sku_info("%s: new beta channel \"%s\" from %s", a->dir, name, base); }
 		sku_strlcpy(c->module, module, sizeof c->module);
+		sku_snprintf(a->notice, sizeof a->notice, "%s: the beta file became the channel \"%s\", pick it in the Channel column", sku_cfg_get_or(&a->local, "name", base), c->name);
 	}
 	sku_strlcpy(c->zone, zone, sizeof c->zone);
 	/* the legacy "enabled" flag selects the active channel: true = follow this channel, false = production */
 	if (sku_cfg_get_bool(&b, "enabled", true)) sku_strlcpy(a->channel, c->name, sizeof a->channel);
 	else if (strcmp(a->channel, c->name) == 0) sku_strlcpy(a->channel, "stable", sizeof a->channel);
 	sku_cfg_free(&b);
+}
+
+/* The channel a tester file names when it has no "channel|" line: "beta" for
+ * skunkcrafts_updater_beta.cfg, "<x>" for skunkcrafts_updater_beta_<x>.cfg. */
+static void beta_default_name(const char *file, char *out, size_t n)
+{
+	const char *p = file + 24;
+	if (*p == '_') p++;
+	sku_strlcpy(out, p, n);
+	if (strlen(out) >= 4 && strcasecmp(out + strlen(out) - 4, ".cfg") == 0) out[strlen(out) - 4] = 0;
+	if (!*out) sku_strlcpy(out, "beta", n);
 }
 
 struct beta_scan { sku_addon *a; };
@@ -349,17 +365,66 @@ static int beta_cb(const char *name, bool is_dir, bool is_symlink, void *user)
 	(void)is_symlink;
 	if (is_dir || strncmp(name, "skunkcrafts_updater_beta", 24) != 0 || !sku_str_ends(name, ".cfg")) return 0;
 	sku_path_join(file, sizeof file, s->a->dir, name);
-	if (strcmp(name, SKU_F_BETA_CFG) == 0) sku_strlcpy(chan, "beta", sizeof chan);
-	else {
-		/* skunkcrafts_updater_beta_<x>.cfg -> "<x>" */
-		const char *p = name + 24;
-		if (*p == '_') p++;
-		sku_strlcpy(chan, p, sizeof chan);
-		if (sku_str_ends(chan, ".cfg")) chan[strlen(chan) - 4] = 0;
-		if (!*chan) sku_strlcpy(chan, "beta", sizeof chan);
-	}
+	beta_default_name(name, chan, sizeof chan);
 	merge_beta_file(s->a, file, chan);
 	return 0;
+}
+
+/* Whether the user removed a channel following that depot (a <file>.removed is kept). */
+struct removed_scan { const char *dir, *zone, *module; bool found; };
+
+static int removed_cb(const char *name, bool is_dir, bool is_symlink, void *user)
+{
+	struct removed_scan *s = user;
+	char file[SKU_PATH_MAX];
+	sku_cfg c;
+	(void)is_symlink;
+	if (is_dir || s->found || !sku_str_ends(name, ".cfg.removed")) return 0;
+	sku_path_join(file, sizeof file, s->dir, name);
+	sku_cfg_init(&c);
+	if (sku_cfg_load(&c, file) == SKU_OK && sku_cfg_has(&c, "module")
+	    && same_depot(sku_cfg_get_or(&c, "zone", "custom"), sku_cfg_get(&c, "module"), s->zone, s->module)) s->found = true;
+	sku_cfg_free(&c);
+	return 0;
+}
+
+void sku_addon_channel_offer(sku_addon *a, const char *text, const char *file, bool dry_run)
+{
+	sku_cfg b;
+	char def[64], dir[SKU_PATH_MAX];
+	const char *name, *module, *zone;
+	struct removed_scan rs;
+	sku_channel *c;
+	sku_cfg_init(&b);
+	sku_cfg_parse(&b, text);
+	beta_default_name(file, def, sizeof def);
+	name = sku_cfg_has(&b, "channel") && *sku_cfg_get(&b, "channel") ? sku_cfg_get(&b, "channel") : def;
+	module = sku_cfg_get(&b, "module");
+	zone = sku_cfg_get_or(&b, "zone", "custom");
+	if (!module || !*module || !valid_channel_name(name) || same_depot(zone, module, a->zone, a->module)) { sku_cfg_free(&b); return; }
+	for (int i = 0; i < a->nchannels; i++)
+		if (same_depot(a->channels[i].zone, a->channels[i].module, zone, module)) { sku_cfg_free(&b); return; }   /* already there */
+	if (channel_get(a, name)) {
+		sku_debug("%s: the depot offers the channel \"%s\" (%s), a channel of that name exists: left as it is", a->name, name, module);
+		sku_cfg_free(&b);
+		return;
+	}
+	sku_path_join(dir, sizeof dir, a->dir, SKU_D_CHANNELS);
+	rs.dir = dir; rs.zone = zone; rs.module = module; rs.found = false;
+	if (sku_is_dir(dir)) sku_list_dir(dir, removed_cb, &rs);
+	if (rs.found) {
+		sku_debug("%s: the depot offers the channel \"%s\", removed by the user: not offered again", a->name, name);
+		sku_cfg_free(&b);
+		return;
+	}
+	c = channel_put(a, name);   /* offered, not followed: "enabled" is the tester's business */
+	sku_strlcpy(c->module, module, sizeof c->module);
+	sku_strlcpy(c->zone, zone, sizeof c->zone);
+	qsort(a->channels, (size_t)a->nchannels, sizeof *a->channels, channel_cmp);
+	sku_info("%s: the depot offers the beta channel \"%s\" (%s, from %s): added, not followed", a->name, name, module, file);
+	sku_snprintf(a->notice, sizeof a->notice, "%s: new beta channel \"%s\" offered by the developer, pick it in the Channel column to follow it", a->name, name);
+	if (!dry_run) channels_save(a);
+	sku_cfg_free(&b);
 }
 
 /* Writes every channel file and the active channel. Nothing is deleted here. */

@@ -274,6 +274,7 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	char *text = NULL, err[256];
 	int rc, rejected = 0;
 	int64_t t0 = sku_time_ms();
+	sku_strlist offers = {0};
 
 	if (!opts) opts = &def;
 	atomic_store(&a->cancel, 0);
@@ -357,8 +358,38 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 		sku_protocol_parse_pathlist(text, &a->blacklist, &rej); free(text); text = NULL;
 		rejected += rej;
 	}
+	/* the configuration and the ignore list at the addon root belong to the client and the
+	 * user: a depot neither replaces nor deletes them. A tester file it publishes is read as
+	 * a channel offer instead of being downloaded (it would be absorbed, then missing again). */
+	{
+		int k = 0;
+		sku_strlist keep = {0};
+		for (int i = 0; i < a->files.n; i++) {
+			const char *p = a->files.v[i].path;
+			int kind = sku_protocol_client_file(p);
+			if (kind == 1) sku_info("%s: the depot lists %s, which belongs to the client: left alone (worth telling the developer)", a->name, p);
+			if (kind == 2) sku_strlist_push(&offers, p);
+			if (kind) { free(a->files.v[i].path); continue; }
+			a->files.v[k++] = a->files.v[i];
+		}
+		a->files.n = k;
+		for (int i = 0; i < a->blacklist.n; i++) {
+			if (sku_protocol_client_file(a->blacklist.v[i])) sku_info("%s: the depot blacklists %s, which belongs to the client: not deleted", a->name, a->blacklist.v[i]);
+			else sku_strlist_push(&keep, a->blacklist.v[i]);
+		}
+		sku_strlist_free(&a->blacklist);
+		a->blacklist = keep;
+	}
 	if (rejected) sku_warn("%s: %d unsafe or malformed line(s) rejected from the remote lists", a->name, rejected);
 	sku_info("%s: remote version %s, protocol %d, %d file(s), %d blacklisted, %d list(s) unchanged since last check", a->name, a->remote_version, a->level, a->files.n, a->blacklist.n, a->lists_from_cache);
+
+	for (int i = 0; i < offers.n; i++) {
+		sku_http_result orr;
+		if (fetch_text(a, h, offers.v[i], "v", a->remote_version, false, &text, &orr) == SKU_OK) {
+			sku_addon_channel_offer(a, text, offers.v[i], opts->dry_run);
+			free(text); text = NULL;
+		}
+	}
 
 	/* changelog / readme: fetched when declared, by default from protocol level 2,
 	 * and at level 1 when the depot publishes them under the default names */
@@ -386,6 +417,7 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 		a->name, (long long)a->plan.duration_ms, a->plan.n_new, a->plan.n_changed, a->plan.n_delete, a->plan.n_unchanged, a->plan.n_cached, a->plan.n_ignored, a->plan.n_error);
 out:
 	free(text);
+	sku_strlist_free(&offers);
 	sku_http_free(h);
 	return rc;
 }

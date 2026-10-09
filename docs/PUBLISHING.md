@@ -346,7 +346,13 @@ the depot is locked. It never creates a folder without asking (packs, 5.5).
 1. **The beta URL in the configuration** (1.6). The remote `module` is
    copied to every user. Production URL always; the beta URL only in the
    tester's beta file. And never ship a `skunkcrafts_updater_beta.cfg` in a
-   package or a depot: every user would be a tester.
+   package or a depot for 3.x users: every one of them would be a tester.
+   The 4.x client (from 4.1.2) reads a tester file listed in a depot as an
+   offer: the channel appears in the user's list, but is only followed if the
+   user picks it, and does not come back once removed. It never takes
+   `skunkcrafts_updater.cfg` or `skunkcrafts_updater_ignore.txt` from a
+   depot, nor deletes them through a blacklist: they belong to the client and
+   to the user.
 2. **Files the product modifies at run time**: preferences, persisted state,
    logs written inside the product folder. If they are in the whitelist with
    a real CRC, every check says "repair" and every update erases the user's
