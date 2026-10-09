@@ -1,3 +1,7 @@
+4.1.1
+- Some developers' servers refused the updater: it presents itself as 3.x did again, and asks again without the cache-busting parameters a server rejects (Colimata aircraft, avitab-browser)
+- A depot file is no longer refused because the server labels it as a web page; only a real web page is
+
 4.1.0
 - Beta channels are kept in the add-on's own skunkcrafts folder; skunkcrafts_updater.cfg, which aircraft read, holds only its usual settings again. Channels set up by 4.0 move there automatically
 - A beta channel can be removed from the add-on's details ("Remove channel...", with a confirmation), or with sku remove-channel
