@@ -67,6 +67,7 @@ int main(void)
 	free(body);
 	CHECK(sku_http_looks_like_html("  <!doctype html><p>", 20, "application/octet-stream"));
 	CHECK(!sku_http_looks_like_html("name|x", 6, "text/plain"));
+	CHECK(!sku_http_looks_like_html("name|x\nversion|1\n", 17, "text/html"));   /* a server sending everything as HTML */
 
 	/* binary file to disk, with size check and CRC */
 	sku_snprintf(url, sizeof url, "%s/objects/a.bin", base);

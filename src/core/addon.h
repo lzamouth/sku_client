@@ -95,6 +95,7 @@ typedef struct {
 	sku_strlist blacklist;
 	sku_plan   plan;
 	int        lists_from_cache;         /* remote lists answered 304 at the last check */
+	bool       no_query;                 /* the depot refuses URLs with a query string: none sent any more */
 	char       changelog[SKU_PATH_MAX];  /* relative path declared by the depot, or "" */
 	char       readme[SKU_PATH_MAX];
 

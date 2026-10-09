@@ -12,6 +12,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* The query strings keep CDN caches fresh, but some depots answer 404 or 403 to any
+ * URL that carries one (3.x never sent any). After such an answer the request is made
+ * again without it; when that one succeeds, the addon goes without for the rest of the
+ * session (a file really missing fails both ways and changes nothing). */
+static bool query_refused(bool with_query, int rc, const sku_http_result *r)
+{
+	return with_query && rc != SKU_OK && rc != SKU_ERR_CANCELLED && r->status >= 400 && r->status < 500;
+}
+
+static void note_query_refused(sku_addon *a, const char *file, long status)
+{
+	a->no_query = true;
+	sku_info("%s: the depot answered HTTP %ld to %s with a query string and serves it without: no query string from now on", a->name, status, file);
+}
+
 /* Fetches a protocol text file; rejects HTML pages and truncated bodies. */
 /* query: "t=<now>" for the cfg (always fresh), "v=<version>" for the rest (fresh per version) */
 static int fetch_text(sku_addon *a, sku_http *h, const char *file, const char *qkey, const char *qvalue, bool required, char **out, sku_http_result *r)
@@ -19,9 +34,17 @@ static int fetch_text(sku_addon *a, sku_http *h, const char *file, const char *q
 	char url[SKU_URL_MAX];
 	size_t len = 0;
 	int rc;
-	sku_addon_encode_url(url, sizeof url, a->base_url, file);
-	if (qkey) sku_url_add_query(url, sizeof url, qkey, qvalue);
-	rc = sku_http_get_mem(h, url, NULL, NULL, out, &len, r);
+	bool with_query = qkey && !a->no_query;
+	long refused = 0;
+	for (;;) {
+		sku_addon_encode_url(url, sizeof url, a->base_url, file);
+		if (with_query) sku_url_add_query(url, sizeof url, qkey, qvalue);
+		rc = sku_http_get_mem(h, url, NULL, NULL, out, &len, r);
+		if (!query_refused(with_query, rc, r)) break;
+		refused = r->status;
+		with_query = false;
+	}
+	if (rc == SKU_OK && refused) note_query_refused(a, file, refused);
 	if (rc != SKU_OK) {
 		if (required || rc == SKU_ERR_CANCELLED) sku_warn("%s: GET %s failed: %s", a->name, url, r->error);
 		else sku_debug("%s: optional %s not available (%s)", a->name, file, r->error);
@@ -58,16 +81,27 @@ static int fetch_list(sku_addon *a, sku_http *h, const char *file, bool required
 	sku_cfg meta;
 	size_t len = 0;
 	int rc;
+	bool with_query = !a->no_query;
+	long refused = 0;
 
-	sku_addon_encode_url(url, sizeof url, a->base_url, file);
-	sku_url_add_query(url, sizeof url, "v", a->remote_version);   /* a new version is a new URL: no stale CDN copy */
-	list_cache_paths(a, file, body_path, meta_path, sizeof body_path);
 	sku_cfg_init(&meta);
-	if (sku_cfg_load(&meta, meta_path) == SKU_OK && strcmp(sku_cfg_get_or(&meta, "url", ""), url) == 0 && sku_is_file(body_path)) {
-		etag = sku_cfg_get(&meta, "etag");
-		since = sku_cfg_get(&meta, "last_modified");
+	list_cache_paths(a, file, body_path, meta_path, sizeof body_path);
+	for (;;) {
+		sku_addon_encode_url(url, sizeof url, a->base_url, file);
+		if (with_query) sku_url_add_query(url, sizeof url, "v", a->remote_version);   /* a new version is a new URL: no stale CDN copy */
+		etag = since = NULL;   /* validators only for the URL they were given for */
+		sku_cfg_free(&meta);
+		sku_cfg_init(&meta);
+		if (sku_cfg_load(&meta, meta_path) == SKU_OK && strcmp(sku_cfg_get_or(&meta, "url", ""), url) == 0 && sku_is_file(body_path)) {
+			etag = sku_cfg_get(&meta, "etag");
+			since = sku_cfg_get(&meta, "last_modified");
+		}
+		rc = sku_http_get_mem(h, url, etag, since, out, &len, r);
+		if (!query_refused(with_query, rc, r)) break;
+		refused = r->status;
+		with_query = false;
 	}
-	rc = sku_http_get_mem(h, url, etag, since, out, &len, r);
+	if (rc == SKU_OK && refused) note_query_refused(a, file, refused);
 	if (rc == SKU_OK && r->not_modified) {
 		rc = sku_read_file(body_path, out, &len);
 		if (rc == SKU_OK) { a->lists_from_cache++; sku_debug("%s: %s unchanged (304), using the cached copy", a->name, file); }

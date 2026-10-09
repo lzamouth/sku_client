@@ -360,7 +360,9 @@ the depot is locked. It never creates a folder without asking (packs, 5.5).
    the lists, changelog and readme with the published version (`?v=...`), so
    a CDN that keys its cache on the full URL always serves the configuration
    fresh and never pairs a new version with old lists. A CDN configured to
-   ignore query strings still needs a purge. The lists are also requested
+   ignore query strings still needs a purge. A server that refuses URLs with
+   a query string (404 or 403) is simply asked again without, from 4.1.1:
+   it works, but loses that protection. The lists are also requested
    conditionally (`ETag` / `Last-Modified`), which a static host answers
    for free.
 4. **Case and spelling of paths**. `Objects/Wing.obj` and `objects/wing.obj`
@@ -375,7 +377,10 @@ the depot is locked. It never creates a folder without asking (packs, 5.5).
    returned a web page instead of ...") and shows an error; check the URL in
    a browser, it must display the raw configuration text. The certificate
    must be valid for HTTPS: the client trusts the system store on Windows,
-   the Mozilla bundle elsewhere. On Windows, revocation is checked when the
+   the Mozilla bundle elsewhere. The clients present themselves as a web
+   browser (the same User-Agent as 3.x, from 4.1.1 in 4.x too), so a rule
+   that serves files to browsers only does not lock them out; any other
+   filter on the User-Agent will. On Windows, revocation is checked when the
    revocation server can be reached (since 4.0.1, a network that blocks it no
    longer makes every connection fail).
 7. **Changing `module` in the remote configuration** moves every user at

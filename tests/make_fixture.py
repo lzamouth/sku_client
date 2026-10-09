@@ -73,7 +73,7 @@ files = {
 	"sub dir/with space.txt": b"spaces in names",
 	"changelog.txt": b"2.0\n- new wing (level 1 style, bare version headers)\n\n1.0\n- first\n",
 }
-for level in ("level1", "level2"):
+for level in ("level1", "level2", "noquery"):   # noquery: level 1, served without query strings (depot_server.py)
 	base = os.path.join(depot, level)
 	for rel, data in files.items():
 		write(os.path.join(base, rel), data)

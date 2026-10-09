@@ -23,6 +23,10 @@ typedef struct {
 /* Returns non-zero to cancel the transfer. */
 typedef int (*sku_progress_cb)(void *user, int64_t received, int64_t total);
 
+/* The User-Agent of the 3.x client, sent unless another is given: some depots
+ * refuse files to anything that does not look like a browser (403 on the lists). */
+#define SKU_HTTP_USER_AGENT "Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"
+
 /* cacert may be NULL (Schannel on Windows uses the system store). */
 int  sku_http_global_init(const char *cacert_pem, size_t cacert_len, const char *user_agent);
 /* Same, with the system CA bundle when one is found, else the embedded Mozilla bundle. */

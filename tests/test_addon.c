@@ -212,6 +212,7 @@ static void test_level(const char *level, bool second_run_uses_cache)
 	CHECK_EQ_INT(a->plan.n_ignored, 1);             /* data/user.prf */
 	CHECK_EQ_INT(a->plan.n_unchanged, 1);           /* plane.acf */
 	CHECK_EQ_INT(a->plan.n_error, 0);
+	CHECK(!a->no_query);                           /* a depot that accepts query strings keeps them */
 	if (strcmp(level, "level2") == 0) {
 		char doc[SKU_PATH_MAX], *text;
 		sku_changelog_section *sec;
@@ -626,6 +627,35 @@ static void test_pack(void)
 /* Scan depth as in 3.x: Custom Scenery and Resources/plugins are looked at one
  * level deep; an unmanaged folder there gets a single debug line, its sub-folders
  * (and plugins/(disabled)/...) are not explored. */
+/* A depot that answers 404 to any URL with a query string (3.x never sent one): the
+ * client asks again without, and goes without for the rest of the session. The lists
+ * are served to the client's User-Agent only, as some real depots do. */
+static void test_no_query_depot(void)
+{
+	sku_instance in;
+	sku_addon *a;
+	sku_check_opts co = { false, false, 2 };
+	char dir[SKU_PATH_MAX], p[SKU_PATH_MAX], text[SKU_URL_MAX + 128];
+
+	sku_path_join(dir, sizeof dir, xp, "Aircraft/Strict/Plane");
+	CHECK_EQ_INT(sku_mkdir_p(dir), SKU_OK);
+	sku_snprintf(text, sizeof text, "name|Test plane\nmodule|%s/noquery\nversion|1.0\nzone|custom\n", url);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater.cfg");
+	CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+	CHECK_EQ_INT(sku_instance_open(&in, xp, false), SKU_OK);
+	a = sku_addon_open(&in, dir, SKU_GENRE_AIRCRAFT);
+	CHECK(!a->no_query);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_INT(sku_addon_status(a, NULL, 0, NULL, 0), SKU_ST_UPDATE);
+	CHECK_EQ_STR(a->remote_version, "2.0");
+	CHECK_EQ_INT(a->files.n, 9);
+	CHECK(a->no_query);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);   /* again, straight without */
+	CHECK_EQ_INT(sku_addon_status(a, NULL, 0, NULL, 0), SKU_ST_UPDATE);
+	sku_addon_close(a);
+	sku_instance_close(&in);
+}
+
 static int count(const char *text, const char *needle)
 {
 	int n = 0;
@@ -673,11 +703,12 @@ int main(void)
 	xp = getenv("SKU_TEST_XP"); url = getenv("SKU_TEST_URL");
 	if (!xp || !url) { fprintf(stderr, "SKU_TEST_XP / SKU_TEST_URL not set\n"); return 2; }
 	sku_log_set_level(SKU_LOG_DEBUG);
-	sku_http_global_init(NULL, 0, "sku-test");
+	sku_http_global_init(NULL, 0, NULL);   /* the client's own User-Agent: the depot server refuses lists to others */
 	test_client();
 	test_level(getenv("SKU_TEST_LEVEL") ? getenv("SKU_TEST_LEVEL") : "level1", true);
 	test_errors();
 	test_pack();
+	test_no_query_depot();
 	test_scan_depth();
 	sku_http_global_cleanup();
 	TEST_MAIN_END();

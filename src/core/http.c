@@ -10,7 +10,7 @@
 
 static char  *g_cacert;
 static size_t g_cacert_len;
-static char   g_user_agent[128] = "SkunkCraftsUpdater/" SKU_VERSION;
+static char   g_user_agent[128] = SKU_HTTP_USER_AGENT;
 
 struct sku_http {
 	CURL *curl;
@@ -153,7 +153,7 @@ static void setup(sku_http *h, const char *url, struct xfer *x)
 	curl_easy_setopt(c, CURLOPT_USERAGENT, g_user_agent);
 	curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(c, CURLOPT_MAXREDIRS, 8L);
-	curl_easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "");           /* transport compression, decoded by curl */
+	curl_easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "gzip");       /* transport compression, decoded by curl; gzip only, as 3.x */
 	curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT, 20L);
 	curl_easy_setopt(c, CURLOPT_LOW_SPEED_LIMIT, 1L);           /* stalled for 60 s = failure, no total timeout */
 	curl_easy_setopt(c, CURLOPT_LOW_SPEED_TIME, 60L);
@@ -273,10 +273,12 @@ int sku_http_get_file(sku_http *h, const char *url, const char *dest, int64_t ex
 	return SKU_OK;
 }
 
+/* Judged on the body: a "Content-Type: text/html" alone is not enough, some servers
+ * send it for any unknown extension, and 3.x accepted such files. */
 bool sku_http_looks_like_html(const char *data, size_t len, const char *content_type)
 {
 	size_t i = 0;
-	if (content_type && sku_str_istarts(content_type, "text/html")) return true;
+	(void)content_type;
 	while (i < len && isspace((unsigned char)data[i])) i++;
 	if (len - i >= 9 && strncasecmp(data + i, "<!DOCTYPE", 9) == 0) return true;
 	if (len - i >= 5 && strncasecmp(data + i, "<html", 5) == 0) return true;
