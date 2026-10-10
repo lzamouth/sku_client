@@ -433,25 +433,26 @@ static void root_label(const sku_strlist *l, const char *root, char *out, size_t
 	sku_snprintf(out, n, "%s/%s", sku_path_basename(dir), base);
 }
 
-/* Right end of the tab row: the installation managed (its folder name; the full path is in
- * Options), a drop-down when there is a choice
+/* Right end of the tab row: the installation managed (its folder name, the full path in a
+ * tooltip), a drop-down when there is a choice
  * (and no job running: an installation does not change under a check or an update). */
 static void instance_selector(app *ap, float width, float row)
 {
 	struct nk_context *ctx = ap->ctx;
 	const sku_strlist *l = &ap->switch_roots;
 	char shown[SKU_PATH_MAX];
-	(void)ctx;
+	struct nk_rect r = nk_widget_bounds(ctx);
 	switch_roots_build(ap);
 	if (l->n < 2 || app_any_busy(ap)) {
 		char lab[SKU_PATH_MAX];
 		root_label(l, ap->inst.root, lab, sizeof lab);
 		ui_left_truncate(ap, lab, width - 12, shown, sizeof shown);
 		nk_label(ctx, shown, NK_TEXT_RIGHT);
+		ui_tip_below(ap, &r, ap->inst.root);
 		return;
 	}
 	{
-		const char *items[34];
+		const char *items[34], *tips[34];
 		char labels[33][160];
 		int n = 0, cur = 0, now;
 		for (int i = 0; i < l->n && n < 32; i++) {
@@ -460,10 +461,13 @@ static void instance_selector(app *ap, float width, float row)
 			ui_left_truncate(ap, lab, width - UI_W(ap, 40), labels[n], sizeof labels[n]);
 			if (strcmp(l->v[i], ap->inst.root) == 0) cur = n;
 			items[n] = labels[n];
+			tips[n] = l->v[i];
 			n++;
 		}
-		items[n++] = "Browse...";   /* no tooltip: it would sit under the mouse and take the click (the full path is in Options) */
-		now = ui_combo(ap, items, n, cur, (int)row, width, (float)(n + 1) * row);
+		tips[n] = "Another X-Plane folder";
+		items[n++] = "Browse...";
+		now = ui_combo_tips(ap, items, tips, n, cur, (int)row, width, (float)(n + 1) * row);
+		ui_tip_below(ap, &r, ap->inst.root);
 		if (now == n - 1) app_browse_folder(ap, 1);
 		else if (now != cur) app_open_instance(ap, l->v[now]);
 	}
@@ -514,6 +518,7 @@ static void draw(app *ap)
 			nk_group_end(ctx);
 		}
 		ui_statusbar(ap);
+		ui_tip_flush(ap);
 	}
 	nk_end(ctx);
 

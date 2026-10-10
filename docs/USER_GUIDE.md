@@ -57,8 +57,9 @@ X-Plane's own list. When it cannot decide, it shows the installation chooser:
 pick one, or "Browse..." to any X-Plane folder. The installation managed is
 shown at the right end of the tab row; when you have several, it is a
 drop-down that switches from one to another (or "Browse..." to another
-folder), from any page, when no check or update is running. Options shows the
-full path and offers the same choice.
+folder), from any page, when no check or update is running. Hovering the name
+or an entry of the list shows its full path. Options shows it too and offers
+the same choice.
 
 The window comes back where you closed it, on the same monitor, at the same
 size, maximized if it was. If that monitor is no longer connected, the system

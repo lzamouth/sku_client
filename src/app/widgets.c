@@ -138,9 +138,53 @@ bool ui_tab(app *ap, const char *label, bool active)
 	return hit;
 }
 
+/* A tooltip painted beside a widget rather than Nuklear's: that one is a window opened under
+ * the mouse, which takes the next click, and a popup (a combo's list) cannot have one. The
+ * box ends at x = right, starts at y = top, and is moved to stay inside the main window. */
+static void tip_paint(app *ap, struct nk_command_buffer *out, float right, float top, const char *text)
+{
+	struct nk_context *ctx = ap->ctx;
+	const struct nk_user_font *f = ctx->style.font;
+	struct nk_window *mw = nk_window_find(ctx, "main");
+	struct nk_vec2 pad = ctx->style.window.padding;
+	struct nk_color bg = ap->dark ? nk_rgb(64, 64, 64) : nk_rgb(255, 255, 225);
+	struct nk_color line = ap->dark ? nk_rgb(120, 120, 120) : nk_rgb(150, 150, 150);
+	struct nk_rect clip = out->clip, all, box;
+	int len = (int)strlen(text);
+	float tw = f->width(f->userdata, f->height, text, len);
+	if (!mw) return;
+	all = mw->bounds;
+	box = nk_rect(right - tw - 2 * pad.x, top, tw + 2 * pad.x, f->height + 2 * pad.y);
+	if (box.x + box.w > all.x + all.w) box.x = all.x + all.w - box.w;
+	if (box.x < all.x) box.x = all.x;
+	if (box.y + box.h > all.y + all.h) box.y = all.y + all.h - box.h;
+	nk_push_scissor(out, all);
+	nk_fill_rect(out, box, 0, bg);
+	nk_stroke_rect(out, box, 0, 1, line);
+	nk_draw_text(out, nk_rect(box.x + pad.x, box.y + pad.y, tw, f->height), text, len, f, bg, ctx->style.text.color);
+	nk_push_scissor(out, clip);
+}
+
+void ui_tip_below(app *ap, const struct nk_rect *r, const char *text)
+{
+	struct nk_context *ctx = ap->ctx;
+	if (!text || !*text || ctx->current->popup.win || !nk_input_is_mouse_hovering_rect(&ctx->input, *r)) return;
+	sku_strlcpy(ap->tip, text, sizeof ap->tip);
+	ap->tip_right = r->x + r->w;
+	ap->tip_top = r->y + r->h + 2;
+}
+
+void ui_tip_flush(app *ap)
+{
+	if (!ap->tip[0]) return;
+	tip_paint(ap, nk_window_get_canvas(ap->ctx), ap->tip_right, ap->tip_top, ap->tip);
+	ap->tip[0] = 0;
+}
+
 /* A combo box whose popup stands out from the window background, with a thin
- * separator between entries. colors (optional) gives one text color per item. */
-int ui_combo_ex(app *ap, const char **items, const struct nk_color *colors, int n, int selected, int item_height, float w, float h)
+ * separator between entries. colors (optional) gives one text color per item,
+ * tips (optional) a tooltip per item, shown left of the list. */
+static int combo(app *ap, const char **items, const struct nk_color *colors, const char **tips, int n, int selected, int item_height, float w, float h)
 {
 	struct nk_context *ctx = ap->ctx;
 	struct nk_rect r = nk_widget_bounds(ctx);
@@ -160,9 +204,12 @@ int ui_combo_ex(app *ap, const char **items, const struct nk_color *colors, int 
 	nk_style_push_color(ctx, &ctx->style.window.combo_border_color, line);
 	if (nk_combo_begin_label(ctx, items[selected], nk_vec2(w, h))) {
 		float spacing = ctx->style.window.spacing.y;
+		struct nk_rect tip_at = {0};
+		int tip = -1;
 		nk_layout_row_dynamic(ctx, (float)item_height, 1);
 		for (int i = 0; i < n; i++) {
 			struct nk_rect ib = nk_widget_bounds(ctx);
+			if (tips && tips[i] && nk_input_is_mouse_hovering_rect(&ctx->input, ib)) { tip = i; tip_at = ib; }
 			if (colors) {
 				nk_style_push_color(ctx, &ctx->style.contextual_button.text_normal, colors[i]);
 				nk_style_push_color(ctx, &ctx->style.contextual_button.text_hover, colors[i]);
@@ -171,6 +218,14 @@ int ui_combo_ex(app *ap, const char **items, const struct nk_color *colors, int 
 			if (nk_combo_item_label(ctx, items[i], NK_TEXT_LEFT)) now = i;
 			if (colors) { nk_style_pop_color(ctx); nk_style_pop_color(ctx); nk_style_pop_color(ctx); }
 			if (i < n - 1) nk_stroke_line(nk_window_get_canvas(ctx), ib.x, ib.y + ib.h + spacing / 2, ib.x + ib.w, ib.y + ib.h + spacing / 2, 1, line);
+		}
+		if (tip >= 0) {
+			/* left of the list, level with the entry; below the list when too wide for that side */
+			struct nk_rect pb = nk_window_get_bounds(ctx);
+			const struct nk_user_font *f = ctx->style.font;
+			float need = f->width(f->userdata, f->height, tips[tip], (int)strlen(tips[tip])) + 2 * ctx->style.window.padding.x + 2;
+			if (pb.x - need >= 0) tip_paint(ap, nk_window_get_canvas(ctx), pb.x - 2, tip_at.y, tips[tip]);
+			else tip_paint(ap, nk_window_get_canvas(ctx), pb.x + pb.w, pb.y + pb.h + 2, tips[tip]);
 		}
 		nk_combo_end(ctx);
 	}
@@ -183,9 +238,19 @@ int ui_combo_ex(app *ap, const char **items, const struct nk_color *colors, int 
 	return now;
 }
 
+int ui_combo_ex(app *ap, const char **items, const struct nk_color *colors, int n, int selected, int item_height, float w, float h)
+{
+	return combo(ap, items, colors, NULL, n, selected, item_height, w, h);
+}
+
 int ui_combo(app *ap, const char **items, int n, int selected, int item_height, float w, float h)
 {
-	return ui_combo_ex(ap, items, NULL, n, selected, item_height, w, h);
+	return combo(ap, items, NULL, NULL, n, selected, item_height, w, h);
+}
+
+int ui_combo_tips(app *ap, const char **items, const char **tips, int n, int selected, int item_height, float w, float h)
+{
+	return combo(ap, items, NULL, tips, n, selected, item_height, w, h);
 }
 
 const float ui_list_default_cols[4] = { 0.12f, 0.32f, 0.10f, 0.46f };

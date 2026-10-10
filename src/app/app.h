@@ -93,6 +93,8 @@ typedef struct app {
 	sku_strlist switch_roots;         /* the installations offered by the selector on the tab row... */
 	char switch_for[SKU_PATH_MAX];    /* ...built for this current root */
 	char window_note[192];            /* how the window was placed at start, for the log (opened later) */
+	char tip[SKU_PATH_MAX];           /* tooltip to paint at the end of the frame (ui_tip_below), or "" */
+	float tip_right, tip_top;
 	char browse_result[SKU_PATH_MAX]; /* filled by the folder dialog callback */
 	atomic_int browse_pending;        /* 1 = instance, 2 = custom addon folder */
 
@@ -210,6 +212,10 @@ bool ui_tab(app *ap, const char *label, bool active);
 int  ui_combo(app *ap, const char **items, int n, int selected, int item_height, float w, float h);
 struct nk_color;
 int  ui_combo_ex(app *ap, const char **items, const struct nk_color *colors, int n, int selected, int item_height, float w, float h);
+int  ui_combo_tips(app *ap, const char **items, const char **tips, int n, int selected, int item_height, float w, float h);
+/* Tooltip for the widget at r when the mouse is over it, painted below it at the end of the frame (ui_tip_flush). */
+void ui_tip_below(app *ap, const struct nk_rect *r, const char *text);
+void ui_tip_flush(app *ap);
 struct nk_color ui_channel_color(app *ap, const char *channel);   /* stable blue, the others yellow */
 #define UI_MAIN_CHANNEL "Main"                                     /* what the "stable" token is called on screen */
 const char *ui_channel_label(const char *channel);               /* "stable" -> UI_MAIN_CHANNEL, others unchanged */
