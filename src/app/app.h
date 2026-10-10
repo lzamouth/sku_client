@@ -60,7 +60,12 @@ typedef struct {
 	bool verbose;
 	char instance[SKU_PATH_MAX];      /* last used X-Plane root */
 	sku_strlist instances;            /* roots added by hand (browse) */
-	int  window_w, window_h;
+	int  window_w, window_h;          /* the normal (not maximized) size */
+	bool window_pos;                  /* a position was saved: window_x/y, and the display it was on */
+	int  window_x, window_y;
+	char window_display[128];         /* SDL's name of that display, "" if unknown... */
+	int  window_dx, window_dy;        /* ...and the position relative to it */
+	bool window_max;                  /* maximized when closed */
 	bool client_check;                /* daily check for a new version of the updater */
 	char client_url[SKU_URL_MAX];     /* its depot (follows the module the depot announces) */
 	int64_t client_last;              /* last check, seconds since the epoch */
@@ -85,6 +90,9 @@ typedef struct app {
 	sku_instance inst;
 	bool inst_open;
 	sku_strlist known_instances;      /* for the chooser */
+	sku_strlist switch_roots;         /* the installations offered by the selector on the tab row... */
+	char switch_for[SKU_PATH_MAX];    /* ...built for this current root */
+	char window_note[192];            /* how the window was placed at start, for the log (opened later) */
 	char browse_result[SKU_PATH_MAX]; /* filled by the folder dialog callback */
 	atomic_int browse_pending;        /* 1 = instance, 2 = custom addon folder */
 

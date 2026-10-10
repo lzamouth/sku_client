@@ -154,8 +154,8 @@ void app_open_instance(app *ap, const char *root)
 		int ww, wh, pw, ph;
 		SDL_GetWindowSize(ap->win, &ww, &wh);
 		SDL_GetWindowSizeInPixels(ap->win, &pw, &ph);
-		sku_info("window %dx%d, pixels %dx%d, display scale %.3f, video %s, renderer %s",
-			ww, wh, pw, ph, ap->scale, SDL_GetCurrentVideoDriver(), SDL_GetRendererName(ap->ren));
+		sku_info("window %dx%d, pixels %dx%d, display scale %.3f, video %s, renderer %s, %s%s",
+			ww, wh, pw, ph, ap->scale, SDL_GetCurrentVideoDriver(), SDL_GetRendererName(ap->ren), ap->window_note, ap->prefs.window_max ? ", maximized" : "");
 	}
 	sku_strlcpy(ap->prefs.instance, ap->inst.root, sizeof ap->prefs.instance);
 	prefs_migrate_legacy(ap);
@@ -332,6 +332,143 @@ static void autopilot(app *ap)
 
 /* ------------------------------------------------------------ frame */
 
+/* ------------------------------------------------------------ window placement */
+
+/* Where the window is, for the next start: its position, the display it is on (by name)
+ * and the position relative to that display. Not while maximized or minimized: the normal
+ * geometry is what comes back. Wayland gives no position (the compositor places windows). */
+static void window_remember(app *ap)
+{
+	app_prefs *p = &ap->prefs;
+	SDL_WindowFlags f = SDL_GetWindowFlags(ap->win);
+	SDL_DisplayID d;
+	SDL_Rect b;
+	const char *name;
+	int x, y;
+	p->window_max = (f & SDL_WINDOW_MAXIMIZED) != 0;
+	if (f & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_MINIMIZED | SDL_WINDOW_FULLSCREEN)) return;
+	SDL_GetWindowSize(ap->win, &p->window_w, &p->window_h);
+	if (!SDL_GetWindowPosition(ap->win, &x, &y)) return;
+	p->window_pos = true;
+	p->window_x = x; p->window_y = y;
+	p->window_display[0] = 0;
+	d = SDL_GetDisplayForWindow(ap->win);
+	if (d && SDL_GetDisplayBounds(d, &b) && (name = SDL_GetDisplayName(d)) != NULL) {
+		sku_strlcpy(p->window_display, name, sizeof p->window_display);
+		p->window_dx = x - b.x; p->window_dy = y - b.y;
+	}
+}
+
+/* Back where it was closed: on the same display (found by name, the one holding the old
+ * position among identical ones) at the same spot of it, even if the displays were
+ * rearranged; else at the old position; never off screen (a display unplugged): then
+ * where the system puts it. */
+static void window_restore(app *ap)
+{
+	app_prefs *p = &ap->prefs;
+	SDL_DisplayID *ds;
+	int n = 0, x = p->window_x, y = p->window_y;
+	bool visible = false;
+	sku_strlcpy(ap->window_note, "placed by the system", sizeof ap->window_note);
+	if (!p->window_pos || (ds = SDL_GetDisplays(&n)) == NULL) return;
+	if (p->window_display[0]) {
+		bool found = false;
+		SDL_Rect best = {0, 0, 0, 0};
+		for (int i = 0; i < n; i++) {
+			const char *name = SDL_GetDisplayName(ds[i]);
+			SDL_Rect b;
+			if (!name || strcmp(name, p->window_display) != 0 || !SDL_GetDisplayBounds(ds[i], &b)) continue;
+			if (!found || (p->window_x >= b.x && p->window_x < b.x + b.w && p->window_y >= b.y && p->window_y < b.y + b.h)) { best = b; found = true; }
+		}
+		if (found) { x = best.x + p->window_dx; y = best.y + p->window_dy; }
+		else sku_snprintf(ap->window_note, sizeof ap->window_note, "display \"%s\" not found", p->window_display);
+	}
+	for (int i = 0; i < n && !visible; i++) {
+		SDL_Rect u;
+		int left, right, top, bottom;
+		if (!SDL_GetDisplayUsableBounds(ds[i], &u)) continue;
+		left = x > u.x ? x : u.x;
+		right = x + p->window_w < u.x + u.w ? x + p->window_w : u.x + u.w;
+		top = y > u.y ? y : u.y;
+		bottom = y + 40 < u.y + u.h ? y + 40 : u.y + u.h;
+		visible = right - left >= 100 && bottom - top >= 20;   /* enough of the top to grab the window */
+	}
+	SDL_free(ds);
+	if (visible) {
+		SDL_SetWindowPosition(ap->win, x, y);
+		sku_snprintf(ap->window_note, sizeof ap->window_note, "restored at %d,%d%s%s%s", x, y,
+			p->window_display[0] ? " on display \"" : "", p->window_display, p->window_display[0] ? "\"" : "");
+	} else sku_snprintf(ap->window_note, sizeof ap->window_note, "saved position %d,%d off every display now, placed by the system", x, y);
+}
+
+/* The installations the tab-row selector offers: those X-Plane declares, those added by
+ * hand, the current one, and those offered before in this session (an installation opened
+ * with --xp or from its own folder stays reachable after switching away); rebuilt when the
+ * current installation changes. */
+static void switch_roots_build(app *ap)
+{
+	sku_strlist l = {0};
+	if (strcmp(ap->switch_for, ap->inst.root) == 0) return;
+	sku_instance_known(&l);
+	for (int i = 0; i < ap->prefs.instances.n; i++)
+		if (sku_instance_is_root(ap->prefs.instances.v[i]) && !sku_strlist_has(&l, ap->prefs.instances.v[i])) sku_strlist_push(&l, ap->prefs.instances.v[i]);
+	for (int i = 0; i < ap->switch_roots.n; i++)
+		if (sku_instance_is_root(ap->switch_roots.v[i]) && !sku_strlist_has(&l, ap->switch_roots.v[i])) sku_strlist_push(&l, ap->switch_roots.v[i]);
+	if (!sku_strlist_has(&l, ap->inst.root)) sku_strlist_push(&l, ap->inst.root);
+	sku_strlist_free(&ap->switch_roots);
+	ap->switch_roots = l;
+	sku_strlcpy(ap->switch_for, ap->inst.root, sizeof ap->switch_for);
+}
+
+/* An installation's short name: its folder, with the parent folder when another
+ * installation has the same folder name ("ssd1/X-Plane 12"). */
+static void root_label(const sku_strlist *l, const char *root, char *out, size_t n)
+{
+	char dir[SKU_PATH_MAX];
+	bool twin = false;
+	const char *base = sku_path_basename(root);
+	for (int i = 0; i < l->n; i++) if (strcmp(l->v[i], root) != 0 && strcmp(sku_path_basename(l->v[i]), base) == 0) twin = true;
+	if (!twin) { sku_strlcpy(out, base, n); return; }
+	sku_path_dirname(dir, sizeof dir, root);
+	sku_snprintf(out, n, "%s/%s", sku_path_basename(dir), base);
+}
+
+/* Right end of the tab row: the installation managed (its folder name; the full path is in
+ * Options), a drop-down when there is a choice
+ * (and no job running: an installation does not change under a check or an update). */
+static void instance_selector(app *ap, float width, float row)
+{
+	struct nk_context *ctx = ap->ctx;
+	const sku_strlist *l = &ap->switch_roots;
+	char shown[SKU_PATH_MAX];
+	(void)ctx;
+	switch_roots_build(ap);
+	if (l->n < 2 || app_any_busy(ap)) {
+		char lab[SKU_PATH_MAX];
+		root_label(l, ap->inst.root, lab, sizeof lab);
+		ui_left_truncate(ap, lab, width - 12, shown, sizeof shown);
+		nk_label(ctx, shown, NK_TEXT_RIGHT);
+		return;
+	}
+	{
+		const char *items[34];
+		char labels[33][160];
+		int n = 0, cur = 0, now;
+		for (int i = 0; i < l->n && n < 32; i++) {
+			char lab[SKU_PATH_MAX];
+			root_label(l, l->v[i], lab, sizeof lab);
+			ui_left_truncate(ap, lab, width - UI_W(ap, 40), labels[n], sizeof labels[n]);
+			if (strcmp(l->v[i], ap->inst.root) == 0) cur = n;
+			items[n] = labels[n];
+			n++;
+		}
+		items[n++] = "Browse...";   /* no tooltip: it would sit under the mouse and take the click (the full path is in Options) */
+		now = ui_combo(ap, items, n, cur, (int)row, width, (float)(n + 1) * row);
+		if (now == n - 1) app_browse_folder(ap, 1);
+		else if (now != cur) app_open_instance(ap, l->v[now]);
+	}
+}
+
 static void draw(app *ap)
 {
 	struct nk_context *ctx = ap->ctx;
@@ -344,13 +481,21 @@ static void draw(app *ap)
 		if (ap->inst_open) {
 			/* tab bar, like the 3.x client: Addons / Options / About */
 			bool in_addons = ap->view == VIEW_LIST || ap->view == VIEW_DETAIL || ap->view == VIEW_PACK;
-			nk_layout_row_begin(ctx, NK_STATIC, row, 4);
+			/* the installation selector takes the right end, up to 420 px of 16 px text */
+			float pad = ctx->style.window.padding.x, gap = ctx->style.window.spacing.x;
+			float rest = (float)w - 2 * pad - 3 * UI_W(ap, 110) - 4 * gap - 4;
+			float sel = rest < UI_W(ap, 420) ? rest : UI_W(ap, 420);
+			nk_layout_row_begin(ctx, NK_STATIC, row, 5);
 			nk_layout_row_push(ctx, UI_W(ap, 110));
 			if (ui_tab(ap, "Addons", in_addons) && !in_addons) ap->view = VIEW_LIST;
 			nk_layout_row_push(ctx, UI_W(ap, 110));
 			if (ui_tab(ap, "Options", ap->view == VIEW_OPTIONS)) ap->view = VIEW_OPTIONS;
 			nk_layout_row_push(ctx, UI_W(ap, 110));
 			if (ui_tab(ap, "About", ap->view == VIEW_ABOUT)) ap->view = VIEW_ABOUT;
+			nk_layout_row_push(ctx, rest - sel > 0 ? rest - sel : 0);
+			nk_label(ctx, "", NK_TEXT_LEFT);
+			nk_layout_row_push(ctx, sel);
+			if (sel >= UI_W(ap, 140)) instance_selector(ap, sel, row); else nk_label(ctx, "", NK_TEXT_LEFT);
 			nk_layout_row_end(ctx);
 		}
 		/* the updater's own update, above every view */
@@ -460,9 +605,12 @@ int main(int argc, char **argv)
 #endif
 	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) { fprintf(stderr, "SDL_Init: %s\n", SDL_GetError()); return 1; }
 	if (!SDL_CreateWindowAndRenderer(APP_NAME " " SKU_VERSION, ap.prefs.window_w, ap.prefs.window_h,
-			SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &ap.win, &ap.ren)) {
+			SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN, &ap.win, &ap.ren)) {
 		fprintf(stderr, "window: %s\n", SDL_GetError()); return 1;
 	}
+	window_restore(&ap);                       /* placed while hidden: no jump on screen */
+	if (ap.prefs.window_max) SDL_MaximizeWindow(ap.win);
+	SDL_ShowWindow(ap.win);
 	SDL_SetWindowMinimumSize(ap.win, 640, 400);
 	SDL_SetRenderVSync(ap.ren, getenv("SKU_NOVSYNC") ? 0 : 1);   /* SKU_NOVSYNC=1: diagnose resize lag */
 	ap.scale = SDL_GetWindowDisplayScale(ap.win);
@@ -504,9 +652,13 @@ int main(int argc, char **argv)
 					}
 				}
 				if (ev.type == SDL_EVENT_WINDOW_RESIZED) {
-					SDL_GetWindowSize(ap.win, &ap.prefs.window_w, &ap.prefs.window_h);
+					window_remember(&ap);
 					last_size_save = sku_time_ms();
 					ap.resizing = true;
+				}
+				if (ev.type == SDL_EVENT_WINDOW_MOVED || ev.type == SDL_EVENT_WINDOW_MAXIMIZED || ev.type == SDL_EVENT_WINDOW_RESTORED) {
+					window_remember(&ap);
+					last_size_save = sku_time_ms();
 				}
 				if (ev.type == SDL_EVENT_SYSTEM_THEME_CHANGED && ap.prefs.theme == THEME_SYSTEM) app_apply_theme(&ap);
 				SDL_ConvertEventToRenderCoordinates(ap.ren, &ev);
@@ -533,6 +685,7 @@ int main(int argc, char **argv)
 		draw(&ap);
 	}
 
+	window_remember(&ap);
 	prefs_save(&ap);
 	app_close_instance(&ap);
 	while (atomic_load(&ap.client_state) == CLIENT_CHECKING || atomic_load(&ap.client_state) == CLIENT_DOWNLOADING) {
@@ -547,5 +700,6 @@ int main(int argc, char **argv)
 	sku_http_global_cleanup();
 	sku_strlist_free(&ap.prefs.instances);
 	sku_strlist_free(&ap.known_instances);
+	sku_strlist_free(&ap.switch_roots);
 	return 0;
 }

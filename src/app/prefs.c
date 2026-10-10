@@ -58,6 +58,13 @@ int prefs_load(app *ap)
 	p->verbose     = sku_cfg_get_bool(&c, "verbose", false);
 	p->window_w    = clamp(atoi(sku_cfg_get_or(&c, "window_w", "1100")), 640, 8192);
 	p->window_h    = clamp(atoi(sku_cfg_get_or(&c, "window_h", "700")), 400, 8192);
+	p->window_pos  = sku_cfg_has(&c, "window_x") && sku_cfg_has(&c, "window_y");
+	p->window_x    = atoi(sku_cfg_get_or(&c, "window_x", "0"));
+	p->window_y    = atoi(sku_cfg_get_or(&c, "window_y", "0"));
+	sku_strlcpy(p->window_display, sku_cfg_get_or(&c, "window_display", ""), sizeof p->window_display);
+	p->window_dx   = atoi(sku_cfg_get_or(&c, "window_dx", "0"));
+	p->window_dy   = atoi(sku_cfg_get_or(&c, "window_dy", "0"));
+	p->window_max  = sku_cfg_get_bool(&c, "window_max", false);
 	sku_strlcpy(p->instance, sku_cfg_get_or(&c, "instance", ""), sizeof p->instance);
 	p->client_check = sku_cfg_get_bool(&c, "client_check", true);
 	sku_strlcpy(p->client_url, sku_cfg_get_or(&c, "client_url", SKU_CLIENT_DEPOT_URL), sizeof p->client_url);
@@ -96,6 +103,14 @@ int prefs_save(app *ap)
 	sku_cfg_set_bool(&c, "verbose", p->verbose);
 	sku_snprintf(num, sizeof num, "%d", p->window_w);    sku_cfg_set(&c, "window_w", num);
 	sku_snprintf(num, sizeof num, "%d", p->window_h);    sku_cfg_set(&c, "window_h", num);
+	if (p->window_pos) {
+		sku_snprintf(num, sizeof num, "%d", p->window_x);  sku_cfg_set(&c, "window_x", num);
+		sku_snprintf(num, sizeof num, "%d", p->window_y);  sku_cfg_set(&c, "window_y", num);
+		sku_cfg_set(&c, "window_display", p->window_display);
+		sku_snprintf(num, sizeof num, "%d", p->window_dx); sku_cfg_set(&c, "window_dx", num);
+		sku_snprintf(num, sizeof num, "%d", p->window_dy); sku_cfg_set(&c, "window_dy", num);
+	}
+	sku_cfg_set_bool(&c, "window_max", p->window_max);
 	sku_cfg_set(&c, "instance", p->instance);
 	for (int i = 0; i < p->instances.n; i++) {
 		size_t k = strlen(p->instances.v[i]);

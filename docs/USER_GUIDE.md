@@ -54,8 +54,16 @@ with the current runtime; use version 3.0 or the plain program from the zip.
 If the program sits in an X-Plane folder, it opens that installation. Else
 it uses the one you picked last time, then the installations declared in
 X-Plane's own list. When it cannot decide, it shows the installation chooser:
-pick one, or "Browse..." to any X-Plane folder. You can change it later in
-Options.
+pick one, or "Browse..." to any X-Plane folder. The installation managed is
+shown at the right end of the tab row; when you have several, it is a
+drop-down that switches from one to another (or "Browse..." to another
+folder), from any page, when no check or update is running. Options shows the
+full path and offers the same choice.
+
+The window comes back where you closed it, on the same monitor, at the same
+size, maximized if it was. If that monitor is no longer connected, the system
+places it. (Under a native Wayland session on Linux the desktop always
+decides where windows go.)
 
 The Addons page then lists every add-on it found: it scans `Aircraft`,
 `Custom Scenery`, `Resources/plugins` and the X-Plane root for folders that
