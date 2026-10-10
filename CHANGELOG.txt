@@ -1,3 +1,7 @@
+4.2.1
+- The installation selector shows the full path when hovering its name or an entry of the list
+- The selector is only as wide as the installation names need
+
 4.2.0
 - Public beta channels: a developer can offer a beta to every user from the update server, with no file to hand out; it appears in the Channel column and is followed only if you pick it
 - A public channel you removed does not come back; one the developer withdraws disappears, unless you follow it
