@@ -79,3 +79,4 @@ X-Plane folder. Third-party components and their licenses are listed in
 THIRD_PARTY_NOTICES.txt.
 
 (c) 2025-2026 Lionel Zamouth - https://www.skunkcrafts.com/
+MIT licence; source code: https://github.com/lzamouth/sku_client

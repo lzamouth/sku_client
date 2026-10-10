@@ -149,3 +149,7 @@ Libraries (sources pinned in `deps/`, all static): SDL3 (window, input, renderin
 - Linux: 5.4 MB, GLIBC_2.34 max, NEEDED = libc, libm. HTTPS GET OK (mbedTLS) on the host and in the 22.04 container. Window OK under Wayland.
 - Windows: 6.0 MB, system DLLs only. HTTPS GET OK (Schannel) under wine.
 - macOS: 8.2 MB universal, minos 10.15/11.0, system frameworks + libSystem/libz/libobjc, arm64 slice signed ad hoc by ld64. Validated on a MacBook Pro M2.
+
+## Licence
+
+MIT, see `LICENSE`. The third-party components and their licences are listed in `LICENSES.md` and `THIRD_PARTY_NOTICES.txt`.

@@ -1,5 +1,7 @@
 # Licences of the third-party components
 
+The updater's own code is under the MIT licence (`LICENSE`).
+
 Checked on 23/09/2026 against the versions pinned by `deps/fetch.sh`. All
 are permissive and compatible with binary distribution, closed or not, with
 static linking. **No GPL or LGPL component is linked** into our binaries.
