@@ -9,7 +9,15 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$NAME"
 chmod 755 "$APP/Contents/MacOS/$NAME"
-for r in "$@"; do cp "$r" "$APP/Contents/Resources/"; done
+ICON=""
+for r in "$@"; do
+	cp "$r" "$APP/Contents/Resources/"
+	# an .icns among the resources is the application icon: without CFBundleIconFile
+	# macOS ignores it and shows the generic icon (Finder, Dock, Launchpad)
+	case "$r" in *.icns) ICON=$(basename "$r" .icns) ;; esac
+done
+ICON_KEY=""
+[ -n "$ICON" ] && ICON_KEY="<key>CFBundleIconFile</key>           <string>$ICON</string>"
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -18,6 +26,7 @@ cat > "$APP/Contents/Info.plist" <<EOF
 	<key>CFBundleName</key>               <string>$NAME</string>
 	<key>CFBundleDisplayName</key>        <string>$NAME</string>
 	<key>CFBundleExecutable</key>         <string>$NAME</string>
+	$ICON_KEY
 	<key>CFBundleIdentifier</key>         <string>$ID</string>
 	<key>CFBundlePackageType</key>        <string>APPL</string>
 	<key>CFBundleInfoDictionaryVersion</key> <string>6.0</string>
