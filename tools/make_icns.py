@@ -5,8 +5,10 @@ import io, struct, sys
 from PIL import Image
 
 src = Image.open(sys.argv[1]).convert("RGBA")
-# (type, size) pairs; ic07 = 128, ic08 = 256, ic09 = 512, ic04/ic05 = 16/32 (PNG allowed since 10.7 with ARGB fallback)
-entries = [("icp4", 16), ("icp5", 32), ("icp6", 64), ("ic07", 128), ("ic08", 256), ("ic09", 512)]
+# (type, size) pairs, PNG-encoded: icp4/icp5/icp6 = 16/32/64, ic07/ic08/ic09/ic10 = 128/256/512/1024,
+# and the Retina "@2x" entries ic11/ic12/ic13/ic14 = 16/32/128/256 at double size
+entries = [("icp4", 16), ("icp5", 32), ("icp6", 64), ("ic07", 128), ("ic08", 256), ("ic09", 512), ("ic10", 1024),
+           ("ic11", 32), ("ic12", 64), ("ic13", 256), ("ic14", 512)]
 chunks = b""
 for kind, size in entries:
 	if size > max(src.size):

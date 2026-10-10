@@ -55,13 +55,13 @@ makensis -V2 -DVERSION="$VER" -DSTAGE="$STAGE" -DOUT="$DIST/SkunkcraftsUpdater-$
 
 echo "=== AppImage (static type-2 runtime + squashfs, no appimagetool needed)"
 APPDIR="$DIST/AppDir"
-rm -rf "$APPDIR"; mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/icons/hicolor/128x128/apps"
+rm -rf "$APPDIR"; mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/icons/hicolor/256x256/apps"
 cp "$STAGE/SkunkcraftsUpdater_lin" "$APPDIR/usr/bin/"
 cp "$ROOT/build/linux/src/cli/sku" "$APPDIR/usr/bin/" && strip "$APPDIR/usr/bin/sku"
 cp "$ROOT/packaging/linux/SkunkcraftsUpdater.desktop" "$APPDIR/"
 cp "$ROOT/packaging/icons/icon.png" "$APPDIR/skunkcrafts-updater.png"
 cp "$ROOT/packaging/icons/icon.png" "$APPDIR/.DirIcon"   # required by libappimage (AppImageLauncher integration)
-cp "$ROOT/packaging/icons/icon.png" "$APPDIR/usr/share/icons/hicolor/128x128/apps/skunkcrafts-updater.png"
+cp "$ROOT/packaging/icons/icon.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/skunkcrafts-updater.png"
 cp "$STAGE/README.txt" "$STAGE/USER_GUIDE.html" "$STAGE/THIRD_PARTY_NOTICES.txt" "$APPDIR/"
 printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/bin/SkunkcraftsUpdater_lin" "$@"\n' > "$APPDIR/AppRun"
 chmod +x "$APPDIR/AppRun"

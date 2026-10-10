@@ -94,7 +94,7 @@ Publishing a packaged version to the client depot and the store CDN: `docs/publi
 
 Produces in `dist/<version>/` one download per platform and install mode: `SkunkcraftsUpdater-<v>-windows.zip` and `-linux.zip` (the program alone, to drop into X-Plane or elsewhere), `SkunkcraftsUpdater-<v>-windows-setup.exe` (NSIS, `makensis` required), `SkunkcraftsUpdater-<v>-macos.zip` (universal `.app`, arm64 signed ad hoc — never `strip` after linking, symbols are removed by the linker), `SkunkcraftsUpdater-<v>-x86_64.AppImage` (official static runtime + gzip squashfs made in the container, no `appimagetool`; gzip because libappimage, hence AppImageLauncher integration, does not read zstd), `sku-cli-<v>.zip`.
 
-Icons: `packaging/icons/icon.png` → `.ico` (ImageMagick) and `.icns` (`tools/make_icns.py`). Windows resource (icon, version info): `packaging/windows/app.rc.in`.
+Icons: `packaging/icons/icon.svg` is the source; `tools/make_icons.sh` (host: inkscape, ImageMagick, Pillow) renders `icon.png` (256 px), `icon.ico` (16 to 256 px) and `icon.icns` (16 to 1024 px with the Retina entries, `tools/make_icns.py`), all committed. Windows resource (icon, version info): `packaging/windows/app.rc.in`.
 
 Testing trap: this machine has **AppImageLauncher**, which intercepts every AppImage execution through `binfmt_misc` (including inside Docker containers, where execution then fails with "No such file or directory"). To test an AppImage without it, zero the 3 magic bytes at offset 8 of a copy (`printf '\x00\x00\x00' | dd of=copy bs=1 seek=8 conv=notrunc`), then run it normally or with `APPIMAGE_EXTRACT_AND_RUN=1`.
 
