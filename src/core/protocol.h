@@ -1,5 +1,6 @@
 /* The depot protocol: file names, URL rules and parsers for the remote lists.
- * Level 1 = what 3.x clients speak; level 2 adds the manifest (see ANALYSIS.md). */
+ * Level 1 = what 3.x clients speak; level 2 (protocol|2 in the cfg) adds the manifest, one
+ * "path|crc|size" line per file in place of the whitelist and sizeslist. */
 #ifndef SKU_PROTOCOL_H
 #define SKU_PROTOCOL_H
 

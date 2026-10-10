@@ -1,6 +1,6 @@
 # SkunkCrafts Updater 4.0 (sku_client)
 
-C rewrite of the SkunkCrafts Updater client for X-Plane. Analysis and decisions: [ANALYSIS.md](ANALYSIS.md).
+C rewrite of the SkunkCrafts Updater client for X-Plane.
 
 ## Layout
 
