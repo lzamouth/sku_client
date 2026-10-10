@@ -433,6 +433,25 @@ static void root_label(const sku_strlist *l, const char *root, char *out, size_t
 	sku_snprintf(out, n, "%s/%s", sku_path_basename(dir), base);
 }
 
+/* Width of the selector: its longest name (or "Browse...") plus the combo's arrow and
+ * margins, so that "X-Plane 12" gets a small button; at most 420 px of 16 px text. */
+static float selector_width(app *ap)
+{
+	const struct nk_user_font *f = ap->ctx->style.font;
+	const sku_strlist *l = &ap->switch_roots;
+	float w = f->width(f->userdata, f->height, "Browse...", 9);
+	switch_roots_build(ap);
+	for (int i = 0; i < l->n; i++) {
+		char lab[SKU_PATH_MAX];
+		float tw;
+		root_label(l, l->v[i], lab, sizeof lab);
+		tw = f->width(f->userdata, f->height, lab, (int)strlen(lab));
+		if (tw > w) w = tw;
+	}
+	w += UI_W(ap, 44);   /* the entries are cut at width - 40 */
+	return w < UI_W(ap, 420) ? w : UI_W(ap, 420);
+}
+
 /* Right end of the tab row: the installation managed (its folder name, the full path in a
  * tooltip), a drop-down when there is a choice
  * (and no job running: an installation does not change under a check or an update). */
@@ -485,10 +504,11 @@ static void draw(app *ap)
 		if (ap->inst_open) {
 			/* tab bar, like the 3.x client: Addons / Options / About */
 			bool in_addons = ap->view == VIEW_LIST || ap->view == VIEW_DETAIL || ap->view == VIEW_PACK;
-			/* the installation selector takes the right end, up to 420 px of 16 px text */
+			/* the installation selector takes the right end, as wide as its longest name */
 			float pad = ctx->style.window.padding.x, gap = ctx->style.window.spacing.x;
 			float rest = (float)w - 2 * pad - 3 * UI_W(ap, 110) - 4 * gap - 4;
-			float sel = rest < UI_W(ap, 420) ? rest : UI_W(ap, 420);
+			float sel = selector_width(ap);
+			if (sel > rest) sel = rest;
 			nk_layout_row_begin(ctx, NK_STATIC, row, 5);
 			nk_layout_row_push(ctx, UI_W(ap, 110));
 			if (ui_tab(ap, "Addons", in_addons) && !in_addons) ap->view = VIEW_LIST;
@@ -499,7 +519,7 @@ static void draw(app *ap)
 			nk_layout_row_push(ctx, rest - sel > 0 ? rest - sel : 0);
 			nk_label(ctx, "", NK_TEXT_LEFT);
 			nk_layout_row_push(ctx, sel);
-			if (sel >= UI_W(ap, 140)) instance_selector(ap, sel, row); else nk_label(ctx, "", NK_TEXT_LEFT);
+			if (sel >= UI_W(ap, 80)) instance_selector(ap, sel, row); else nk_label(ctx, "", NK_TEXT_LEFT);
 			nk_layout_row_end(ctx);
 		}
 		/* the updater's own update, above every view */
