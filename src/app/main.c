@@ -448,7 +448,7 @@ static float selector_width(app *ap)
 		tw = f->width(f->userdata, f->height, lab, (int)strlen(lab));
 		if (tw > w) w = tw;
 	}
-	w += UI_W(ap, 44);   /* the entries are cut at width - 40 */
+	w += f->width(f->userdata, f->height, "M", 1) + UI_W(ap, 44);   /* one capital letter of air; the entries are cut at width - 40 */
 	return w < UI_W(ap, 420) ? w : UI_W(ap, 420);
 }
 
