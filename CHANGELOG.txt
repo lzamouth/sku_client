@@ -1,3 +1,7 @@
+4.2.2
+- macOS: the application shows its icon again in Finder, the Dock and Launchpad
+- A new, sharp icon at every size, Retina included
+
 4.2.1
 - The installation selector shows the full path when hovering its name or an entry of the list
 - The selector is only as wide as the installation names need
