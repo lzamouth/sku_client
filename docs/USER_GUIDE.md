@@ -62,8 +62,8 @@ full path and offers the same choice.
 
 The window comes back where you closed it, on the same monitor, at the same
 size, maximized if it was. If that monitor is no longer connected, the system
-places it. (Under a native Wayland session on Linux the desktop always
-decides where windows go.)
+places it. Some desktops place windows themselves and may not follow the
+saved position (GNOME, for example).
 
 The Addons page then lists every add-on it found: it scans `Aircraft`,
 `Custom Scenery`, `Resources/plugins` and the X-Plane root for folders that

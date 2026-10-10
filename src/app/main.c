@@ -336,7 +336,7 @@ static void autopilot(app *ap)
 
 /* Where the window is, for the next start: its position, the display it is on (by name)
  * and the position relative to that display. Not while maximized or minimized: the normal
- * geometry is what comes back. Wayland gives no position (the compositor places windows). */
+ * geometry is what comes back. The compositor may still place windows its own way (GNOME). */
 static void window_remember(app *ap)
 {
 	app_prefs *p = &ap->prefs;
