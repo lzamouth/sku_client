@@ -162,7 +162,7 @@ int sku_addon_update(sku_addon *a, const sku_update_opts *opts)
 	/* everything landed: adopt the remote identity and version */
 	sku_cfg_set(&a->local, "name",    sku_cfg_get(&a->remote, "name"));
 	sku_cfg_set(&a->local, "version", a->remote_version);
-	if (strcmp(a->channel, "stable") == 0) {
+	if (strcmp(a->channel, "stable") == 0 && !a->fallback[0]) {   /* a fallback's cfg does not move the main depot */
 		sku_cfg_set(&a->local, "zone",   sku_cfg_get(&a->remote, "zone"));
 		sku_cfg_set(&a->local, "module", sku_cfg_get(&a->remote, "module"));
 	}

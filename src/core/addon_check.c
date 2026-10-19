@@ -281,6 +281,7 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	a->checked = false;
 	a->lists_from_cache = 0;
 	if (!a->dirty && (rc = sku_addon_reload(a)) != SKU_OK) return rc;   /* unsaved settings win over the disk */
+	sku_addon_reset_source(a);   /* a fallback lasts one check */
 	if (a->disabled) { sku_addon_set_status(a, SKU_ST_DISABLED, "Updates disabled by user", ""); return SKU_OK; }
 
 	sku_addon_set_status(a, SKU_ST_CHECKING, "Contacting the update server", "");
@@ -294,6 +295,20 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 		char now[32];
 		sku_snprintf(now, sizeof now, "%lld", (long long)sku_time_now());
 		rc = fetch_text(a, h, SKU_F_CFG, "t", now, true, &text, &r);
+		/* on Main, a main depot that does not exist (yet): this check goes to the first public
+		 * channel instead; the user's choice stays Main, so a release published there later is
+		 * picked up by itself. Only for "not found": an outage of the main depot never sends
+		 * its users to a beta. */
+		if (rc != SKU_OK && rc != SKU_ERR_CANCELLED && (r.status == 404 || r.status == 410) && strcmp(a->channel, "stable") == 0) {
+			const sku_channel *fb = sku_addon_fallback_channel(a);
+			if (fb) {
+				sku_info("%s: the main depot has no configuration (HTTP %ld): this check uses the public channel \"%s\" (%s)", a->name, r.status, fb->name, fb->module);
+				sku_protocol_base_url(a->base_url, sizeof a->base_url, fb->zone, fb->module);
+				sku_strlcpy(a->fallback, fb->name, sizeof a->fallback);
+				sku_snprintf(a->notice, sizeof a->notice, "%s: no release on Main yet, the public channel \"%s\" is used until there is one", a->name, fb->name);
+				rc = fetch_text(a, h, SKU_F_CFG, "t", now, true, &text, &r);
+			}
+		}
 	}
 	if (rc != SKU_OK) {
 		sku_addon_set_status(a, rc == SKU_ERR_CANCELLED ? SKU_ST_CANCELLED : SKU_ST_ERROR_NET, "Cannot retrieve the remote configuration", r.error);
@@ -314,7 +329,7 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	if (*a->readme && sku_path_check_relative(a->readme) != SKU_OK) a->readme[0] = 0;
 	/* the depot may move: name/zone/module follow the remote (stable channel only);
 	 * so do the pack keys, which let a depot join a pack or declare new members later */
-	if (strcmp(a->channel, "stable") == 0) {
+	if (strcmp(a->channel, "stable") == 0 && !a->fallback[0]) {
 		static const char *pack_keys[] = { "pack", "member", "pack_name", "pack_members" };
 		const char *rn = sku_cfg_get(&a->remote, "name"), *rz = sku_cfg_get(&a->remote, "zone"), *rm = sku_cfg_get(&a->remote, "module");
 		bool changed = strcmp(a->name, rn) != 0 || strcmp(a->zone, rz) != 0 || strcmp(a->module, rm) != 0;
@@ -334,7 +349,7 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	}
 
 	/* public channels: offered by the depot's cfg, withdrawn only by the main depot's */
-	sku_addon_public_channels(a, &a->remote, strcmp(a->channel, "stable") == 0, opts->dry_run);
+	sku_addon_public_channels(a, &a->remote, strcmp(a->channel, "stable") == 0 && !a->fallback[0], opts->dry_run);
 
 	if (sku_cfg_get_bool(&a->remote, "locked", false)) {
 		sku_addon_set_status(a, SKU_ST_LOCKED, "Update repository locked for maintenance", "Updates are not possible until the developer removes the lock.");

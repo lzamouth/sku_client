@@ -35,7 +35,8 @@ char *sku_report_render(sku_addon *a, const char *title)
 	put(&b, "%s - %s\n", title, when);
 	put(&b, "Addon    : %s (%s)\n", a->name, sku_genre_name(a->genre));
 	put(&b, "Folder   : %s\n", a->dir);
-	put(&b, "Source   : %s (channel %s, protocol %d)\n", a->base_url, a->channel, a->level);
+	if (a->fallback[0]) put(&b, "Source   : %s (channel %s, no main depot: public channel %s used, protocol %d)\n", a->base_url, a->channel, a->fallback, a->level);
+	else put(&b, "Source   : %s (channel %s, protocol %d)\n", a->base_url, a->channel, a->level);
 	put(&b, "Version  : local %s, remote %s\n", a->version, a->checked || a->remote_version[0] ? a->remote_version : "?");
 	put(&b, "Status   : %s - %s\n", sku_status_name(st), text);
 	if (*detail) put(&b, "           %s\n", detail);

@@ -459,7 +459,6 @@ static int channels_save(sku_addon *a)
 
 static void fields_from_cfg(sku_addon *a)
 {
-	const sku_channel *c;
 	sku_strlcpy(a->name,    sku_cfg_get_or(&a->local, "name", ""), sizeof a->name);
 	sku_strlcpy(a->version, sku_cfg_get_or(&a->local, "version", ""), sizeof a->version);
 	sku_strlcpy(a->module,  sku_cfg_get_or(&a->local, "module", ""), sizeof a->module);
@@ -475,8 +474,20 @@ static void fields_from_cfg(sku_addon *a)
 		sku_strlcpy(a->channel, "stable", sizeof a->channel);
 		a->dirty = true;
 	}
-	c = strcmp(a->channel, "stable") == 0 ? NULL : channel_get(a, a->channel);
+	sku_addon_reset_source(a);
+}
+
+void sku_addon_reset_source(sku_addon *a)
+{
+	const sku_channel *c = strcmp(a->channel, "stable") == 0 ? NULL : channel_get(a, a->channel);
 	sku_protocol_base_url(a->base_url, sizeof a->base_url, c ? c->zone : a->zone, c ? c->module : a->module);
+	a->fallback[0] = 0;
+}
+
+const sku_channel *sku_addon_fallback_channel(const sku_addon *a)
+{
+	for (int i = 0; i < a->nchannels; i++) if (a->channels[i].is_public) return &a->channels[i];   /* sorted by name */
+	return NULL;
 }
 
 static void load_ignore(sku_addon *a, const char *file)
@@ -537,6 +548,10 @@ int sku_addon_reload(sku_addon *a)
 		sku_strlcpy(a->module, sku_cfg_get_or(&a->local, "module", ""), sizeof a->module);
 		channels_from_root_cfg(a, active_known);
 		sku_list_dir(a->dir, beta_cb, &s);
+		/* the public channels a developer's configuration declares, read from the local copy
+		 * too: a product whose main depot is still empty can be handed out as that one file */
+		sku_strlcpy(a->name, sku_cfg_get_or(&a->local, "name", ""), sizeof a->name);
+		sku_addon_public_channels(a, &a->local, false, a->inst->read_only);
 		qsort(a->channels, (size_t)a->nchannels, sizeof *a->channels, channel_cmp);
 		fields_from_cfg(a);
 		/* allowed to write: absorb beta files and the legacy layout now rather than at the next save */

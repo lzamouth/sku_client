@@ -98,6 +98,7 @@ typedef struct {
 	int        lists_from_cache;         /* remote lists answered 304 at the last check */
 	bool       no_query;                 /* the depot refuses URLs with a query string: none sent any more */
 	char       notice[256];              /* for the user (status bar), then cleared by the application: a beta file absorbed, a channel offered */
+	char       fallback[64];             /* on Main without a main depot (404): the public channel this check used, or "" */
 	char       changelog[SKU_PATH_MAX];  /* relative path declared by the depot, or "" */
 	char       readme[SKU_PATH_MAX];
 
@@ -144,6 +145,11 @@ void       sku_addon_channel_offer(sku_addon *a, const char *text, const char *f
  * from the main depot (from_main), a public channel no longer declared is withdrawn unless followed.
  * Saved unless dry_run. */
 void       sku_addon_public_channels(sku_addon *a, const sku_cfg *remote, bool from_main, bool dry_run);
+/* The depot of the active channel in base_url, no fallback. */
+void       sku_addon_reset_source(sku_addon *a);
+/* The public channel a check on Main falls back to when the main depot does not exist (yet):
+ * the first one by name, or NULL. Never saved as the active channel. */
+const sku_channel *sku_addon_fallback_channel(const sku_addon *a);
 /* The only way a channel file goes: set aside as <file>.removed; the addon falls back to stable if it was active. */
 int        sku_addon_remove_channel(sku_addon *a, const char *channel, bool dry_run);
 

@@ -315,6 +315,21 @@ What the 4.2 client does with them, at every check:
 - A tester who already follows the same depot through a tester file keeps
   that private channel, under its own name.
 
+**A product without a main depot yet (4.2.3 client).** While the main
+depot does not exist (it answers 404), a client on `Main` checks and updates
+from the first public channel, by name, instead of failing; the user's choice
+stays `Main`, so the client goes back to it by itself once you publish a
+release there. Only "not found" does this: a main depot that is down sends
+nobody to a beta.
+
+**One file to hand out (4.2.3 client).** The client also reads the
+`channel.<name>|<URL>` lines from the copy of the configuration in the
+product folder. Your `skunkcrafts_updater_config.txt`, renamed
+`skunkcrafts_updater.cfg`, is therefore all a user needs: they create the
+product folder in `Aircraft`, put that one file in it and start the updater,
+which offers the public channels (and, with no main depot yet, uses the first
+one).
+
 Private betas stay with tester files (2.2): a channel declared in the
 configuration is visible to every user of the product. The configuration
 is the same on every channel's depot; the client reads the public channels

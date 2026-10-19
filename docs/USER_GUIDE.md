@@ -163,6 +163,13 @@ it. To get rid of a beta, pick it, press
 add-on goes back to Main. Only the developer's file can bring that channel
 back.
 
+A product with no release yet, only a public beta, may come as a single
+file, `skunkcrafts_updater.cfg`: create the product's folder under
+`Aircraft`, put the file in it and start the updater. While the product has
+no release, an add-on on Main is checked and updated from its public beta;
+the status bar says so, and once the release is out you get it on Main by
+yourself.
+
 ## 8. Options
 
 - **Automatic action on startup**: nothing, check everything, or check and

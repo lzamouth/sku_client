@@ -833,6 +833,83 @@ static void test_scan_depth(void)
 	free(log);
 }
 
+/* The main depot of test_fallback_public: absent (each run starts without it) or present. */
+static void nomain_depot_clear(void)
+{
+	static const char *files[] = { "skunkcrafts_updater.cfg", "skunkcrafts_updater_whitelist.txt", "skunkcrafts_updater_blacklist.txt" };
+	char p[SKU_PATH_MAX];
+	for (size_t i = 0; i < sizeof files / sizeof *files; i++) {
+		sku_snprintf(p, sizeof p, "%s/../depot/nomain/%s", xp, files[i]);
+		if (sku_is_file(p)) sku_remove_file(p);
+	}
+}
+
+/* A product whose main depot does not exist yet (404), handed out as its configuration with a
+ * "channel.<name>|<url>" line (4.2.3): the channel comes from the local file, a check on Main
+ * falls back to it without changing the user's choice, and goes back to Main once it exists. */
+static void test_fallback_public(void)
+{
+	sku_instance in;
+	sku_addon *a;
+	sku_check_opts co = { false, false, 2 };
+	sku_update_opts uo = { false, 2, 1 };
+	char dir[SKU_PATH_MAX], p[SKU_PATH_MAX], text[SKU_URL_MAX + 256], *body;
+
+	nomain_depot_clear();
+	sku_path_join(dir, sizeof dir, xp, "Aircraft/Fallback/Plane");
+	CHECK_EQ_INT(sku_mkdir_p(dir), SKU_OK);
+	sku_snprintf(text, sizeof text, "name|Test plane\nmodule|%s/nomain\nversion|0.1\nzone|custom\nchannel.Public beta|%s/level1\n", url, url);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater.cfg");
+	CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+	CHECK_EQ_INT(sku_instance_open(&in, xp, false), SKU_OK);
+	a = sku_addon_open(&in, dir, SKU_GENRE_AIRCRAFT);
+
+	/* the local declaration: a public channel, offered, not followed */
+	CHECK_EQ_INT(a->nchannels, 1);
+	CHECK_EQ_STR(a->channels[0].name, "Public beta");
+	CHECK(a->channels[0].is_public);
+	CHECK_EQ_STR(a->channel, "stable");
+
+	/* Main answers 404: the check and the update go to the public channel, the choice stays Main */
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK(a->checked);
+	CHECK_EQ_STR(a->fallback, "Public beta");
+	CHECK(strstr(a->base_url, "/level1/") != NULL);
+	CHECK_EQ_STR(a->remote_version, "2.0");
+	CHECK(a->notice[0] != 0);
+	CHECK_EQ_INT(sku_addon_update(a, &uo), SKU_OK);
+	CHECK_EQ_INT(sku_addon_status(a, NULL, 0, NULL, 0), SKU_ST_UPDATED);
+	CHECK(file_is(dir, "objects/wing.obj", "new wing v2"));
+	CHECK_EQ_STR(a->channel, "stable");
+	CHECK_EQ_STR(a->version, "2.0");
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater.cfg");
+	CHECK_EQ_INT(sku_read_file(p, &body, NULL), SKU_OK);
+	CHECK(strstr(body, "/nomain") != NULL);                 /* the fallback's cfg does not move the main depot */
+	CHECK(strstr(body, "channel.Public beta|") != NULL);    /* the declaration stays in the file */
+	free(body);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channel.cfg");
+	CHECK_EQ_INT(sku_read_file(p, &body, NULL), SKU_OK); CHECK(strstr(body, "channel|stable") != NULL); free(body);
+
+	/* the main depot appears: back to it by itself */
+	sku_snprintf(p, sizeof p, "%s/../depot/nomain", xp);
+	CHECK_EQ_INT(sku_mkdir_p(p), SKU_OK);
+	sku_snprintf(p, sizeof p, "%s/../depot/nomain/skunkcrafts_updater.cfg", xp);
+	sku_snprintf(text, sizeof text, "name|Test plane\nmodule|%s/nomain\nversion|3.0\nlocked|false\nzone|custom\n", url);
+	CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+	sku_snprintf(p, sizeof p, "%s/../depot/nomain/skunkcrafts_updater_whitelist.txt", xp);
+	CHECK_EQ_INT(sku_write_file_atomic(p, "", 0), SKU_OK);
+	sku_snprintf(p, sizeof p, "%s/../depot/nomain/skunkcrafts_updater_blacklist.txt", xp);
+	CHECK_EQ_INT(sku_write_file_atomic(p, "", 0), SKU_OK);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_STR(a->fallback, "");
+	CHECK(strstr(a->base_url, "/nomain/") != NULL);
+	CHECK_EQ_STR(a->remote_version, "3.0");
+	nomain_depot_clear();
+
+	sku_addon_close(a);
+	sku_instance_close(&in);
+}
+
 int main(void)
 {
 	xp = getenv("SKU_TEST_XP"); url = getenv("SKU_TEST_URL");
@@ -846,6 +923,7 @@ int main(void)
 	test_no_query_depot();
 	test_depot_client_files();
 	test_public_channels();
+	test_fallback_public();
 	test_scan_depth();
 	sku_http_global_cleanup();
 	TEST_MAIN_END();
