@@ -1,3 +1,6 @@
+4.2.4
+- Python plugins (XPPython3) are managed one by one, each in its own folder inside Resources/plugins/PythonPlugins; the shared PythonPlugins folder itself is never taken over by one product
+
 4.2.3
 - A product with no public release yet updates from its public beta channel, while you stay on Main: once the release is out, you get it by itself
 - A product's configuration file alone is enough to get its public beta channels: put it in a new folder under Aircraft and start the updater
