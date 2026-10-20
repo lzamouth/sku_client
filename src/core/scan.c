@@ -5,6 +5,7 @@
 #include "log.h"
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 const char *sku_genre_name(sku_genre g)
 {
@@ -79,12 +80,37 @@ static const char *layout_note(bool v4)
 	return v4 ? " (4.0 beta 1-9 layout, to migrate back to " SKU_F_CFG ")" : "";
 }
 
+/* Resources/plugins/PythonPlugins belongs to XPPython3 and to every Python plugin at once:
+ * it is never an addon itself (a configuration there would hand one developer the files of
+ * all the others), each of its subfolders may be one. XPPython3 runs the code it finds in
+ * those subfolders too. */
+static void walk_python(sku_found_list *out, const char *dir)
+{
+	struct walk w = { out, SKU_GENRE_PLUGIN, dir, 1, false, {0} };
+	bool v4;
+	if (sku_scan_is_addon(dir, &v4)) sku_warn("scan: %s: configuration ignored: this folder is shared by every Python plugin, a product's configuration goes into its own subfolder", dir);
+	if (sku_list_dir(dir, walk_cb, &w) != SKU_OK) { sku_warn("scan: cannot read %s", dir); return; }
+	for (int i = 0; i < w.subdirs.n; i++) {
+		char sub[SKU_PATH_MAX];
+		sku_path_join(sub, sizeof sub, dir, w.subdirs.v[i]);
+		if (sku_scan_is_addon(sub, &v4)) {
+			add(out, sub, SKU_GENRE_PLUGIN, v4);
+			sku_info("scan: %s: managed addon found (Python plugin)%s", sub, layout_note(v4));
+		} else stop_reason(SKU_GENRE_PLUGIN, sub, "not managed by the updater");
+	}
+	sku_strlist_free(&w.subdirs);
+}
+
 /* depth counts the levels examined, dir included, as in 3.x: 11 for Aircraft,
  * 2 for Custom Scenery and Resources/plugins (the folder and its children). */
 static void walk(sku_found_list *out, const char *dir, int depth, sku_genre genre)
 {
 	struct walk w = { out, genre, dir, depth, false, {0} };
 	bool v4;
+	if (genre == SKU_GENRE_PLUGIN && depth == 1 && strcasecmp(sku_path_basename(dir), "PythonPlugins") == 0) {
+		walk_python(out, dir);
+		return;
+	}
 	if (sku_scan_is_addon(dir, &v4)) {
 		add(out, dir, genre, v4);
 		sku_info("scan: %s: managed %s found%s", dir, genre == SKU_GENRE_AIRCRAFT ? "aircraft" : "addon", layout_note(v4));

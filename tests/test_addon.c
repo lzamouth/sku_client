@@ -802,9 +802,11 @@ static void test_scan_depth(void)
 {
 	static const char *dirs[] = { "Aircraft", "Custom Scenery/Unmanaged/objects", "Custom Scenery/Unmanaged/Earth nav data",
 		"Custom Scenery/Hidden/objects/deep", "Custom Scenery/Managed", "Resources/plugins/(disabled)/Old", "Resources/plugins/Live",
-		"Output/preferences" };
+		"Output/preferences", "Resources/plugins/PythonPlugins/Mine", "Resources/plugins/PythonPlugins/Other",
+		"Resources/plugins/PythonPlugins/Mine/deeper" };
 	static const char *cfgs[] = { "Custom Scenery/Managed", "Custom Scenery/Hidden/objects", "Resources/plugins/(disabled)/Old",
-		"Resources/plugins/Live" };
+		"Resources/plugins/Live", "Resources/plugins/PythonPlugins", "Resources/plugins/PythonPlugins/Mine",
+		"Resources/plugins/PythonPlugins/Mine/deeper" };
 	static const char cfg[] = "name|x\nmodule|http://127.0.0.1:1/x\nversion|1\n";
 	const char *level = getenv("SKU_TEST_LEVEL");
 	char root[SKU_PATH_MAX], p[SKU_PATH_MAX], q[SKU_PATH_MAX], *log = NULL;
@@ -820,7 +822,9 @@ static void test_scan_depth(void)
 	}
 	CHECK_EQ_INT(sku_instance_open(&in, root, false), SKU_OK);
 	CHECK_EQ_INT(sku_scan_instance(&in, &found), SKU_OK);
-	CHECK_EQ_INT(found.n, 2);                       /* Managed and Live; not Hidden/objects nor (disabled)/Old */
+	CHECK_EQ_INT(found.n, 3);                       /* Managed, Live and PythonPlugins/Mine; not Hidden/objects, (disabled)/Old,
+	                                                   PythonPlugins itself nor Mine/deeper */
+	for (int i = 0; i < found.n; i++) CHECK(!sku_str_ends(found.v[i].dir, "/PythonPlugins"));
 	sku_found_list_free(&found);
 	CHECK_EQ_INT(sku_read_file(in.log_path, &log, NULL), SKU_OK);
 	if (!log) return;
@@ -830,6 +834,9 @@ static void test_scan_depth(void)
 	CHECK_EQ_INT(count(log, "max depth"), 0);
 	CHECK_EQ_INT(count(log, "3.x config"), 0);
 	CHECK_EQ_INT(count(log, "Custom Scenery/Managed: managed addon found\n"), 1);
+	CHECK_EQ_INT(count(log, "PythonPlugins: configuration ignored"), 1);
+	CHECK_EQ_INT(count(log, "PythonPlugins/Mine: managed addon found (Python plugin)"), 1);
+	CHECK_EQ_INT(count(log, "PythonPlugins/Other: not managed by the updater"), 1);
 	free(log);
 }
 

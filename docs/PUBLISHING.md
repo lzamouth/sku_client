@@ -31,6 +31,11 @@ At the root of your product folder lives `skunkcrafts_updater.cfg`, one
   not deeper: `Custom Scenery/<your scenery>/skunkcrafts_updater.cfg` is
   found, `Custom Scenery/<your scenery>/<sub-folder>/...` is not, and
   neither is a plugin a user parked in `Resources/plugins/(disabled)/`;
+- for a Python plugin (XPPython3), in a folder directly inside
+  `Resources/plugins/PythonPlugins` (4.2.4): `PythonPlugins/<your plugin>/`
+  is your product. `PythonPlugins` itself is shared by every Python plugin
+  and is never a product: a configuration at its root is ignored. The 3.x
+  client does not look inside `PythonPlugins`;
 - in a folder directly at the X-Plane root (4.x).
 
 A product installed anywhere else is only managed if the user adds its

@@ -67,7 +67,8 @@ places it. Some desktops place windows themselves and may not follow the
 saved position (GNOME, for example).
 
 The Addons page then lists every add-on it found: it scans `Aircraft`,
-`Custom Scenery`, `Resources/plugins` and the X-Plane root for folders that
+`Custom Scenery`, `Resources/plugins` (with the Python plugins in
+`Resources/plugins/PythonPlugins`) and the X-Plane root for folders that
 carry a SkunkCrafts Updater configuration. Add-ons that do not use
 SkunkCrafts Updater are simply not listed.
 
