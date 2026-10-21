@@ -9,17 +9,22 @@
 extern const unsigned char sku_notices[];
 extern const size_t sku_notices_len;
 
+/* The MIT licence, as in LICENSE at the root of the sources. */
 static const char *about_text =
 	"SkunkCrafts Updater, (c) 2025-2026 Lionel Zamouth\n"
+	"Source code: https://github.com/lzamouth/sku_client\n"
 	"\n"
-	"License\n"
-	"This Freeware License Agreement (the 'Agreement') is a legal agreement between you ('Licensee'), the end-user, and Lionel Zamouth for the use of this software ('Software'). Commercial as well as non-commercial use is allowed. By using this Software or storing this program or parts of it on a computer hard drive or any other media, you agree to be bound by the terms of this Agreement. Provided that you verify that you are handling the original freeware version you are hereby licensed to make as many copies of the freeware version of this Software and documentation as long as you do not charge money or request donations for such copies. You may not alter this Software in any way. You may not modify, rent or sell this Software, or create derivative works based upon this Software.\n"
+	"MIT License\n"
 	"\n"
-	"Governing Law\n"
-	"This agreement shall be governed by the laws of France. If any portion of this Agreement is deemed unenforceable by a court of competent jurisdiction, it shall not affect the forcibility of the other portions of this Agreement.\n"
+	"Copyright (c) 2025-2026 Lionel Zamouth\n"
 	"\n"
-	"Limited Warranty and Disclaimer of Warranty\n"
-	"This software is provided by the author and contributors 'as is' and any express or implied warranties, including, but not limited to, the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no event shall the author or contributors be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this software, even if advised of the possibility of such damage. Roses are red, Violets are blue, licenses are boring.\n";
+	"Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n"
+	"\n"
+	"The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n"
+	"\n"
+	"THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n"
+	"\n"
+	"The third-party components and their licences are listed under \"Third-party notices\".\n";
 
 void ui_options(app *ap)
 {
