@@ -314,7 +314,6 @@ void ui_client_news(app *ap)
 		bool newer = false, header = false;
 		char tidy[1024], version[64];
 		for (int s = 0; s < ns; s++) if (lineno >= sec[s].first_line && lineno <= sec[s].last_line) { newer = sec[s].newer; header = lineno == sec[s].first_line && sec[s].version[0]; }
-		nk_layout_row_dynamic(ctx, row, 1);
 		if (header && sku_changelog_is_header(line, version, sizeof version)) {
 			struct nk_color c = newer ? hi : (ap->dark ? nk_rgb(220, 220, 220) : nk_rgb(60, 60, 60));
 			nk_layout_row_begin(ctx, NK_STATIC, row, 2);
@@ -327,7 +326,7 @@ void ui_client_news(app *ap)
 			nk_layout_row_end(ctx);
 		} else {
 			line = (char *)ui_tidy_line(line, tidy, sizeof tidy);
-			if (newer) nk_label_colored(ctx, line, NK_TEXT_LEFT, hi); else nk_label(ctx, line, NK_TEXT_LEFT);
+			ui_text_wrapped(ap, line, row, newer ? &hi : NULL);
 		}
 		lineno++;
 	}

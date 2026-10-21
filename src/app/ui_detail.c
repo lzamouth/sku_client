@@ -138,17 +138,11 @@ static void doc_tab(app *ap, int index, int kind, float height)
 				nk_style_set_font(ctx, &ap->font->handle);
 				nk_layout_row_end(ctx);
 			} else {
-				const struct nk_user_font *f = ctx->style.font;
 				char tidy[1024];
-				float w;
-				line = (char *)ui_tidy_line(line, tidy, sizeof tidy);   /* tab-indented 3.x changelogs */
-				w = f->width(f->userdata, f->height, line, (int)strlen(line));
-				float avail = nk_window_get_content_region(ctx).w - 30;
-				int lines = avail > 0 ? (int)(w / avail) + 1 : 1;
-				nk_layout_row_dynamic(ctx, (float)lines * ((float)ap->prefs.text_size + 4), 1);
 				/* changelog: older sections dimmed; readme: plain text */
-				if (newer || kind != 2) nk_label_colored_wrap(ctx, line, ap->dark ? nk_rgb(240, 240, 240) : nk_rgb(30, 30, 30));
-				else nk_label_colored_wrap(ctx, line, ap->dark ? nk_rgb(160, 160, 160) : nk_rgb(110, 110, 110));
+				struct nk_color c = (newer || kind != 2) ? (ap->dark ? nk_rgb(240, 240, 240) : nk_rgb(30, 30, 30)) : (ap->dark ? nk_rgb(160, 160, 160) : nk_rgb(110, 110, 110));
+				line = (char *)ui_tidy_line(line, tidy, sizeof tidy);   /* tab-indented 3.x changelogs */
+				ui_text_wrapped(ap, line, (float)ap->prefs.text_size + 4, &c);
 			}
 			lineno++;
 		}

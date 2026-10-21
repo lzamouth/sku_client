@@ -204,6 +204,9 @@ bool ui_button_hl(app *ap, const char *label, bool highlight);   /* accent colou
 bool ui_needs_update(sku_status st);                             /* update, repair or version mismatch */
 /* A text line made displayable: leading blanks dropped, tabs and control characters replaced by spaces. */
 const char *ui_tidy_line(const char *line, char *buf, size_t n);
+/* A line of text wrapped between words at the panel's width, one row of height row per line;
+ * the next lines of a "- " item start under its text. color NULL: the text color. */
+void ui_text_wrapped(app *ap, const char *text, float row, const struct nk_color *color);
 /* Height left in the current panel below the rows laid out so far, minus margin; at least min. */
 float ui_fill_height(app *ap, float margin, float min);
 /* Last row of a scrolled group: Nuklear clips the bottom padding, this keeps the last real line visible. */

@@ -89,6 +89,62 @@ const char *ui_tidy_line(const char *line, char *buf, size_t n)
 	return buf;
 }
 
+/* How many bytes of s (len) fit on a line of width w: whole words, the spaces between them
+ * counted; a first word wider than the line is cut between two characters (one at least). */
+static size_t wrap_fit(const struct nk_user_font *f, const char *s, size_t len, float w)
+{
+	float space = f->width(f->userdata, f->height, " ", 1), x = 0;
+	size_t p = 0, end = 0;
+	while (p < len) {
+		size_t q = p, r, k;
+		float ww;
+		while (q < len && s[q] == ' ') q++;
+		if (q == len) break;
+		for (r = q; r < len && s[r] != ' '; r++) ;
+		ww = f->width(f->userdata, f->height, s + q, (int)(r - q));
+		if (x + (float)(q - p) * space + ww <= w) { x += (float)(q - p) * space + ww; end = r; p = r; continue; }
+		if (end) return end;
+		/* one word wider than the line: as many characters as fit, one at least */
+		k = q;
+		do {
+			size_t next = k + 1;
+			while (next < r && ((unsigned char)s[next] & 0xC0) == 0x80) next++;
+			if (k > q && f->width(f->userdata, f->height, s + q, (int)(next - q)) > w) break;
+			k = next;
+		} while (k < r);
+		return k;
+	}
+	return end ? end : len;
+}
+
+void ui_text_wrapped(app *ap, const char *text, float row, const struct nk_color *color)
+{
+	struct nk_context *ctx = ap->ctx;
+	const struct nk_user_font *f = ctx->style.font;
+	struct nk_color c = color ? *color : ctx->style.text.color;
+	size_t len = strlen(text), done = 0;
+	float full, indent = 0, pad = 2 * ctx->style.text.padding.x + 2;
+	nk_layout_row_dynamic(ctx, row, 1);
+	if (!len) { nk_label(ctx, "", NK_TEXT_LEFT); return; }
+	full = nk_widget_bounds(ctx).w;
+	if (len > 2 && (text[0] == '-' || text[0] == '*') && text[1] == ' ') indent = f->width(f->userdata, f->height, text, 2);   /* a list item: the next lines under its text */
+	while (done < len) {
+		bool hang = done > 0 && indent > 0;   /* the next lines of a list item, under its text */
+		float w = hang ? full - indent - ctx->style.window.spacing.x : full;
+		size_t n = wrap_fit(f, text + done, len - done, w - pad);
+		if (hang) {
+			nk_layout_row_begin(ctx, NK_STATIC, row, 2);
+			nk_layout_row_push(ctx, indent);
+			nk_label(ctx, "", NK_TEXT_LEFT);
+			nk_layout_row_push(ctx, w);
+		} else if (done > 0) nk_layout_row_dynamic(ctx, row, 1);
+		nk_text_colored(ctx, text + done, (int)n, NK_TEXT_LEFT, c);
+		if (hang) nk_layout_row_end(ctx);
+		done += n;
+		while (done < len && text[done] == ' ') done++;
+	}
+}
+
 float ui_fill_height(app *ap, float margin, float min)
 {
 	struct nk_context *ctx = ap->ctx;

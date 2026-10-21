@@ -118,15 +118,7 @@ static void wrapped_text(app *ap, const char *text)
 	char *copy = sku_xstrdup(text), *cursor = copy, *line;
 	while ((line = sku_next_line(&cursor)) != NULL) {
 		if (!*line) { nk_layout_row_dynamic(ctx, (float)ap->prefs.text_size / 2, 1); nk_label(ctx, "", NK_TEXT_LEFT); continue; }
-		{
-			/* estimate the wrapped height from the width */
-			const struct nk_user_font *f = ctx->style.font;
-			float w = f->width(f->userdata, f->height, line, (int)strlen(line));
-			float avail = nk_window_get_content_region(ctx).w - 20;
-			int lines = avail > 0 ? (int)(w / avail) + 1 : 1;
-			nk_layout_row_dynamic(ctx, (float)lines * ((float)ap->prefs.text_size + 4), 1);
-			nk_label_wrap(ctx, line);
-		}
+		ui_text_wrapped(ap, line, (float)ap->prefs.text_size + 4, NULL);
 	}
 	free(copy);
 }
