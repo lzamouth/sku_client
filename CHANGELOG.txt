@@ -1,3 +1,7 @@
+4.2.5
+- Long lines of What's new, of an add-on's changelog and of the About texts wrap at the window's width instead of being cut
+- The updater is open source under the MIT licence, shown in About with the link to its source code
+
 4.2.4
 - Python plugins (XPPython3) are managed one by one, each in its own folder inside Resources/plugins/PythonPlugins; the shared PythonPlugins folder itself is never taken over by one product
 
