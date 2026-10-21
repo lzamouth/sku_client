@@ -57,7 +57,15 @@ else
 fi
 
 # --- mbedTLS (Linux and macOS only; Windows uses Schannel)
+# Used from several threads at once (parallel downloads and checks): TLS 1.3 goes through PSA Crypto,
+# whose key store is global and needs the threading layer, or concurrent handshakes corrupt the heap
+# (4.2.5 crash on macOS). Set in the configuration header itself, so that curl, built next against the
+# installed headers, sees the same structures.
 if [ "$TARGET" != windows ]; then
+    for opt in MBEDTLS_THREADING_C MBEDTLS_THREADING_PTHREAD; do
+        python3 "$SRC/mbedtls/scripts/config.py" -f "$SRC/mbedtls/include/mbedtls/mbedtls_config.h" set $opt
+    done
+    rm -rf "$BUILD/mbedtls" "$BUILD/curl"
     cm mbedtls "$SRC/mbedtls" -DENABLE_TESTING=OFF -DENABLE_PROGRAMS=OFF -DMBEDTLS_FATAL_WARNINGS=OFF \
         -DUSE_SHARED_MBEDTLS_LIBRARY=OFF -DUSE_STATIC_MBEDTLS_LIBRARY=ON -DGEN_FILES=OFF
 fi
