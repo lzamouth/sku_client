@@ -5,6 +5,23 @@ next to the production one, and how to group several folders into a pack.
 Applies to the 4.x client and to the 3.x clients still in use; the few
 4.x-only features are marked as such.
 
+The 4.x client is open source (MIT): https://github.com/lzamouth/sku_client.
+
+What needs which client:
+
+| Feature | Client |
+|---------|--------|
+| Depots, tester beta files, the configuration keys of Part 1 | 3.x and 4.x |
+| Several beta channels, named channels (2.3, 2.4), packs (Part 5) | 4.0 |
+| A tester file listed in a depot offered, not imposed (Part 4, 1) | 4.1.2 |
+| Public channels declared in the configuration (2.6) | 4.2.0 |
+| One configuration file to hand out, fallback when the main depot does not exist yet (2.6) | 4.2.3 |
+| Python plugins in `PythonPlugins/<plugin>` (1.8) | 4.2.4 |
+| FlyWithLua scripts in `FlyWithLua/Scripts/<scripts>` (1.8) | 4.2.7 |
+
+Users get new clients through the updater's own update, at startup; ask yours
+to keep it current when you rely on a recent feature.
+
 ## Part 1 - A depot
 
 ### 1.1 How it works
@@ -138,8 +155,9 @@ Bump `version` at every release, in the configuration you ship and in the
 one you upload; it is the only thing that tells the client an update is
 worth showing as "new version" rather than "repair".
 
-`changelog.txt`, published like any other file, is displayed by the 4.0
-client with the sections newer than the installed version highlighted. Its
+`changelog.txt`, published like any other file, is displayed by the 4.x
+client with the sections newer than the installed version highlighted; long
+lines wrap to the window. Its
 format: the newest version first, as a bare line, entries starting with
 `- `, a blank line between versions:
 
@@ -184,6 +202,33 @@ uploads, except for `version`.
 4. `xp_depot ... check`, then `update`.
 5. Test on a clean X-Plane folder: install the package, run the updater, it
    must say "up to date"; change one file, it must say "repair".
+
+### 1.8 Python plugins and FlyWithLua scripts (4.2.4 and 4.2.7 clients)
+
+XPPython3 and FlyWithLua run code that every author drops into one shared
+folder: `Resources/plugins/PythonPlugins` and
+`Resources/plugins/FlyWithLua/Scripts`. Your product is your own sub-folder
+of it, never the shared folder:
+
+```
+Resources/plugins/PythonPlugins/MyPlugin/skunkcrafts_updater.cfg     found, MyPlugin is your product
+Resources/plugins/PythonPlugins/skunkcrafts_updater.cfg              ignored (warning in the user's log)
+Resources/plugins/FlyWithLua/Scripts/MyScripts/skunkcrafts_updater.cfg   found
+Resources/plugins/FlyWithLua/Scripts/skunkcrafts_updater.cfg         ignored
+```
+
+- Publish the sub-folder as an ordinary depot: the local folder you give
+  `xp_depot` is `MyPlugin` itself, and the paths in the lists are relative to
+  it. Your updates, checks and blacklist therefore stay inside your folder
+  and never reach the files of other authors.
+- Ship `MyPlugin/skunkcrafts_updater.cfg` in your download package, as for
+  any product.
+- Only one level: `PythonPlugins/MyPlugin/Sub/skunkcrafts_updater.cfg` is
+  not found.
+- FlyWithLua itself may be a product too (a configuration at the root of
+  `FlyWithLua`); its `Scripts` sub-folders are scanned either way.
+- The 3.x client does not look inside these shared folders, and the 4.x
+  client only from 4.2.4 (`PythonPlugins`) and 4.2.7 (`FlyWithLua/Scripts`).
 
 ## Part 2 - Beta depots
 
@@ -335,9 +380,11 @@ nobody to a beta.
 `channel.<name>|<URL>` lines from the copy of the configuration in the
 product folder. Your `skunkcrafts_updater_config.txt`, renamed
 `skunkcrafts_updater.cfg`, is therefore all a user needs: they create the
-product folder in `Aircraft`, put that one file in it and start the updater,
-which offers the public channels (and, with no main depot yet, uses the first
-one).
+product folder where the product belongs (under `Aircraft`, directly in
+`Custom Scenery`, ...), put that one file in it and start the updater, which
+offers the public channels (and, with no main depot yet, uses the first one).
+An older client finds the folder but only checks `Main`, which fails while
+the main depot does not exist: ask for 4.2.3 or later.
 
 Private betas stay with tester files (2.2): a channel declared in the
 configuration is visible to every user of the product. The configuration
@@ -368,9 +415,14 @@ The client's own sub-folder `skunkcrafts/` holds:
 
 ```
 skunkcrafts/crc_cache.txt            the cache that makes checks fast (rebuilt if deleted)
-skunkcrafts/channels/<name>.cfg      one file per beta channel: channel|, module|, zone|
+skunkcrafts/channels/<name>.cfg      one file per beta channel: channel|, module|, zone|,
+                                     and public|true for a channel declared in a configuration (2.6)
 skunkcrafts/channel.cfg              the channel followed: channel|<name> (stable = Main)
 ```
+
+A channel is never deleted: one the user removes is kept aside as
+`<name>.cfg.removed` (and not offered again), a public channel you withdraw
+as `<name>.cfg.withdrawn`.
 
 The beta file is absorbed into `skunkcrafts/channels/` and removed the first
 time the client loads the folder, so a folder managed by 4.x shows no beta
@@ -380,8 +432,7 @@ Clients 4.0.0 to 4.0.2 kept the channels as extra `channel...` lines in
 Early 4.0 betas (up to beta9) had moved the whole configuration into
 `skunkcrafts/updater.cfg`; such folders are migrated back on first load too.
 A user removes a channel from the add-on's details (the client asks for a
-confirmation and keeps the file aside as `<name>.cfg.removed`), or with
-`sku remove-channel`.
+confirmation), or with `sku remove-channel`.
 
 The `skunkcrafts/` sub-folder is the client's own. A depot cannot publish
 into it nor delete from it (such lines are ignored), and `xp_depot` never
@@ -449,7 +500,8 @@ the depot is locked. It never creates a folder without asking (packs, 5.5).
    returned a web page instead of ...") and shows an error; check the URL in
    a browser, it must display the raw configuration text. The certificate
    must be valid for HTTPS: the client trusts the system store on Windows,
-   the Mozilla bundle elsewhere. The clients present themselves as a web
+   the system's certificate bundle on Linux and macOS, and its own copy of
+   the Mozilla bundle when the system has none. The clients present themselves as a web
    browser (the same User-Agent as 3.x, from 4.1.1 in 4.x too), so a rule
    that serves files to browsers only does not lock them out; any other
    filter on the User-Agent will. On Windows, revocation is checked when the
