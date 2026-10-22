@@ -1,3 +1,6 @@
+4.2.7
+- FlyWithLua scripts are managed one by one, each in its own folder inside Resources/plugins/FlyWithLua/Scripts; the shared Scripts folder itself is never taken over by one product
+
 4.2.6
 - macOS and Linux: fixed a crash during updates, when several downloads started at the same time
 
