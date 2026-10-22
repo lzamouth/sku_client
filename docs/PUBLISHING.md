@@ -36,6 +36,10 @@ At the root of your product folder lives `skunkcrafts_updater.cfg`, one
   is your product. `PythonPlugins` itself is shared by every Python plugin
   and is never a product: a configuration at its root is ignored. The 3.x
   client does not look inside `PythonPlugins`;
+- for FlyWithLua scripts, the same way, in a folder directly inside
+  `Resources/plugins/FlyWithLua/Scripts` (4.2.7): `Scripts/<your scripts>/`
+  is your product, `Scripts` itself never is. FlyWithLua itself may still be
+  a product of its own (a configuration at its root);
 - in a folder directly at the X-Plane root (4.x).
 
 A product installed anywhere else is only managed if the user adds its

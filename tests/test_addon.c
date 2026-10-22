@@ -803,10 +803,12 @@ static void test_scan_depth(void)
 	static const char *dirs[] = { "Aircraft", "Custom Scenery/Unmanaged/objects", "Custom Scenery/Unmanaged/Earth nav data",
 		"Custom Scenery/Hidden/objects/deep", "Custom Scenery/Managed", "Resources/plugins/(disabled)/Old", "Resources/plugins/Live",
 		"Output/preferences", "Resources/plugins/PythonPlugins/Mine", "Resources/plugins/PythonPlugins/Other",
-		"Resources/plugins/PythonPlugins/Mine/deeper" };
+		"Resources/plugins/PythonPlugins/Mine/deeper", "Resources/plugins/FlyWithLua/Scripts/MyLua",
+		"Resources/plugins/FlyWithLua/Scripts/OtherLua" };
 	static const char *cfgs[] = { "Custom Scenery/Managed", "Custom Scenery/Hidden/objects", "Resources/plugins/(disabled)/Old",
 		"Resources/plugins/Live", "Resources/plugins/PythonPlugins", "Resources/plugins/PythonPlugins/Mine",
-		"Resources/plugins/PythonPlugins/Mine/deeper" };
+		"Resources/plugins/PythonPlugins/Mine/deeper", "Resources/plugins/FlyWithLua", "Resources/plugins/FlyWithLua/Scripts",
+		"Resources/plugins/FlyWithLua/Scripts/MyLua" };
 	static const char cfg[] = "name|x\nmodule|http://127.0.0.1:1/x\nversion|1\n";
 	const char *level = getenv("SKU_TEST_LEVEL");
 	char root[SKU_PATH_MAX], p[SKU_PATH_MAX], q[SKU_PATH_MAX], *log = NULL;
@@ -822,9 +824,9 @@ static void test_scan_depth(void)
 	}
 	CHECK_EQ_INT(sku_instance_open(&in, root, false), SKU_OK);
 	CHECK_EQ_INT(sku_scan_instance(&in, &found), SKU_OK);
-	CHECK_EQ_INT(found.n, 3);                       /* Managed, Live and PythonPlugins/Mine; not Hidden/objects, (disabled)/Old,
-	                                                   PythonPlugins itself nor Mine/deeper */
-	for (int i = 0; i < found.n; i++) CHECK(!sku_str_ends(found.v[i].dir, "/PythonPlugins"));
+	CHECK_EQ_INT(found.n, 5);                       /* Managed, Live, PythonPlugins/Mine, FlyWithLua and its Scripts/MyLua; not
+	                                                   Hidden/objects, (disabled)/Old, PythonPlugins, Mine/deeper nor Scripts */
+	for (int i = 0; i < found.n; i++) CHECK(!sku_str_ends(found.v[i].dir, "/PythonPlugins") && !sku_str_ends(found.v[i].dir, "/Scripts"));
 	sku_found_list_free(&found);
 	CHECK_EQ_INT(sku_read_file(in.log_path, &log, NULL), SKU_OK);
 	if (!log) return;
@@ -837,6 +839,10 @@ static void test_scan_depth(void)
 	CHECK_EQ_INT(count(log, "PythonPlugins: configuration ignored"), 1);
 	CHECK_EQ_INT(count(log, "PythonPlugins/Mine: managed addon found (Python plugin)"), 1);
 	CHECK_EQ_INT(count(log, "PythonPlugins/Other: not managed by the updater"), 1);
+	CHECK_EQ_INT(count(log, "FlyWithLua: managed addon found"), 1);
+	CHECK_EQ_INT(count(log, "FlyWithLua/Scripts: configuration ignored: this folder is shared by every FlyWithLua script"), 1);
+	CHECK_EQ_INT(count(log, "Scripts/MyLua: managed addon found (FlyWithLua script)"), 1);
+	CHECK_EQ_INT(count(log, "Scripts/OtherLua: not managed by the updater"), 1);
 	free(log);
 }
 
