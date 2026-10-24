@@ -221,6 +221,16 @@ Resources/plugins/FlyWithLua/Scripts/skunkcrafts_updater.cfg         ignored
   `xp_depot` is `MyPlugin` itself, and the paths in the lists are relative to
   it. Your updates, checks and blacklist therefore stay inside your folder
   and never reach the files of other authors.
+- **Moving an existing product into a sub-folder: republish its depot.** A
+  depot built from the `FlyWithLua` folder lists `Scripts/MyScripts.lua`,
+  `Scripts/MyScripts/data.txt`, ... Once the configuration sits in
+  `Scripts/MyScripts/`, those paths are read from there: the client installs
+  `Scripts/MyScripts/Scripts/MyScripts.lua`, a second copy of everything. The
+  client never rewrites paths (only you know where your files belong in the
+  new layout): put the files where they must end up, then run `xp_depot` on
+  `Scripts/MyScripts/`, so that the lists say `MyScripts.lua`,
+  `data.txt`, ... The same goes for a Python plugin moved into
+  `PythonPlugins/<plugin>/`.
 - Ship `MyPlugin/skunkcrafts_updater.cfg` in your download package, as for
   any product.
 - Only one level: `PythonPlugins/MyPlugin/Sub/skunkcrafts_updater.cfg` is
