@@ -120,7 +120,10 @@ format is deliberately trivial.
 
 ### 1.4 Publishing with xp_depot
 
-`xp_depot` is a stand-alone Python script (3.8 or later, no dependency). It
+`xp_depot` is a stand-alone Python script (3.8 or later, no dependency; 3.11
+if you describe your server in an `xp_zone.toml`), to download from
+https://1228098873.rsc.cdn77.org/updater/xp_depot.py and run with
+`python3 xp_depot.py --help` for its own documentation. It
 takes a local folder that is the exact copy of what users should end up with,
 computes the CRCs, compares with what the server already has, uploads only
 what changed, then the lists, then the configuration. It handles the lock for

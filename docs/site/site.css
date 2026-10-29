@@ -1,0 +1,64 @@
+/* The two link pages of the updater (index.html, developers.html): plain, light or dark. */
+:root {
+	--bg: #ffffff;
+	--fg: #1d1d1f;
+	--muted: #5f6368;
+	--line: #e3e3e6;
+	--card: #f6f6f8;
+	--link: #0b62c4;
+	color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #17181a;
+		--fg: #ececee;
+		--muted: #a2a5ab;
+		--line: #2e3034;
+		--card: #202226;
+		--link: #6aaaf5;
+		color-scheme: dark;
+	}
+}
+:root[data-theme="dark"] {
+	--bg: #17181a;
+	--fg: #ececee;
+	--muted: #a2a5ab;
+	--line: #2e3034;
+	--card: #202226;
+	--link: #6aaaf5;
+	color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--fg);
+	font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+header, main, footer { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+header {
+	display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+	padding-top: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--line);
+}
+header img { flex: none; }
+.title { flex: 1 1 260px; min-width: 0; }
+h1 { font-size: 1.5rem; margin: 0; line-height: 1.25; }
+.title p { margin: 4px 0 0; color: var(--muted); }
+.version b { color: var(--fg); font-weight: 600; }
+.theme { font-size: 0.875rem; color: var(--muted); }
+.theme select {
+	margin-left: 6px; font: inherit; color: var(--fg); background: var(--card);
+	border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px;
+}
+h2 { font-size: 1.05rem; margin: 28px 0 10px; }
+.links { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.links li { padding: 12px 14px; background: var(--card); border-top: 1px solid var(--line); }
+.links li:first-child { border-top: 0; }
+.links a { font-weight: 600; }
+.links span { display: block; color: var(--muted); font-size: 0.925rem; margin-top: 2px; overflow-wrap: anywhere; }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+.note { color: var(--muted); font-size: 0.925rem; margin: 10px 0; }
+footer { margin-top: 36px; padding-top: 16px; padding-bottom: 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.875rem; }

@@ -18,8 +18,14 @@ and served by `https://1228098873.rsc.cdn77.org/`, in its `updater/` folder:
 2. **`updater/`**: the five downloads under a fixed name,
    `SkunkcraftsUpdater-windows.zip`, `-windows-setup.exe`, `-macos.zip`,
    `-linux.zip`, `-x86_64.AppImage`, plus `sku-cli.zip`, `USER_GUIDE.html`,
-   `USER_GUIDE.md`, and the developers' guide `PUBLISHING.html` and
-   `PUBLISHING.md`. These are the permanent links of the download page; their
+   `USER_GUIDE.md`, the developers' guide `PUBLISHING.html` and
+   `PUBLISHING.md`, the publishing tool `xp_depot.py` (copied from
+   `~/Development/Claude/toolchain/xp_depot`, or `$XP_DEPOT`), and two link
+   pages made from `docs/site/`: `index.html` for users (downloads, guide,
+   what's new) and `developers.html`, with `site.css`, `site.js` and
+   `skunkcrafts-logo.svg` (from `packaging/icons/icon.svg`). The pages read
+   the current version from the depot cfg; nothing in them changes per
+   version. These are the permanent links of the download page; their
    content changes at every version, not their name. The list of links for
    the store page, `updater/urls to updater v4.txt`, therefore no longer needs
    to change at every version; the script does not touch it.
@@ -64,8 +70,8 @@ anything.
 
 The developers' guide changes between versions of the client: every
 publication puts `docs/PUBLISHING.md` online as it is then, and
-`docs/publish.sh --dev-guide` publishes it alone, HTML and Markdown,
-without touching the depot.
+`docs/publish.sh --dev-guide` publishes it alone, HTML and Markdown, with
+`xp_depot.py` and the link pages, without touching the depot.
 
 ## What the script does not do
 

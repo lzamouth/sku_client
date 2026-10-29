@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Updater for Developers</title>
+<meta name="description" content="Publish your X-Plane add-on with SkunkCrafts Updater: guide and publishing tool.">
+<link rel="icon" href="skunkcrafts-logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="site.css">
+<script src="site.js"></script>
+</head>
+<body>
+<header>
+	<img src="skunkcrafts-logo.svg" alt="SkunkCrafts" width="56" height="56">
+	<div class="title">
+		<h1>SkunkCrafts Updater for developers</h1>
+		<p>Publish your add-on: your users get every update in one click. <span class="version" hidden>Current client: <b data-version></b></span></p>
+	</div>
+	<label class="theme">Theme
+		<select id="theme">
+			<option value="system">System</option>
+			<option value="light">Light</option>
+			<option value="dark">Dark</option>
+		</select>
+	</label>
+</header>
+
+<main>
+	<section>
+		<h2>Guide</h2>
+		<ul class="links">
+			<li><a href="PUBLISHING.html">Developer guide</a><span>Depots, beta and public channels, Python plugins and FlyWithLua scripts, packs, pitfalls</span></li>
+			<li><a href="PUBLISHING.md">Developer guide, Markdown</a><span>The same, as plain text</span></li>
+		</ul>
+	</section>
+
+	<section>
+		<h2>Tools</h2>
+		<ul class="links">
+			<li><a href="xp_depot.py" download>xp_depot.py</a><span>Publishes a depot: CRCs, lists, upload of what changed, lock. Python 3.8 or later (3.11 for an <code>xp_zone.toml</code>), nothing to install. Run <code>python3 xp_depot.py --help</code></span></li>
+		</ul>
+	</section>
+
+	<section>
+		<h2>The client</h2>
+		<ul class="links">
+			<li><a href="index.html">Downloads</a><span>What your users install, for Windows, macOS and Linux</span></li>
+			<li><a href="USER_GUIDE.html">User guide</a><span>What your users see, to point them to the right page</span></li>
+			<li><a href="depot/changelog.txt">What's new</a><span>The changes in every version of the client</span></li>
+			<li><a href="https://github.com/lzamouth/sku_client">Source code</a><span>Open source, MIT licence</span></li>
+		</ul>
+	</section>
+</main>
+
+<footer>&copy; 2025-2026 Lionel Zamouth &middot; <a href="https://www.skunkcrafts.com/">skunkcrafts.com</a></footer>
+</body>
+</html>

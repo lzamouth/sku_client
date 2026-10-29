@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkunkCrafts Updater</title>
+<meta name="description" content="Download SkunkCrafts Updater, the add-on updater for X-Plane.">
+<link rel="icon" href="skunkcrafts-logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="site.css">
+<script src="site.js"></script>
+</head>
+<body>
+<header>
+	<img src="skunkcrafts-logo.svg" alt="SkunkCrafts" width="56" height="56">
+	<div class="title">
+		<h1>SkunkCrafts Updater</h1>
+		<p>Keeps your X-Plane add-ons up to date. <span class="version" hidden>Current version: <b data-version></b></span></p>
+	</div>
+	<label class="theme">Theme
+		<select id="theme">
+			<option value="system">System</option>
+			<option value="light">Light</option>
+			<option value="dark">Dark</option>
+		</select>
+	</label>
+</header>
+
+<main>
+	<section>
+		<h2>Download</h2>
+		<p class="note">One copy is enough for all your X-Plane installations. Once installed, the updater updates itself.</p>
+		<ul class="links">
+			<li><a href="SkunkcraftsUpdater-windows-setup.exe">Windows installer</a><span>Recommended on Windows: Start menu and desktop shortcuts</span></li>
+			<li><a href="SkunkcraftsUpdater-windows.zip">Windows, portable</a><span>Unzip anywhere and run SkunkcraftsUpdater.exe</span></li>
+			<li><a href="SkunkcraftsUpdater-macos.zip">macOS</a><span>Intel and Apple Silicon. First launch blocked? System Settings &rarr; Privacy &amp; Security &rarr; Open Anyway</span></li>
+			<li><a href="SkunkcraftsUpdater-x86_64.AppImage">Linux, AppImage</a><span>Make it executable and run it</span></li>
+			<li><a href="SkunkcraftsUpdater-linux.zip">Linux, standalone</a><span>A single executable in a zip</span></li>
+			<li><a href="sku-cli.zip">Command-line tool</a><span><code>sku</code> for Windows, macOS and Linux, for scripts and servers</span></li>
+		</ul>
+	</section>
+
+	<section>
+		<h2>Help</h2>
+		<ul class="links">
+			<li><a href="USER_GUIDE.html">User guide</a><span>Installation, channels and betas, options, troubleshooting</span></li>
+			<li><a href="depot/changelog.txt">What's new</a><span>The changes in every version</span></li>
+		</ul>
+		<p class="note">Reporting a problem: send the log, <code>Output/skunkcrafts/updater/updater_log.txt</code> in your X-Plane folder.</p>
+	</section>
+
+	<section>
+		<h2>More</h2>
+		<ul class="links">
+			<li><a href="developers.html">For developers</a><span>Publish your own add-on with the updater</span></li>
+			<li><a href="https://github.com/lzamouth/sku_client">Source code</a><span>Open source, MIT licence</span></li>
+		</ul>
+	</section>
+</main>
+
+<footer>&copy; 2025-2026 Lionel Zamouth &middot; <a href="https://www.skunkcrafts.com/">skunkcrafts.com</a></footer>
+</body>
+</html>

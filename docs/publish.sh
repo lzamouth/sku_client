@@ -3,10 +3,13 @@
 #   1. the client's own update depot, <bucket>/updater/depot/: versioned packages, lists, changelog, guide, cfg
 #      (lists generated here: path|crc32 and path|size; locked cfg first, unlocked cfg last, like xp_depot)
 #   2. the five downloads under their fixed names in <bucket>/updater/, for permanent links, plus the user
-#      guide and the developers' guide (PUBLISHING.html / .md, made from docs/PUBLISHING.md as it is now)
+#      guide and the developers' material: PUBLISHING.html / .md (from docs/PUBLISHING.md as it is now),
+#      xp_depot.py (from $XP_DEPOT), and the two link pages of docs/site/ (index.html for users,
+#      developers.html) with their stylesheet, script and the SkunkCrafts logo
 #   3. checks: the fixed URLs and the depot cfg answer 200, the depot announces the version
 # Usage: docs/publish.sh <version> [--dry-run]     e.g. docs/publish.sh 4.0.0-beta8
-#        docs/publish.sh --dev-guide [--dry-run]    the developers' guide only (it changes between versions)
+#        docs/publish.sh --dev-guide [--dry-run]    the developers' material and the link pages only
+#                                                   (they change between versions)
 # See docs/PUBLISH.md. Nothing here is secret: the bucket is mounted with its own credentials.
 set -e
 VER="$1"; DRY=""
@@ -20,11 +23,16 @@ CDN_BASE=https://1228098873.rsc.cdn77.org/updater   # what serves that folder
 DEPOT_NAME=depot                              # sub-folder holding the client's update depot
 DEPOT_URL="$CDN_BASE/$DEPOT_NAME"
 SUFFIXES="windows.zip windows-setup.exe macos.zip linux.zip x86_64.AppImage"
+XP_DEPOT="${XP_DEPOT:-$HOME/Development/Claude/toolchain/xp_depot}"   # the publishing tool, kept outside this repository
 
-# The developers' guide, HTML (same converter as the user guide) and Markdown, under permanent names.
+# The developers' guide, HTML (same converter as the user guide) and Markdown, xp_depot.py and the
+# link pages, under permanent names.
 publish_dev_guide() {
 	python3 "$ROOT/tools/md2html.py" "$ROOT/docs/PUBLISHING.md" "$ROOT/dist/PUBLISHING.html"
 	$DRY cp "$ROOT/dist/PUBLISHING.html" "$ROOT/docs/PUBLISHING.md" "$S3_DIR/"
+	if [ -f "$XP_DEPOT" ]; then $DRY cp "$XP_DEPOT" "$S3_DIR/xp_depot.py"; else echo "warning: $XP_DEPOT not found, xp_depot.py not published" >&2; fi
+	$DRY cp "$ROOT/docs/site/index.html" "$ROOT/docs/site/developers.html" "$ROOT/docs/site/site.css" "$ROOT/docs/site/site.js" "$S3_DIR/"
+	$DRY cp "$ROOT/packaging/icons/icon.svg" "$S3_DIR/skunkcrafts-logo.svg"
 }
 check_url() {
 	code=$(curl -sIL --max-time 30 -o /dev/null -w '%{http_code}' "$1")
@@ -38,8 +46,8 @@ if [ "$VER" = "--dev-guide" ]; then
 	publish_dev_guide
 	[ -n "$DRY" ] && exit 0
 	sleep 2
-	check_url "$CDN_BASE/PUBLISHING.html"; check_url "$CDN_BASE/PUBLISHING.md"
-	echo "Permanent links: $CDN_BASE/PUBLISHING.html, $CDN_BASE/PUBLISHING.md"
+	for f in PUBLISHING.html PUBLISHING.md xp_depot.py index.html developers.html site.css site.js skunkcrafts-logo.svg; do check_url "$CDN_BASE/$f"; done
+	echo "Permanent links: $CDN_BASE/index.html (users), $CDN_BASE/developers.html, $CDN_BASE/PUBLISHING.html, $CDN_BASE/xp_depot.py"
 	exit 0
 fi
 
@@ -95,6 +103,8 @@ for s in $SUFFIXES; do
 done
 check_url "$CDN_BASE/USER_GUIDE.html"
 check_url "$CDN_BASE/PUBLISHING.html"
+check_url "$CDN_BASE/index.html"
+check_url "$CDN_BASE/developers.html"
 echo "$(curl -sIL --max-time 30 -o /dev/null -w '%{http_code}' "$DEPOT_URL/skunkcrafts_updater.cfg")  $DEPOT_URL/skunkcrafts_updater.cfg"
 SKU_CLIENT_URL="$DEPOT_URL" "$ROOT/build/linux/src/cli/sku" client | grep -E "published|package"
 echo "=== done: $VER published"
