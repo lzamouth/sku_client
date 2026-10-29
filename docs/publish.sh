@@ -4,11 +4,12 @@
 #      (lists generated here: path|crc32 and path|size; locked cfg first, unlocked cfg last, like xp_depot)
 #   2. the five downloads under their fixed names in <bucket>/updater/, for permanent links, plus the user
 #      guide and the developers' material: PUBLISHING.html / .md (from docs/PUBLISHING.md as it is now),
-#      xp_depot.py (from $XP_DEPOT), and the two link pages of docs/site/ (index.html for users,
-#      developers.html) with their stylesheet, script and the SkunkCrafts logo
+#      xp_depot.py (from $XP_DEPOT), and version.js, the version shown by the link pages. Those pages
+#      (docs/site/) are not here: they live on https://updater.skunkcrafts.com/, copied there by hand
+#      (they do not change per version), and reach these files through its redirection
 #   3. checks: the fixed URLs and the depot cfg answer 200, the depot announces the version
 # Usage: docs/publish.sh <version> [--dry-run]     e.g. docs/publish.sh 4.0.0-beta8
-#        docs/publish.sh --dev-guide [--dry-run]    the developers' material and the link pages only
+#        docs/publish.sh --dev-guide [--dry-run]    the developers' material and version.js only
 #                                                   (they change between versions)
 # See docs/PUBLISH.md. Nothing here is secret: the bucket is mounted with its own credentials.
 set -e
@@ -25,14 +26,18 @@ DEPOT_URL="$CDN_BASE/$DEPOT_NAME"
 SUFFIXES="windows.zip windows-setup.exe macos.zip linux.zip x86_64.AppImage"
 XP_DEPOT="${XP_DEPOT:-$HOME/Development/Claude/toolchain/xp_depot}"   # the publishing tool, kept outside this repository
 
-# The developers' guide, HTML (same converter as the user guide) and Markdown, xp_depot.py and the
-# link pages, under permanent names.
+# The developers' guide, HTML (same converter as the user guide) and Markdown, xp_depot.py and
+# version.js, under permanent names.
 publish_dev_guide() {
 	python3 "$ROOT/tools/md2html.py" "$ROOT/docs/PUBLISHING.md" "$ROOT/dist/PUBLISHING.html"
 	$DRY cp "$ROOT/dist/PUBLISHING.html" "$ROOT/docs/PUBLISHING.md" "$S3_DIR/"
 	if [ -f "$XP_DEPOT" ]; then $DRY cp "$XP_DEPOT" "$S3_DIR/xp_depot.py"; else echo "warning: $XP_DEPOT not found, xp_depot.py not published" >&2; fi
-	$DRY cp "$ROOT/docs/site/index.html" "$ROOT/docs/site/developers.html" "$ROOT/docs/site/site.css" "$ROOT/docs/site/site.js" "$S3_DIR/"
-	$DRY cp "$ROOT/packaging/icons/icon.svg" "$S3_DIR/skunkcrafts-logo.svg"
+	# the version shown by the pages: the one being published, or the one the depot announces
+	local v="$1"
+	[ -n "$v" ] || v=$(grep '^version|' "$S3_DIR/$DEPOT_NAME/skunkcrafts_updater.cfg" 2>/dev/null | cut -d'|' -f2 | tr -d '\r')
+	if [ -n "$v" ]; then
+		if [ -n "$DRY" ]; then echo "[dry-run] version.js: $v"; else printf 'window.SKU_VERSION = "%s";\n' "$v" > "$S3_DIR/version.js"; fi
+	fi
 }
 check_url() {
 	code=$(curl -sIL --max-time 30 -o /dev/null -w '%{http_code}' "$1")
@@ -46,8 +51,8 @@ if [ "$VER" = "--dev-guide" ]; then
 	publish_dev_guide
 	[ -n "$DRY" ] && exit 0
 	sleep 2
-	for f in PUBLISHING.html PUBLISHING.md xp_depot.py index.html developers.html site.css site.js skunkcrafts-logo.svg; do check_url "$CDN_BASE/$f"; done
-	echo "Permanent links: $CDN_BASE/index.html (users), $CDN_BASE/developers.html, $CDN_BASE/PUBLISHING.html, $CDN_BASE/xp_depot.py"
+	for f in PUBLISHING.html PUBLISHING.md xp_depot.py version.js; do check_url "$CDN_BASE/$f"; done
+	echo "Permanent links: https://updater.skunkcrafts.com/ (users), https://updater.skunkcrafts.com/developers.html, $CDN_BASE/PUBLISHING.html, $CDN_BASE/xp_depot.py"
 	exit 0
 fi
 
@@ -90,7 +95,7 @@ fi
 echo "=== 2. fixed-name downloads -> $S3_DIR (permanent links)"
 for s in $SUFFIXES; do $DRY cp "$DIST/SkunkcraftsUpdater-$VER-$s" "$S3_DIR/SkunkcraftsUpdater-$s"; done
 $DRY cp "$DIST/depot/USER_GUIDE.html" "$DIST/depot/USER_GUIDE.md" "$S3_DIR/"
-publish_dev_guide
+publish_dev_guide "$VER"
 $DRY cp "$DIST/sku-cli-$VER.zip" "$S3_DIR/sku-cli.zip"
 
 echo "=== 3. checks"
@@ -103,8 +108,7 @@ for s in $SUFFIXES; do
 done
 check_url "$CDN_BASE/USER_GUIDE.html"
 check_url "$CDN_BASE/PUBLISHING.html"
-check_url "$CDN_BASE/index.html"
-check_url "$CDN_BASE/developers.html"
+check_url "$CDN_BASE/version.js"
 echo "$(curl -sIL --max-time 30 -o /dev/null -w '%{http_code}' "$DEPOT_URL/skunkcrafts_updater.cfg")  $DEPOT_URL/skunkcrafts_updater.cfg"
 SKU_CLIENT_URL="$DEPOT_URL" "$ROOT/build/linux/src/cli/sku" client | grep -E "published|package"
 echo "=== done: $VER published"

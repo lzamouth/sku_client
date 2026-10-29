@@ -1,5 +1,6 @@
 /* The two link pages: the theme the visitor picked (system, light, dark), remembered in this
- * browser, and the current version read from the client's depot configuration. */
+ * browser, and the current version, from version.js (written by publish.sh at every release;
+ * a script, so it loads from the CDN even when the page is served by another site). */
 (function () {
 	var KEY = "sku-theme";
 	function apply(t) {
@@ -19,14 +20,9 @@
 				try { localStorage.setItem(KEY, sel.value); } catch (e) {}
 			});
 		}
-		fetch("depot/skunkcrafts_updater.cfg", { cache: "no-store" })
-			.then(function (r) { return r.ok ? r.text() : ""; })
-			.then(function (text) {
-				var m = /^version\|(.+)$/m.exec(text);
-				if (!m) return;
-				document.querySelectorAll("[data-version]").forEach(function (b) { b.textContent = m[1].trim(); });
-				document.querySelectorAll(".version").forEach(function (s) { s.hidden = false; });
-			})
-			.catch(function () {});
+		if (window.SKU_VERSION) {
+			document.querySelectorAll("[data-version]").forEach(function (b) { b.textContent = window.SKU_VERSION; });
+			document.querySelectorAll(".version").forEach(function (s) { s.hidden = false; });
+		}
 	});
 })();

@@ -20,12 +20,30 @@ and served by `https://1228098873.rsc.cdn77.org/`, in its `updater/` folder:
    `-linux.zip`, `-x86_64.AppImage`, plus `sku-cli.zip`, `USER_GUIDE.html`,
    `USER_GUIDE.md`, the developers' guide `PUBLISHING.html` and
    `PUBLISHING.md`, the publishing tool `xp_depot.py` (copied from
-   `~/Development/Claude/toolchain/xp_depot`, or `$XP_DEPOT`), and two link
-   pages made from `docs/site/`: `index.html` for users (downloads, guide,
-   what's new) and `developers.html`, with `site.css`, `site.js` and
-   `skunkcrafts-logo.svg` (from `packaging/icons/icon.svg`). The pages read
-   the current version from the depot cfg; nothing in them changes per
-   version. These are the permanent links of the download page; their
+   `~/Development/Claude/toolchain/xp_depot`, or `$XP_DEPOT`), and
+   `version.js` (`window.SKU_VERSION = "<version>"`), which the link pages
+   load to show the current version.
+
+The two link pages, `docs/site/` (`index.html` for users, `developers.html`,
+`site.css`, `site.js`, plus `packaging/icons/icon.svg` as
+`skunkcrafts-logo.svg`), live at the root of https://updater.skunkcrafts.com/,
+copied there by hand (FTP): they do not change per version. That server also
+holds the private beta depots, one folder each; its `.htaccess` redirects
+every other name at its root to the same name in the CDN's `updater/`
+folder, so the pages' relative links (packages, guides, `xp_depot.py`,
+`version.js`) reach the CDN:
+
+```apache
+Options -Indexes
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([^/]+)$ https://1228098873.rsc.cdn77.org/updater/$1 [R=302,L]
+```
+
+The host refuses proxying (`[P]` answers 403), hence the redirection, and the
+CDN sends no CORS header, hence `version.js` rather than reading the depot
+cfg from the pages. These are the permanent links of the download page; their
    content changes at every version, not their name. The list of links for
    the store page, `updater/urls to updater v4.txt`, therefore no longer needs
    to change at every version; the script does not touch it.
@@ -71,7 +89,7 @@ anything.
 The developers' guide changes between versions of the client: every
 publication puts `docs/PUBLISHING.md` online as it is then, and
 `docs/publish.sh --dev-guide` publishes it alone, HTML and Markdown, with
-`xp_depot.py` and the link pages, without touching the depot.
+`xp_depot.py` and `version.js`, without touching the depot.
 
 ## What the script does not do
 
