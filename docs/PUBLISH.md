@@ -30,8 +30,12 @@ that the address bar shows that name: the two link pages of `docs/site/`
 `packaging/icons/icon.svg` as `skunkcrafts-logo.svg`), the user and
 developers' guides (HTML and Markdown) and `changelog.txt`. Every
 `publish.sh` run (release or `--dev-guide`) stages them in
-`dist/site_updater/`; copy that folder's files there by FTP afterwards. What
-people download stays on the CDN. That server also
+`dist/site_updater/` and uploads them there, then checks that the server
+serves each one unchanged. The upload goes through `xp_depot`'s own FTP code
+with the zone of the private beta depots, `/hdd1/depots/nuxit/xp_zone.toml`
+(`$SITE_ZONE`): the credentials stay in that file, and `xp_depot`'s messages
+are hidden on a failure since they may name the account. What people
+download stays on the CDN. That server also
 holds the private beta depots, one folder each; its `.htaccess` redirects
 every other name at its root to the same name in the CDN's `updater/`
 folder, so the pages' relative links (packages, guides, `xp_depot.py`,

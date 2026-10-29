@@ -5,10 +5,12 @@
 #   2. the five downloads under their fixed names in <bucket>/updater/, for permanent links, plus the user
 #      guide and the developers' material: PUBLISHING.html / .md (from docs/PUBLISHING.md as it is now),
 #      xp_depot.py (from $XP_DEPOT), and version.js, the version shown by the link pages
-#   4. dist/site_updater/: what https://updater.skunkcrafts.com/ serves at its root, to copy there by
-#      FTP after a release (or a --dev-guide): the two link pages of docs/site/ with their stylesheet,
-#      script and logo, the user and developers' guides and changelog.txt; the rest of its root names
-#      are redirected to this CDN folder
+#   4. what https://updater.skunkcrafts.com/ serves at its root, staged in dist/site_updater/ then
+#      uploaded there: the two link pages of docs/site/ with their stylesheet, script and logo, the
+#      user and developers' guides and changelog.txt (the rest of its root names are redirected to
+#      this CDN folder). The upload goes through xp_depot's own FTP code and the xp_zone.toml of
+#      $SITE_ZONE, the zone of the private beta depots on that server: its credentials stay there,
+#      unread and unprinted by this script
 #   3. checks: the fixed URLs and the depot cfg answer 200, the depot announces the version
 # Usage: docs/publish.sh <version> [--dry-run]     e.g. docs/publish.sh 4.0.0-beta8
 #        docs/publish.sh --dev-guide [--dry-run]    the developers' material and version.js only
@@ -27,6 +29,8 @@ DEPOT_NAME=depot                              # sub-folder holding the client's 
 DEPOT_URL="$CDN_BASE/$DEPOT_NAME"
 SUFFIXES="windows.zip windows-setup.exe macos.zip linux.zip x86_64.AppImage"
 XP_DEPOT="${XP_DEPOT:-$HOME/Development/Claude/toolchain/xp_depot}"   # the publishing tool, kept outside this repository
+SITE_ZONE="${SITE_ZONE:-/hdd1/depots/nuxit}"   # xp_depot zone (folder with its xp_zone.toml) of updater.skunkcrafts.com
+SITE_URL=https://updater.skunkcrafts.com
 
 # The developers' guide, HTML (same converter as the user guide) and Markdown, xp_depot.py and
 # version.js, under permanent names; then the folder for updater.skunkcrafts.com.
@@ -53,7 +57,43 @@ stage_site() {
 	python3 "$ROOT/tools/md2html.py" "$ROOT/docs/USER_GUIDE.md" "$out/USER_GUIDE.html"
 	cp "$ROOT/dist/PUBLISHING.html" "$out/"
 	tr -d '\r' < "$ROOT/CHANGELOG.txt" > "$out/changelog.txt"
-	echo "=== $out: copy its $(ls "$out" | wc -l) files to the root of https://updater.skunkcrafts.com/ (FTP)"
+	upload_site
+}
+
+# The staged folder, to the root of updater.skunkcrafts.com, with xp_depot's FTP code and zone file.
+# xp_depot's own messages are not shown: on a failure they may name the account.
+upload_site() {
+	local out="$ROOT/dist/site_updater"
+	if [ -n "$DRY" ]; then echo "[dry-run] upload $(ls "$out" | wc -l) file(s) to the root of $SITE_URL"; return 0; fi
+	if [ ! -f "$XP_DEPOT" ] || [ ! -f "$SITE_ZONE/xp_zone.toml" ]; then
+		echo "warning: $XP_DEPOT or $SITE_ZONE/xp_zone.toml missing: copy $out to the root of $SITE_URL by hand" >&2
+		return 0
+	fi
+	echo "=== site -> $SITE_URL"
+	python3 - "$XP_DEPOT" "$SITE_ZONE" "$out" <<'PY'
+import contextlib, importlib.machinery, importlib.util, io, os, sys, types
+tool, zone_dir, out = sys.argv[1:4]
+names = sorted(os.listdir(out))
+loader = importlib.machinery.SourceFileLoader("xp_depot", tool)
+xp = importlib.util.module_from_spec(importlib.util.spec_from_loader("xp_depot", loader))
+noise = io.StringIO()
+try:
+	with contextlib.redirect_stdout(noise), contextlib.redirect_stderr(noise):
+		loader.exec_module(xp)
+		backend = xp.make_backend(xp.read_zone_file(zone_dir), "", types.SimpleNamespace(jobs=1, insecure=False))
+		try:
+			for name in names:
+				backend.put_file(os.path.join(out, name), name)
+		finally:
+			backend.close()
+except BaseException:
+	sys.exit("   upload failed (xp_depot's message hidden, it may name the account): try xp_depot %s <depot> status" % zone_dir)
+print("   %d file(s) uploaded" % len(names))
+PY
+	for f in "$out"/*; do
+		curl -s --max-time 30 "$SITE_URL/$(basename "$f")" | cmp -s - "$f" || { echo "   $SITE_URL/$(basename "$f") differs from $f" >&2; return 1; }
+	done
+	echo "   $SITE_URL serves them all"
 }
 check_url() {
 	code=$(curl -sIL --max-time 30 -o /dev/null -w '%{http_code}' "$1")
