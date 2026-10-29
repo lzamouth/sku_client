@@ -4,9 +4,11 @@
 #      (lists generated here: path|crc32 and path|size; locked cfg first, unlocked cfg last, like xp_depot)
 #   2. the five downloads under their fixed names in <bucket>/updater/, for permanent links, plus the user
 #      guide and the developers' material: PUBLISHING.html / .md (from docs/PUBLISHING.md as it is now),
-#      xp_depot.py (from $XP_DEPOT), and version.js, the version shown by the link pages. Those pages
-#      (docs/site/) are not here: they live on https://updater.skunkcrafts.com/, copied there by hand
-#      (they do not change per version), and reach these files through its redirection
+#      xp_depot.py (from $XP_DEPOT), and version.js, the version shown by the link pages
+#   4. dist/site_updater/: what https://updater.skunkcrafts.com/ serves at its root, to copy there by
+#      FTP after a release (or a --dev-guide): the two link pages of docs/site/ with their stylesheet,
+#      script and logo, the user and developers' guides and changelog.txt; the rest of its root names
+#      are redirected to this CDN folder
 #   3. checks: the fixed URLs and the depot cfg answer 200, the depot announces the version
 # Usage: docs/publish.sh <version> [--dry-run]     e.g. docs/publish.sh 4.0.0-beta8
 #        docs/publish.sh --dev-guide [--dry-run]    the developers' material and version.js only
@@ -27,7 +29,7 @@ SUFFIXES="windows.zip windows-setup.exe macos.zip linux.zip x86_64.AppImage"
 XP_DEPOT="${XP_DEPOT:-$HOME/Development/Claude/toolchain/xp_depot}"   # the publishing tool, kept outside this repository
 
 # The developers' guide, HTML (same converter as the user guide) and Markdown, xp_depot.py and
-# version.js, under permanent names.
+# version.js, under permanent names; then the folder for updater.skunkcrafts.com.
 publish_dev_guide() {
 	python3 "$ROOT/tools/md2html.py" "$ROOT/docs/PUBLISHING.md" "$ROOT/dist/PUBLISHING.html"
 	$DRY cp "$ROOT/dist/PUBLISHING.html" "$ROOT/docs/PUBLISHING.md" "$S3_DIR/"
@@ -38,6 +40,20 @@ publish_dev_guide() {
 	if [ -n "$v" ]; then
 		if [ -n "$DRY" ]; then echo "[dry-run] version.js: $v"; else printf 'window.SKU_VERSION = "%s";\n' "$v" > "$S3_DIR/version.js"; fi
 	fi
+	stage_site
+}
+
+# What updater.skunkcrafts.com serves at its root: the pages, the guides and the changelog, as they are now.
+stage_site() {
+	local out="$ROOT/dist/site_updater"
+	rm -rf "$out"; mkdir -p "$out"
+	cp "$ROOT/docs/site/index.html" "$ROOT/docs/site/developers.html" "$ROOT/docs/site/site.css" "$ROOT/docs/site/site.js" "$out/"
+	cp "$ROOT/packaging/icons/icon.svg" "$out/skunkcrafts-logo.svg"
+	cp "$ROOT/docs/USER_GUIDE.md" "$ROOT/docs/PUBLISHING.md" "$out/"
+	python3 "$ROOT/tools/md2html.py" "$ROOT/docs/USER_GUIDE.md" "$out/USER_GUIDE.html"
+	cp "$ROOT/dist/PUBLISHING.html" "$out/"
+	tr -d '\r' < "$ROOT/CHANGELOG.txt" > "$out/changelog.txt"
+	echo "=== $out: copy its $(ls "$out" | wc -l) files to the root of https://updater.skunkcrafts.com/ (FTP)"
 }
 check_url() {
 	code=$(curl -sIL --max-time 30 -o /dev/null -w '%{http_code}' "$1")

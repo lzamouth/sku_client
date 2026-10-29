@@ -24,10 +24,14 @@ and served by `https://1228098873.rsc.cdn77.org/`, in its `updater/` folder:
    `version.js` (`window.SKU_VERSION = "<version>"`), which the link pages
    load to show the current version.
 
-The two link pages, `docs/site/` (`index.html` for users, `developers.html`,
-`site.css`, `site.js`, plus `packaging/icons/icon.svg` as
-`skunkcrafts-logo.svg`), live at the root of https://updater.skunkcrafts.com/,
-copied there by hand (FTP): they do not change per version. That server also
+What people read lives at the root of https://updater.skunkcrafts.com/, so
+that the address bar shows that name: the two link pages of `docs/site/`
+(`index.html` for users, `developers.html`, `site.css`, `site.js`, plus
+`packaging/icons/icon.svg` as `skunkcrafts-logo.svg`), the user and
+developers' guides (HTML and Markdown) and `changelog.txt`. Every
+`publish.sh` run (release or `--dev-guide`) stages them in
+`dist/site_updater/`; copy that folder's files there by FTP afterwards. What
+people download stays on the CDN. That server also
 holds the private beta depots, one folder each; its `.htaccess` redirects
 every other name at its root to the same name in the CDN's `updater/`
 folder, so the pages' relative links (packages, guides, `xp_depot.py`,
