@@ -1,3 +1,7 @@
+4.2.8
+- Changelogs, readmes, What's new and the file lists of a report are shown in a monospaced font
+- New home page for downloads, guides and what's new: https://updater.skunkcrafts.com/
+
 4.2.7
 - FlyWithLua scripts are managed one by one, each in its own folder inside Resources/plugins/FlyWithLua/Scripts; the shared Scripts folder itself is never taken over by one product
 
