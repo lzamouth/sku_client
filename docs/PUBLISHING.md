@@ -284,10 +284,12 @@ the folder to the production build.
 The 4.x client absorbs the file into its own list of channels as soon as it
 loads the folder: the file disappears, and a channel drop-down (`Main` /
 `beta`) appears in the addon list. Testers who put the file back get the
-same channel, not a second one. They go back to production by picking
-`Main`, or remove the channel altogether ("Remove channel..." in the
-add-on's details); a new file with `enabled|false` makes them follow `Main`
-too, the channel staying available.
+same channel, not a second one. `enabled` only counts when the file brings
+a depot the client does not follow yet: a file for a channel the user
+already has never changes the channel followed (4.2.10 client), so a product
+that re-creates its beta file at every start does not undo the user's
+choice. Testers go back to production by picking `Main`, or remove the
+channel altogether ("Remove channel..." in the add-on's details).
 
 ### 2.3 Several betas at once (4.x client)
 

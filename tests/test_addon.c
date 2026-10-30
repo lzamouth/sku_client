@@ -418,9 +418,19 @@ static void test_level(const char *level, bool second_run_uses_cache)
 			CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
 			CHECK_EQ_INT(a->nchannels, 1);
 			CHECK_EQ_STR(a->channels[0].name, "Private beta");
-			CHECK_EQ_STR(a->channel, "Private beta");                    /* enabled|true follows it */
+			CHECK_EQ_STR(a->channel, "stable");                          /* a depot already followed: the user's choice stays */
 			CHECK(!sku_exists(beta_file));
 		}
+		/* a product re-creating its beta file at every start (enabled true or false) never moves the user */
+		CHECK_EQ_INT(sku_addon_set_channel(a, "Private beta", false), SKU_OK);
+		for (int i = 0; i < 2; i++) {
+			sku_snprintf(text, sizeof text, "module|%s/beta\nzone|custom\nenabled|%s\ninstalled|true\n", url, i ? "true" : "false");
+			CHECK_EQ_INT(sku_write_file_atomic(beta_file, text, strlen(text)), SKU_OK);
+			CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+			CHECK_EQ_STR(a->channel, "Private beta");
+			CHECK(!sku_exists(beta_file));
+		}
+		CHECK_EQ_INT(sku_addon_set_channel(a, "stable", false), SKU_OK);
 		/* a file pointing at the main depot adds nothing */
 		sku_snprintf(text, sizeof text, "module|%s\nzone|custom\nchannel|Main again\n", sku_cfg_get(&a->local, "module"));
 		CHECK_EQ_INT(sku_write_file_atomic(beta_file, text, strlen(text)), SKU_OK);

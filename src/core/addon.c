@@ -292,13 +292,16 @@ static void channels_from_root_cfg(sku_addon *a, bool active_known)
  * channel, then the file is absorbed at the next save. Users put the same file back
  * when they see it gone, so a file never adds a second channel for a depot already
  * followed: that channel is updated, and renamed only when the file names it
- * explicitly ("channel|<name>"). A file pointing at the main depot adds nothing. */
+ * explicitly ("channel|<name>"). A file pointing at the main depot adds nothing. Only a
+ * file for a depot not followed yet applies its "enabled" flag: some products re-create
+ * their beta file at every start, and must not undo the user's choice of channel. */
 static void merge_beta_file(sku_addon *a, const char *file, const char *default_name)
 {
 	sku_cfg b;
 	const char *name, *module, *zone, *base = sku_path_basename(file);
 	bool explicit_name;
 	sku_channel *c = NULL;
+	bool known;
 	sku_cfg_init(&b);
 	if (sku_cfg_load(&b, file) != SKU_OK) { sku_cfg_free(&b); return; }
 	a->dirty = true;   /* absorbed at the next save, whatever it holds */
@@ -317,6 +320,7 @@ static void merge_beta_file(sku_addon *a, const char *file, const char *default_
 		return;
 	}
 	for (int i = 0; i < a->nchannels && !c; i++) if (same_depot(a->channels[i].zone, a->channels[i].module, zone, module)) c = &a->channels[i];
+	known = c != NULL;
 	if (c) {
 		/* this depot is already followed: the same channel */
 		if (explicit_name && strcmp(c->name, name) != 0 && !channel_get(a, name)) {
@@ -340,8 +344,10 @@ static void merge_beta_file(sku_addon *a, const char *file, const char *default_
 		sku_snprintf(a->notice, sizeof a->notice, "%s: the beta file became the channel \"%s\", pick it in the Channel column", sku_cfg_get_or(&a->local, "name", base), c->name);
 	}
 	sku_strlcpy(c->zone, zone, sizeof c->zone);
-	/* the legacy "enabled" flag selects the active channel: true = follow this channel, false = production */
-	if (sku_cfg_get_bool(&b, "enabled", true)) sku_strlcpy(a->channel, c->name, sizeof a->channel);
+	/* the legacy "enabled" flag selects the active channel: true = follow this channel, false = production;
+	 * a depot already followed keeps the user's choice */
+	if (known) sku_debug("%s: %s: the channel followed stays \"%s\"", a->dir, base, a->channel);
+	else if (sku_cfg_get_bool(&b, "enabled", true)) sku_strlcpy(a->channel, c->name, sizeof a->channel);
 	else if (strcmp(a->channel, c->name) == 0) sku_strlcpy(a->channel, "stable", sizeof a->channel);
 	sku_cfg_free(&b);
 }
