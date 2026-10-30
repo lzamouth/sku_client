@@ -62,10 +62,10 @@ static void files_tab(app *ap, app_item *it, float row, float height)
 			nk_layout_row_template_push_static(ctx, 100);
 			nk_layout_row_template_push_dynamic(ctx);
 			nk_layout_row_template_end(ctx);
+			nk_style_set_font(ctx, &ap->mono->handle);
 			nk_label_colored(ctx, sku_reason_name(pi->reason), NK_TEXT_LEFT, c);
 			if (pi->size >= 0) sku_nice_size(buf, sizeof buf, pi->size); else buf[0] = 0;
 			nk_label(ctx, buf, NK_TEXT_RIGHT);
-			nk_style_set_font(ctx, &ap->mono->handle);
 			ui_left_truncate(ap, pi->path, nk_widget_width(ctx) - 8, buf, sizeof buf);
 			if (pi->detail) { sku_strlcat(buf, "  # ", sizeof buf); sku_strlcat(buf, pi->detail, sizeof buf); }
 			nk_label_colored(ctx, buf, NK_TEXT_LEFT, c);
@@ -142,7 +142,9 @@ static void doc_tab(app *ap, int index, int kind, float height)
 				/* changelog: older sections dimmed; readme: plain text */
 				struct nk_color c = (newer || kind != 2) ? (ap->dark ? nk_rgb(240, 240, 240) : nk_rgb(30, 30, 30)) : (ap->dark ? nk_rgb(160, 160, 160) : nk_rgb(110, 110, 110));
 				line = (char *)ui_tidy_line(line, tidy, sizeof tidy);   /* tab-indented 3.x changelogs */
+				nk_style_set_font(ctx, &ap->mono->handle);
 				ui_text_wrapped(ap, line, (float)ap->prefs.text_size + 4, &c);
+				nk_style_set_font(ctx, &ap->font->handle);
 			}
 			lineno++;
 		}

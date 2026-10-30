@@ -227,7 +227,9 @@ static void load_fonts(app *ap)
 	 * right-pointing triangle, small square) come from DejaVu Sans, merged in */
 	static const nk_rune ranges[] = { 0x0020, 0x00FF, 0x2022, 0x2022, 0x2026, 0x2026, 0 };   /* + bullet, ellipsis */
 	static const nk_rune symbols[] = { 0x25AB, 0x25AB, 0x25B6, 0x25B6, 0 };
-	static const nk_rune mono_ranges[] = { 0x0020, 0x00FF, 0x2026, 0x2026, 0x25AB, 0x25AB, 0x25B6, 0x25B6, 0 };
+	/* monospace (reports, file lists, changelogs, readmes): Latin-1 and Latin Extended-A, the
+	 * typographic dashes, quotes, bullet and ellipsis, the two UI symbols */
+	static const nk_rune mono_ranges[] = { 0x0020, 0x017F, 0x2010, 0x2027, 0x25AB, 0x25AB, 0x25B6, 0x25B6, 0 };
 	struct nk_font_config merge = nk_font_config(0);
 	/* SKU_FONT_FILE=<ttf>: try another UI font without rebuilding (test hook) */
 	static char *alt_font; static size_t alt_len;

@@ -326,7 +326,9 @@ void ui_client_news(app *ap)
 			nk_layout_row_end(ctx);
 		} else {
 			line = (char *)ui_tidy_line(line, tidy, sizeof tidy);
+			nk_style_set_font(ctx, &ap->mono->handle);
 			ui_text_wrapped(ap, line, row, newer ? &hi : NULL);
+			nk_style_set_font(ctx, &ap->font->handle);
 		}
 		lineno++;
 	}
