@@ -32,7 +32,10 @@ The program alone works from two places:
 the program is not commonly downloaded: choose "More info", then "Run
 anyway". The program is not signed with a commercial certificate.
 
-**macOS.** Unzip and move `SkunkcraftsUpdater.app` where you like. The
+**macOS.** Unzip, then move `SkunkcraftsUpdater.app` out of Downloads with
+the Finder, to Applications for example, before the first start: a copy
+started where the browser unzipped it runs from a hidden read-only location
+(macOS "App Translocation") and cannot update itself. The
 application is not notarized: the first time, right-click it and choose
 "Open", or allow it under System Settings > Privacy & Security. If macOS
 says the file is damaged, it was downloaded by a browser that quarantined
@@ -212,9 +215,11 @@ in place, the banner then offers "Restart now"; until you restart, the old
 version keeps running. Nothing changes in your add-ons or settings.
 
 If the replacement fails (a folder you cannot write to, for example), the
-banner says so and the downloaded package stays in a `downloads` folder next
-to the updater's preferences, with a button to open it, so you can install it
-by hand.
+banner and the log say so, and the downloaded package stays in a `downloads`
+folder next to the updater's preferences, with a button to open it, so you
+can install it by hand. On macOS, a banner asking you to move the application to
+Applications means it was started from Downloads without being moved: quit
+it, move it with the Finder, start it again and click Update.
 
 ## 10. What the updater writes, and how to keep files out of updates
 

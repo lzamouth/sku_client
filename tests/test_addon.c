@@ -139,6 +139,16 @@ static void test_client(void)
 		sku_path_join(old, sizeof old, dir, "Apps/SkunkcraftsUpdater.app/Contents/Info.plist"); CHECK(sku_is_file(old));
 		sku_client_cleanup_old(exe);                                    /* the next start drops the .old bundle */
 		sku_path_join(old, sizeof old, dir, "Apps/SkunkcraftsUpdater.app.old"); CHECK(!sku_exists(old));
+		/* a translocated copy (started from Downloads, never moved) is read-only: say so, touch nothing */
+		CHECK_EQ_INT(sku_client_check(depot, SKU_PKG_MACOS_ZIP, &info, err, sizeof err), SKU_OK);
+		CHECK_EQ_INT(sku_client_download(depot, &info, dir, NULL, NULL, NULL, zipdest, sizeof zipdest, err, sizeof err), SKU_OK);
+		sku_client_info_free(&info);
+		sku_path_join(bundle, sizeof bundle, dir, "AppTranslocation/0A1B/d/SkunkcraftsUpdater.app");
+		CHECK_EQ_INT(sku_client_install_bundle(zipdest, bundle, err, sizeof err), SKU_ERR_IO);
+		CHECK(strstr(err, "move the app to Applications") != NULL);
+		sku_path_join(old, sizeof old, dir, "AppTranslocation"); CHECK(!sku_exists(old));
+		CHECK(sku_exists(zipdest));
+		sku_remove_file(zipdest);
 	}
 
 	/* an unknown package name: the check still reports the version */

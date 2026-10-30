@@ -308,6 +308,11 @@ int sku_client_install_bundle(const char *zip, const char *target, char *err, si
 	int rc;
 
 	if (err && en) err[0] = 0;
+	/* macOS runs a downloaded app never moved with the Finder from a hidden read-only copy (App Translocation) */
+	if (strstr(target, "/AppTranslocation/")) {
+		sku_snprintf(err, en, "macOS runs it read-only: move the app to Applications with the Finder and restart it");
+		return SKU_ERR_IO;
+	}
 	sku_path_dirname(parent, sizeof parent, target);
 	sku_snprintf(tmp, sizeof tmp, "%s/.%s.new", parent, name);
 	sku_remove_tree(tmp);

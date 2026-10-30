@@ -77,7 +77,7 @@ static void *download_thread(void *arg)
 {
 	app *ap = arg;
 	char dir[SKU_PATH_MAX], dest[SKU_PATH_MAX], err[256];
-	const char *target, *entry;
+	const char *target = NULL, *entry;
 	int rc;
 	downloads_dir(dir, sizeof dir);
 	rc = sku_client_download(ap->prefs.client_url, &ap->client, dir, on_progress, ap, &ap->client_cancel, dest, sizeof dest, err, sizeof err);
@@ -98,6 +98,8 @@ static void *download_thread(void *arg)
 		sku_strlcpy(ap->client_file, dest, sizeof ap->client_file);
 		atomic_store(&ap->client_state, CLIENT_DOWNLOADED);
 	} else {
+		if (target) sku_error("client: cannot install the new version over %s: %s", target, err);
+		else sku_error("client: updater update failed: %s", err);
 		sku_strlcpy(ap->client_err, err, sizeof ap->client_err);
 		atomic_store(&ap->client_state, CLIENT_FAILED);
 	}
@@ -192,7 +194,7 @@ bool ui_client_banner(app *ap)
 
 	if (!banner_wanted(ap)) return false;
 	nk_layout_row_begin(ctx, NK_STATIC, row, 4);
-	nk_layout_row_push(ctx, UI_W(ap, 520));
+	nk_layout_row_push(ctx, UI_W(ap, st == CLIENT_FAILED ? 760 : 520));   /* a failure has one button: room for the reason */
 	switch (st) {
 	case CLIENT_DOWNLOADING:
 		sku_nice_size(nice, sizeof nice, atomic_load(&ap->client_done));
@@ -241,7 +243,7 @@ bool ui_client_banner(app *ap)
 			/* curl's messages can be long: cut to the label, whole on hover and in the log */
 			char full[sizeof buf];
 			sku_snprintf(full, sizeof full, "Updater update: %s", ap->client_err);
-			ui_right_truncate(ap, full, UI_W(ap, 520) - 8, buf, sizeof buf);
+			ui_right_truncate(ap, full, UI_W(ap, 760) - 8, buf, sizeof buf);
 			if (strcmp(buf, full) != 0 && nk_widget_is_hovered(ctx)) nk_tooltip(ctx, full);
 		}
 		nk_label_colored(ctx, buf, NK_TEXT_LEFT, nk_rgb(255, 80, 80));
@@ -254,7 +256,10 @@ bool ui_client_banner(app *ap)
 		nk_layout_row_push(ctx, UI_W(ap, 120));
 		if (ap->client.changelog && ui_button(ap, "What's new")) { ap->about_mode = 2; ap->view = VIEW_ABOUT; }
 		nk_layout_row_push(ctx, UI_W(ap, 120));
-		if (ap->client.package[0] && !ap->client.locked && ui_button(ap, install_target(ap, NULL) || is_installer(ap) ? "Update" : "Download")) app_client_download_start(ap);
+		if (ap->client.package[0] && !ap->client.locked && ui_button(ap, install_target(ap, NULL) || is_installer(ap) ? "Update" : "Download")) {
+			ap->client_manual = true;   /* asked for: a failure shows, unlike a failed check at startup */
+			app_client_download_start(ap);
+		}
 		nk_layout_row_push(ctx, UI_W(ap, 120));
 		if (ui_button(ap, "Later")) { sku_strlcpy(ap->prefs.client_skip, ap->client.version, sizeof ap->prefs.client_skip); prefs_save(ap); ap->client_manual = false; }
 		break;

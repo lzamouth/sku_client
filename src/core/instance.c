@@ -62,8 +62,9 @@ int sku_instance_detect(char *out, size_t n)
 	if (sku_exe_path(p, sizeof p) != SKU_OK) return SKU_ERR_NOTFOUND;
 	sku_path_dirname(d, sizeof d, p);
 	if (sku_instance_is_root(d)) return (int)(sku_strlcpy(out, d, n) < n ? SKU_OK : SKU_ERR_ARG);
-	/* Foo.app/Contents/MacOS/exe -> three levels up */
-	if (strstr(d, ".app/Contents/MacOS")) {
+	/* Foo.app/Contents/MacOS/exe -> three levels up; not from a translocated copy, whose folder shows
+	 * the bundle alone and is the original one (Downloads) in disguise: macOS would ask for access to it */
+	if (strstr(d, ".app/Contents/MacOS") && !strstr(d, "/AppTranslocation/")) {
 		for (int i = 0; i < 3; i++) { sku_path_dirname(p, sizeof p, d); sku_strlcpy(d, p, sizeof d); }
 		if (sku_instance_is_root(d)) return (int)(sku_strlcpy(out, d, n) < n ? SKU_OK : SKU_ERR_ARG);
 	}
