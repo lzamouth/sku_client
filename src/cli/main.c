@@ -106,7 +106,7 @@ static int cmd_remove_channel(sku_addon **addons, int naddons, char **names, int
 	if (n > 1) { fprintf(stderr, "%d addons above have a channel \"%s\": give a name that designates only one\n", n, names[0]); return 1; }
 	if (sku_addon_remove_channel(target, names[0], dry_run) != SKU_OK) { fprintf(stderr, "cannot remove the channel \"%s\"\n", names[0]); return 1; }
 	printf("channel \"%s\" removed%s; its file is kept in %s/ as .removed, the addon follows %s\n", names[0], dry_run ? " (dry run: nothing written)" : "",
-		SKU_D_CHANNELS, strcmp(target->channel, "stable") == 0 ? "Main" : target->channel);
+		SKU_D_CHANNELS, strcmp(target->channel, "stable") == 0 ? (target->main_name[0] ? target->main_name : "Main") : target->channel);
 	return 0;
 }
 
@@ -171,7 +171,7 @@ static int run_command(const char *cmd, sku_addon *a, const struct opts *o, cons
 	} else if (strcmp(cmd, "channels") == 0) {
 		if (!a->nchannels) return 0;
 		printf("%s%-8s %s\n", indent, sku_genre_name(a->genre), a->name);
-		printf("%s    %s %-20s %s\n", indent, strcmp(a->channel, "stable") == 0 ? "*" : " ", "Main", a->module);
+		printf("%s    %s %-20s %s\n", indent, strcmp(a->channel, "stable") == 0 ? "*" : " ", a->main_name[0] ? a->main_name : "Main", a->module);
 		for (int i = 0; i < a->nchannels; i++)
 			printf("%s    %s %-20s %s%s\n", indent, strcmp(a->channel, a->channels[i].name) == 0 ? "*" : " ", a->channels[i].name, a->channels[i].module,
 				a->channels[i].is_public ? "  (public)" : "");

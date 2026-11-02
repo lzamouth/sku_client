@@ -81,6 +81,7 @@ typedef struct {
 	bool       disabled;
 	bool       liveries;         /* aircraft only */
 	char       channel[64];      /* "stable" or a channel name (skunkcrafts/channel.cfg) */
+	char       main_name[64];    /* the developer's name for Main ("main_name|"), shown instead of "Main"; "" = none */
 	sku_channel *channels;
 	int        nchannels;
 	char       pack_id[64], member_id[64], pack_name[SKU_NAME_MAX];
@@ -136,6 +137,7 @@ void       sku_addon_cancel(sku_addon *a);
 /* User settings: applied in memory, saved unless dry_run. */
 int        sku_addon_set_disabled(sku_addon *a, bool disabled, bool dry_run);
 int        sku_addon_set_liveries(sku_addon *a, bool liveries, bool dry_run);
+void       sku_addon_main_name_refresh(sku_addon *a);   /* a->main_name from the local cfg, checked against the channels */
 int        sku_addon_set_channel(sku_addon *a, const char *channel, bool dry_run);
 /* A tester file published by the depot itself (its text): offered as a channel, never followed
  * on its own, not offered again once the user removed it. Saved unless dry_run. */

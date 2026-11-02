@@ -241,7 +241,8 @@ static bool channels_load(sku_addon *a)
 
 /* 4.0.0 to 4.0.2 kept the channels in skunkcrafts_updater.cfg ("channel|<active>",
  * "channel.<name>.module|", "channel.<name>.zone|"): they move to the private
- * folder, the keys leave the public file. A channel already in the folder wins. */
+ * folder, the keys leave the public file. A channel already in the folder wins.
+ * Any other "channel." key is the developer's (public channels, later keys) and stays. */
 static void channels_from_root_cfg(sku_addon *a, bool active_known)
 {
 	sku_strlist drop = {0};
@@ -256,6 +257,7 @@ static void channels_from_root_cfg(sku_addon *a, bool active_known)
 			continue;
 		}
 		if (strncmp(k, "channel.", 8) != 0 || !(dot = strrchr(k, '.')) || dot < k + 8) continue;
+		if (strcmp(dot + 1, "module") != 0 && strcmp(dot + 1, "zone") != 0) continue;
 		sku_strlist_push(&drop, k);
 		len = (size_t)(dot - (k + 8));
 		if (len == 0 || len >= sizeof name || !v) continue;
@@ -442,26 +444,51 @@ static int channels_save(sku_addon *a)
 	if (!a->nchannels && !sku_is_file(p)) return SKU_OK;   /* no channel ever: nothing to write */
 	sku_path_join(dir, sizeof dir, a->dir, SKU_D_CHANNELS);
 	if (sku_mkdir_p(dir) != SKU_OK) { sku_error("%s: cannot create %s", a->dir, dir); return SKU_ERR_IO; }
+	/* keys a later client may add to these files are kept: an older one only rewrites its own */
 	for (int i = 0; i < a->nchannels; i++) {
 		sku_channel *c = &a->channels[i];
-		char text[SKU_URL_MAX + 256];
-		int n;
+		sku_cfg cfg;
+		int rc;
 		channel_file_assign(a, c);
-		n = sku_snprintf(text, sizeof text, "channel|%s\nmodule|%s\nzone|%s\n%s", c->name, c->module, c->zone, c->is_public ? "public|true\n" : "");
 		sku_path_join(p, sizeof p, dir, c->file);
-		if (sku_write_file_atomic(p, text, (size_t)n) != SKU_OK) { sku_error("%s: cannot write %s", a->dir, p); return SKU_ERR_IO; }
+		sku_cfg_init(&cfg);
+		sku_cfg_load(&cfg, p);
+		sku_cfg_set(&cfg, "channel", c->name);
+		sku_cfg_set(&cfg, "module", c->module);
+		sku_cfg_set(&cfg, "zone", c->zone);
+		if (c->is_public) sku_cfg_set(&cfg, "public", "true");
+		else sku_cfg_remove(&cfg, "public");
+		rc = sku_cfg_save_v1(&cfg, p);
+		sku_cfg_free(&cfg);
+		if (rc != SKU_OK) { sku_error("%s: cannot write %s", a->dir, p); return SKU_ERR_IO; }
 		c->migrated = false;
 	}
 	{
-		char text[128];
-		int n = sku_snprintf(text, sizeof text, "channel|%s\n", a->channel);
+		sku_cfg cfg;
+		int rc;
 		sku_path_join(p, sizeof p, a->dir, SKU_F_CHANNEL);
-		if (sku_write_file_atomic(p, text, (size_t)n) != SKU_OK) { sku_error("%s: cannot write %s", a->dir, p); return SKU_ERR_IO; }
+		sku_cfg_init(&cfg);
+		sku_cfg_load(&cfg, p);
+		sku_cfg_set(&cfg, "channel", a->channel);
+		rc = sku_cfg_save_v1(&cfg, p);
+		sku_cfg_free(&cfg);
+		if (rc != SKU_OK) { sku_error("%s: cannot write %s", a->dir, p); return SKU_ERR_IO; }
 	}
 	return SKU_OK;
 }
 
 /* ------------------------------------------------------------ load / save */
+
+/* The developer's name for Main: display only, never the token "stable" nor the name of a
+ * channel (the two entries of the drop-down must stay apart). */
+void sku_addon_main_name_refresh(sku_addon *a)
+{
+	const char *v = sku_cfg_get_or(&a->local, "main_name", "");
+	a->main_name[0] = 0;
+	if (!*v || strlen(v) >= sizeof a->main_name || strcmp(v, "stable") == 0 || !valid_channel_name(v)) return;
+	if (channel_get(a, v)) { sku_debug("%s: main_name \"%s\" is also a channel's name: not used", a->dir, v); return; }
+	sku_strlcpy(a->main_name, v, sizeof a->main_name);
+}
 
 static void fields_from_cfg(sku_addon *a)
 {
@@ -474,6 +501,7 @@ static void fields_from_cfg(sku_addon *a)
 	sku_strlcpy(a->pack_id,   sku_cfg_get_or(&a->local, "pack", ""), sizeof a->pack_id);
 	sku_strlcpy(a->member_id, sku_cfg_get_or(&a->local, "member", ""), sizeof a->member_id);
 	sku_strlcpy(a->pack_name, sku_cfg_get_or(&a->local, "pack_name", ""), sizeof a->pack_name);
+	sku_addon_main_name_refresh(a);
 	/* an active channel that no longer exists falls back to stable */
 	if (strcmp(a->channel, "stable") != 0 && !channel_get(a, a->channel)) {
 		sku_warn("%s: channel \"%s\" is not defined, using stable", a->dir, a->channel);

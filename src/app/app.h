@@ -32,6 +32,7 @@ typedef struct {
 	/* snapshot of the addon, refreshed while idle */
 	char name[SKU_NAME_MAX], version[64], remote_version[64], dir[SKU_PATH_MAX], source[SKU_URL_MAX];
 	char channel[64], channels[APP_MAX_CHANNELS][64];
+	char main_name[64];   /* the developer's name for Main, "" = UI_MAIN_CHANNEL */
 	int  nchannels;
 	sku_genre genre;
 	bool disabled, liveries, checked;
@@ -221,7 +222,7 @@ void ui_tip_below(app *ap, const struct nk_rect *r, const char *text);
 void ui_tip_flush(app *ap);
 struct nk_color ui_channel_color(app *ap, const char *channel);   /* stable blue, the others yellow */
 #define UI_MAIN_CHANNEL "Main"                                     /* what the "stable" token is called on screen */
-const char *ui_channel_label(const char *channel);               /* "stable" -> UI_MAIN_CHANNEL, others unchanged */
+const char *ui_channel_label(const char *channel, const char *main_name);   /* "stable" -> main_name or UI_MAIN_CHANNEL, others unchanged */
 /* Column titles over a list; the boundaries can be dragged (double-click: defaults). cols is updated and saved. */
 void ui_column_header(app *ap, const char **titles, const float *defaults, float *cols, int n, float row);
 extern const float ui_list_default_cols[4];

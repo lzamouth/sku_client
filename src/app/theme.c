@@ -4,9 +4,10 @@
 #include "nuklear_config.h"
 #include <string.h>
 
-const char *ui_channel_label(const char *channel)
+const char *ui_channel_label(const char *channel, const char *main_name)
 {
-	return strcmp(channel, "stable") == 0 ? UI_MAIN_CHANNEL : channel;
+	if (strcmp(channel, "stable") != 0) return channel;
+	return main_name && *main_name ? main_name : UI_MAIN_CHANNEL;
 }
 
 struct nk_color ui_channel_color(app *ap, const char *channel)

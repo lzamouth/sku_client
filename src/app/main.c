@@ -53,6 +53,7 @@ void app_refresh_item(app_item *it)
 	sku_strlcpy(it->dir, a->dir, sizeof it->dir);
 	sku_strlcpy(it->source, a->base_url, sizeof it->source);
 	sku_strlcpy(it->channel, a->channel, sizeof it->channel);
+	sku_strlcpy(it->main_name, a->main_name, sizeof it->main_name);
 	it->nchannels = 0;
 	for (int i = 0; i < a->nchannels && it->nchannels < APP_MAX_CHANNELS; i++)
 		sku_strlcpy(it->channels[it->nchannels++], a->channels[i].name, sizeof it->channels[0]);

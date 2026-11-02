@@ -351,6 +351,22 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	/* public channels: offered by the depot's cfg, withdrawn only by the main depot's */
 	sku_addon_public_channels(a, &a->remote, strcmp(a->channel, "stable") == 0 && !a->fallback[0], opts->dry_run);
 
+	/* the name of Main, like the public channels: given by whichever depot is checked (the
+	 * configuration is the same on every channel's), taken back only by the main depot's */
+	{
+		const char *rv = sku_cfg_get(&a->remote, "main_name");
+		bool from_main = strcmp(a->channel, "stable") == 0 && !a->fallback[0], moved = false;
+		if (rv && *rv) {
+			if (strcmp(rv, sku_cfg_get_or(&a->local, "main_name", "")) != 0) { sku_cfg_set(&a->local, "main_name", rv); moved = true; }
+		} else if (from_main && sku_cfg_has(&a->local, "main_name")) { sku_cfg_remove(&a->local, "main_name"); moved = true; }
+		if (moved) {
+			sku_info("%s: Main is now called \"%s\" by the depot", a->name, rv && *rv ? rv : "Main");
+			a->dirty = true;
+			if (!opts->dry_run) sku_addon_save(a);
+		}
+		sku_addon_main_name_refresh(a);   /* a public channel may also bear that name */
+	}
+
 	if (sku_cfg_get_bool(&a->remote, "locked", false)) {
 		sku_addon_set_status(a, SKU_ST_LOCKED, "Update repository locked for maintenance", "Updates are not possible until the developer removes the lock.");
 		rc = SKU_OK;

@@ -811,6 +811,68 @@ static void test_public_channels(void)
 	sku_instance_close(&in);
 }
 
+/* Keys this client does not know stay where they are (a later client may have written them),
+ * and Main may carry the developer's name ("main_name|"): display only, given by whichever
+ * depot is checked, taken back by the main depot only, never a channel's name. */
+static void test_unknown_keys_main_name(void)
+{
+	sku_instance in;
+	sku_addon *a;
+	sku_check_opts co = { false, false, 2 };
+	char dir[SKU_PATH_MAX], cfg[SKU_PATH_MAX], p[SKU_PATH_MAX], text[SKU_URL_MAX * 2 + 256], *body;
+
+	sku_path_join(dir, sizeof dir, xp, "Aircraft/Named/Plane");
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channels");
+	CHECK_EQ_INT(sku_mkdir_p(p), SKU_OK);
+	sku_path_join(cfg, sizeof cfg, dir, "skunkcrafts_updater.cfg");
+	sku_snprintf(text, sizeof text, "name|Test plane\nmodule|%s/public\nversion|1.0\nzone|custom\nfuture_key|kept\nchannel.RC 1.2|%s/level1\nmain_name|Release\n", url, url);
+	CHECK_EQ_INT(sku_write_file_atomic(cfg, text, strlen(text)), SKU_OK);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channels/beta.cfg");
+	sku_snprintf(text, sizeof text, "channel|beta\nmodule|%s/beta\nzone|custom\nlabel|Nightly\n", url);
+	CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channel.cfg");
+	CHECK_EQ_INT(sku_write_file_atomic(p, "channel|stable\nfuture|1\n", 23), SKU_OK);
+	CHECK_EQ_INT(sku_instance_open(&in, xp, false), SKU_OK);
+	a = sku_addon_open(&in, dir, SKU_GENRE_AIRCRAFT);
+	CHECK_EQ_STR(a->main_name, "Release");
+	CHECK_EQ_INT(a->nchannels, 2);                                  /* beta, and "RC 1.2" declared in the local cfg */
+
+	/* saving keeps every key it does not handle: local cfg (a dot in a public channel's name
+	 * is not the 4.0 layout), channel files, channel.cfg */
+	CHECK_EQ_INT(sku_addon_set_channel(a, "beta", false), SKU_OK);
+	CHECK_EQ_INT(sku_read_file(cfg, &body, NULL), SKU_OK);
+	CHECK(strstr(body, "future_key|kept\n") && strstr(body, "channel.RC 1.2|") && strstr(body, "main_name|Release\n")); free(body);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channels/beta.cfg");
+	CHECK_EQ_INT(sku_read_file(p, &body, NULL), SKU_OK); CHECK(strstr(body, "label|Nightly\n") != NULL); free(body);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channel.cfg");
+	CHECK_EQ_INT(sku_read_file(p, &body, NULL), SKU_OK); CHECK(strstr(body, "channel|beta\n") && strstr(body, "future|1\n")); free(body);
+
+	/* a channel's name is never Main's */
+	sku_snprintf(text, sizeof text, "name|Test plane\nmodule|%s/public\nversion|1.0\nzone|custom\nmain_name|beta\n", url);
+	CHECK_EQ_INT(sku_write_file_atomic(cfg, text, strlen(text)), SKU_OK);
+	CHECK_EQ_INT(sku_addon_reload(a), SKU_OK);
+	CHECK_EQ_STR(a->main_name, "");
+
+	/* given by the depot checked, kept while another channel's depot says nothing, taken back
+	 * by the main depot */
+	CHECK_EQ_INT(sku_addon_set_channel(a, "stable", false), SKU_OK);
+	public_depot_cfg("main_name|Stable release\n");
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_STR(a->main_name, "Stable release");
+	CHECK_EQ_INT(sku_read_file(cfg, &body, NULL), SKU_OK); CHECK(strstr(body, "main_name|Stable release\n") != NULL); free(body);
+	CHECK_EQ_INT(sku_addon_set_channel(a, "beta", false), SKU_OK);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);                 /* the beta depot's cfg has no main_name */
+	CHECK_EQ_STR(a->main_name, "Stable release");
+	CHECK_EQ_INT(sku_addon_set_channel(a, "stable", false), SKU_OK);
+	public_depot_cfg("");
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_STR(a->main_name, "");
+	CHECK_EQ_INT(sku_read_file(cfg, &body, NULL), SKU_OK); CHECK(strstr(body, "main_name") == NULL); free(body);
+
+	sku_addon_close(a);
+	sku_instance_close(&in);
+}
+
 static int count(const char *text, const char *needle)
 {
 	int n = 0;
@@ -956,6 +1018,7 @@ int main(void)
 	test_no_query_depot();
 	test_depot_client_files();
 	test_public_channels();
+	test_unknown_keys_main_name();
 	test_fallback_public();
 	test_scan_depth();
 	sku_http_global_cleanup();

@@ -90,8 +90,9 @@ int prefs_save(app *ap)
 	int rc;
 
 	if (!ap->prefs_path[0]) return SKU_ERR_IO;
+	/* rewritten over the file as it is: keys of a later version stay for it */
 	sku_cfg_init(&c);
-	sku_cfg_add_raw(&c, "# SkunkCrafts Updater preferences");
+	if (sku_cfg_load(&c, ap->prefs_path) != SKU_OK || !c.n) sku_cfg_add_raw(&c, "# SkunkCrafts Updater preferences");
 	sku_cfg_set(&c, "theme", p->theme == THEME_LIGHT ? "light" : p->theme == THEME_SYSTEM ? "system" : "dark");
 	sku_cfg_set_bool(&c, "relief", p->relief);
 	sku_snprintf(num, sizeof num, "%d", p->video);       sku_cfg_set(&c, "video", num);
@@ -109,6 +110,9 @@ int prefs_save(app *ap)
 		sku_cfg_set(&c, "window_display", p->window_display);
 		sku_snprintf(num, sizeof num, "%d", p->window_dx); sku_cfg_set(&c, "window_dx", num);
 		sku_snprintf(num, sizeof num, "%d", p->window_dy); sku_cfg_set(&c, "window_dy", num);
+	} else {
+		static const char *pos_keys[] = { "window_x", "window_y", "window_display", "window_dx", "window_dy" };
+		for (size_t i = 0; i < sizeof pos_keys / sizeof *pos_keys; i++) sku_cfg_remove(&c, pos_keys[i]);
 	}
 	sku_cfg_set_bool(&c, "window_max", p->window_max);
 	sku_cfg_set(&c, "instance", p->instance);

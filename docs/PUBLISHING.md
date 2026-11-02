@@ -407,6 +407,26 @@ is the same on every channel's depot; the client reads the public channels
 from whichever depot it checks, but only the production depot's
 configuration can withdraw one.
 
+### 2.7 Naming Main (4.2.11 client)
+
+The production channel is called `Main` in the drop-downs. To show another
+name, add one line to your configuration:
+
+```
+main_name|Release
+```
+
+- It changes what is displayed only: the channel stays the production one,
+  in the files as in the logic, and keeps its color (blue; beta channels
+  are yellow), which tells it apart from the channels.
+- It cannot be `stable`, nor the name of one of the user's channels (the
+  line is then ignored for that user). Spaces at both ends are ignored.
+- Like the public channels, the client takes it from whichever depot it
+  checks (keep it in the configuration of every channel's depot), and from
+  the configuration in the product folder; only the production depot's
+  configuration takes it back when the line disappears.
+- Older clients and the 3.x client ignore the line.
+
 ## Part 3 - On the user's side: local files and the 4.0 migration
 
 ### 3.1 What the client writes
@@ -425,6 +445,12 @@ show their version string, and publishing tools read it too. The client
 therefore never moves or renames it, and from 4.1 writes nothing of its own
 in it: it holds the keys of the 3.x format only, and `version` is always the
 installed version. That is the file, and the key, your aircraft may rely on.
+
+A key the client does not know stays where it is: the 4.x client rewrites
+only the keys it handles, in this file, in its own files under
+`skunkcrafts/` and in its preferences, so a line added by a later client
+or by you survives an older client. Comment lines (`#`) are not kept in
+`skunkcrafts_updater.cfg`, which is written as `key|value` lines only.
 
 The client's own sub-folder `skunkcrafts/` holds:
 

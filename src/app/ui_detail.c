@@ -219,7 +219,7 @@ void ui_detail(app *ap)
 		const char *names[APP_MAX_CHANNELS + 1], *labels[APP_MAX_CHANNELS + 1];
 		struct nk_color colors[APP_MAX_CHANNELS + 1];
 		int sel = 0, n = 0;
-		names[n] = "stable"; labels[n] = UI_MAIN_CHANNEL; colors[n] = ui_channel_color(ap, "stable"); n++;
+		names[n] = "stable"; labels[n] = ui_channel_label("stable", it->main_name); colors[n] = ui_channel_color(ap, "stable"); n++;
 		for (int i = 0; i < it->nchannels; i++) { if (strcmp(it->channels[i], it->channel) == 0) sel = n; colors[n] = ui_channel_color(ap, it->channels[i]); labels[n] = it->channels[i]; names[n++] = it->channels[i]; }
 		nk_layout_row_begin(ctx, NK_STATIC, row, 3);
 		nk_layout_row_push(ctx, UI_W(ap, 170)); nk_label(ctx, "Channel:", NK_TEXT_RIGHT);
