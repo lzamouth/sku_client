@@ -1,3 +1,7 @@
+4.2.12
+- The Changelog and Readme tabs show those of the channel you follow, refreshed at each check and update
+- A Readme published as README.txt (or a changelog under another case) is found without being declared
+
 4.2.11
 - Developers can give Main another name in the drop-downs (main_name in their configuration)
 - Settings written by a newer version of the updater are kept, in the add-on's files and in the preferences
