@@ -703,6 +703,7 @@ int main(int argc, char **argv)
 		if (jobs_done(ap.jobs) != ap.last_jobs_done) {
 			ap.last_jobs_done = jobs_done(ap.jobs);
 			for (int i = 0; i < ap.nitems; i++) app_refresh_item(&ap.items[i]);
+			free(ap.doc_text); ap.doc_text = NULL;   /* a check or an update may have changed the changelog or readme */
 			app_post_notices(&ap);
 		} else {
 			for (int i = 0; i < ap.nitems; i++) app_refresh_live(&ap.items[i]);

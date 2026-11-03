@@ -176,6 +176,24 @@ format: the newest version first, as a bare line, entries starting with
 The first line is the version: `xp_ship`, and some aircraft themselves, read
 it from there.
 
+A `readme.txt` is shown the same way, in the Readme tab. Both files are
+read from the depot of the channel the user follows, at each check, so a
+beta's changelog and readme show while on the beta and the release's ones
+once back on Main. Under other names, declare them in the configuration of
+every depot:
+
+```
+changelog|docs/CHANGES.md
+readme|README.txt
+```
+
+Since client 4.2.12 the default names match whatever their case
+(`README.txt`, `Changelog.txt`) when they sit at the root of the depot;
+older 4.x clients only find them under another case when declared. A depot
+that publishes neither file shows none: the copy fetched for another
+channel is not kept. Before the first check, the tabs show the copy
+installed with the addon.
+
 ### 1.6 The classic mistake: the beta URL in the configuration
 
 The configuration you upload is copied into your users' local file: when the

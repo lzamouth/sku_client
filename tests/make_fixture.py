@@ -178,6 +178,18 @@ for rel, data in files.items():
 write(os.path.join(base, "skunkcrafts_updater.cfg"), "name|Test plane\nmodule|http://127.0.0.1:" + port + "/level1\nversion|2.0b1\nlocked|false\nzone|custom\n")
 write(os.path.join(base, "skunkcrafts_updater_whitelist.txt"), "\n".join("%s|%d" % (rel, -1 if rel == "data/OptionSave.prf" else crc(data)) for rel, data in files.items()) + "\n")
 
+# documents by channel, all level 1: "docsmain" publishes README.txt (upper case, not declared) and
+# no changelog, "docsdaily" both under their default names, "docsgone" declares a changelog it
+# does not publish
+for name, docs, decl in (("docsmain", {"README.txt": b"readme main\n"}, ""),
+                         ("docsdaily", {"readme.txt": b"readme daily\n", "changelog.txt": b"1.1\n- daily\n"}, ""),
+                         ("docsgone", {"readme.txt": b"readme gone\n"}, "changelog|CHANGES.txt\n")):
+	base = os.path.join(depot, name)
+	for rel, data in docs.items():
+		write(os.path.join(base, rel), data)
+	write(os.path.join(base, "skunkcrafts_updater.cfg"), "name|Docs plane\nmodule|http://127.0.0.1:%s/docsmain\nversion|1.1\nlocked|false\nzone|custom\n%s" % (port, decl))
+	write(os.path.join(base, "skunkcrafts_updater_whitelist.txt"), "".join("%s|%d\n" % (rel, crc(data)) for rel, data in docs.items()))
+
 # a locked depot and one answering HTML instead of the cfg
 write(os.path.join(depot, "locked", "skunkcrafts_updater.cfg"), "name|Test plane\nmodule|x\nversion|3.0\nlocked|true\n")
 write(os.path.join(depot, "html", "skunkcrafts_updater.cfg"), "<!DOCTYPE html><html><body>403</body></html>")

@@ -132,10 +132,11 @@ static int fetch_list(sku_addon *a, sku_http *h, const char *file, bool required
 	return SKU_OK;
 }
 
-static bool remote_has(const sku_addon *a, const char *path)
+/* The depot's own spelling of a root file name, compared without case ("README.txt"). */
+static const char *remote_find_nocase(const sku_addon *a, const char *path)
 {
-	for (int i = 0; i < a->files.n; i++) if (strcmp(a->files.v[i].path, path) == 0) return true;
-	return false;
+	for (int i = 0; i < a->files.n; i++) if (strcasecmp(a->files.v[i].path, path) == 0) return a->files.v[i].path;
+	return NULL;
 }
 
 /* One CRC job: hash a local file and compare with the depot. */
@@ -426,18 +427,25 @@ int sku_addon_check(sku_addon *a, const sku_check_opts *opts)
 	}
 
 	/* changelog / readme: fetched when declared, by default from protocol level 2,
-	 * and at level 1 when the depot publishes them under the default names */
+	 * and at level 1 when the depot lists them under the default names (any case).
+	 * The cached copy is the channel's: dropped when the depot does not publish one */
 	if (!opts->dry_run) {
-		const char *docs[2][2] = { { "changelog", a->changelog[0] ? a->changelog : SKU_F_CHANGELOG }, { "readme", a->readme[0] ? a->readme : SKU_F_README } };
-		bool declared[2] = { a->changelog[0] != 0, a->readme[0] != 0 };
+		const char *kinds[2] = { "changelog", "readme" }, *defaults[2] = { SKU_F_CHANGELOG, SKU_F_README };
+		char *names[2] = { a->changelog, a->readme };
 		for (int d = 0; d < 2; d++) {
 			char cache[SKU_PATH_MAX];
+			const char *listed;
 			sku_http_result dr;
-			if (!declared[d] && a->level < 2 && !remote_has(a, docs[d][1])) continue;
-			if (fetch_text(a, h, docs[d][1], "v", a->remote_version, false, &text, &dr) == SKU_OK) {
-				sku_addon_doc_cache_path(a, docs[d][0], cache, sizeof cache);
+			int drc;
+			sku_addon_doc_cache_path(a, kinds[d], cache, sizeof cache);
+			if (!names[d][0] && (listed = remote_find_nocase(a, defaults[d])) != NULL) sku_strlcpy(names[d], listed, SKU_PATH_MAX);
+			if (!names[d][0] && a->level < 2) { sku_remove_file(cache); continue; }
+			drc = fetch_text(a, h, names[d][0] ? names[d] : defaults[d], "v", a->remote_version, false, &text, &dr);
+			if (drc == SKU_OK) {
 				sku_write_file_atomic(cache, text, strlen(text));
 				free(text); text = NULL;
+			} else if (drc == SKU_ERR_FORMAT || dr.status == 404 || dr.status == 410) {
+				sku_remove_file(cache);
 			}
 		}
 	}

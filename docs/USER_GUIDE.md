@@ -137,6 +137,8 @@ Four tabs:
   marked "(installed)".
 - **Readme**: the developer's notes, when published.
 
+  Both come from the channel you follow and are refreshed at each check.
+
 ## 6. Packs
 
 Some products install as several folders (a scenery library and its

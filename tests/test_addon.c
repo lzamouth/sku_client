@@ -873,6 +873,64 @@ static void test_unknown_keys_main_name(void)
 	sku_instance_close(&in);
 }
 
+/* Reads the addon's changelog or readme as the detail view would; NULL when there is none. */
+static char *doc_text(const sku_addon *a, const char *kind)
+{
+	char doc[SKU_PATH_MAX], *text = NULL;
+	if (sku_addon_doc_path(a, kind, doc, sizeof doc) != SKU_OK || sku_read_file(doc, &text, NULL) != SKU_OK) return NULL;
+	return text;
+}
+
+/* The changelog and readme shown are those of the channel last checked: a default name is
+ * found whatever its case in the depot's list, and a document the depot does not publish
+ * (absent from the list, or declared and missing) drops the copy cached from another channel. */
+static void test_docs_by_channel(void)
+{
+	sku_instance in;
+	sku_addon *a;
+	sku_check_opts co = { false, false, 2 };
+	char dir[SKU_PATH_MAX], p[SKU_PATH_MAX], text[SKU_URL_MAX + 256], *body;
+
+	sku_path_join(dir, sizeof dir, xp, "Aircraft/Docs/Plane");
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channels");
+	CHECK_EQ_INT(sku_mkdir_p(p), SKU_OK);
+	sku_snprintf(text, sizeof text, "name|Docs plane\nmodule|%s/docsmain\nversion|1.0\nzone|custom\n", url);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts_updater.cfg");
+	CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+	sku_snprintf(text, sizeof text, "channel|daily\nmodule|%s/docsdaily\nzone|custom\n", url);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channels/daily.cfg");
+	CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+	sku_snprintf(text, sizeof text, "channel|gone\nmodule|%s/docsgone\nzone|custom\n", url);
+	sku_path_join(p, sizeof p, dir, "skunkcrafts/channels/gone.cfg");
+	CHECK_EQ_INT(sku_write_file_atomic(p, text, strlen(text)), SKU_OK);
+	CHECK_EQ_INT(sku_instance_open(&in, xp, false), SKU_OK);
+	a = sku_addon_open(&in, dir, SKU_GENRE_AIRCRAFT);
+	CHECK_EQ_INT(a->nchannels, 2);
+
+	CHECK_EQ_INT(sku_addon_set_channel(a, "daily", false), SKU_OK);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	body = doc_text(a, "readme");    CHECK(body && strcmp(body, "readme daily\n") == 0); free(body);
+	body = doc_text(a, "changelog"); CHECK(body && strcmp(body, "1.1\n- daily\n") == 0); free(body);
+
+	/* declared and missing: the daily changelog goes */
+	CHECK_EQ_INT(sku_addon_set_channel(a, "gone", false), SKU_OK);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	body = doc_text(a, "readme");    CHECK(body && strcmp(body, "readme gone\n") == 0); free(body);
+	CHECK(doc_text(a, "changelog") == NULL);
+
+	/* README.txt for the default readme.txt; no changelog in the list */
+	CHECK_EQ_INT(sku_addon_set_channel(a, "daily", false), SKU_OK);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_INT(sku_addon_set_channel(a, "stable", false), SKU_OK);
+	CHECK_EQ_INT(sku_addon_check(a, &co), SKU_OK);
+	CHECK_EQ_STR(a->readme, "README.txt");
+	body = doc_text(a, "readme");    CHECK(body && strcmp(body, "readme main\n") == 0); free(body);
+	CHECK(doc_text(a, "changelog") == NULL);
+
+	sku_addon_close(a);
+	sku_instance_close(&in);
+}
+
 static int count(const char *text, const char *needle)
 {
 	int n = 0;
@@ -1019,6 +1077,7 @@ int main(void)
 	test_depot_client_files();
 	test_public_channels();
 	test_unknown_keys_main_name();
+	test_docs_by_channel();
 	test_fallback_public();
 	test_scan_depth();
 	sku_http_global_cleanup();
